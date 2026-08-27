@@ -1,0 +1,23 @@
+# Windows dev machine, Linux CI. Normalise to LF in the repo so the contract
+# drift check (git diff --exit-code on generated files) can never fail over
+# line endings alone.
+* text=auto eol=lf
+
+# Windows-native scripts genuinely want CRLF.
+*.ps1   text eol=crlf
+*.cmd   text eol=crlf
+*.bat   text eol=crlf
+
+# Generated, but committed on purpose — see .gitignore.
+client/src/api/schema.d.ts   text eol=lf linguist-generated=true
+server/src/Api/openapi/*.json text eol=lf linguist-generated=true
+
+# Lockfiles: keep diffs collapsed in review.
+package-lock.json  text eol=lf linguist-generated=true
+
+# Binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff  binary
+*.woff2 binary
