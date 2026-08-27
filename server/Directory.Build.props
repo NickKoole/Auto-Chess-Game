@@ -1,0 +1,21 @@
+<Project>
+
+  <!-- Shared across every project under server/. Keeps the conventions in
+       CLAUDE.md enforced by the compiler rather than by review. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- CI builds with /warnaserror; match that locally so the agent sees the
+         same failures it would see in CI. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Determinism: culture-sensitive parsing and formatting is a classic
+         source of "works on my machine" divergence in a simulation. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+</Project>
