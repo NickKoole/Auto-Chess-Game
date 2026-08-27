@@ -1,0 +1,55 @@
+name: PR closed
+
+# Label hygiene when a PR lands. GitHub already closes the linked issue via
+# "Closes #N"; this just keeps the state label truthful so your ready pool and
+# your needs-you pool stay accurate.
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: pr-closed-${{ github.event.pull_request.number }}
+
+jobs:
+  settle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        with:
+          script: |
+            const STATES = [
+              "state:backlog", "state:ready", "state:building", "state:reviewing",
+              "state:needs-you", "state:approved", "state:done", "state:blocked",
+            ];
+            const repo = { owner: context.repo.owner, repo: context.repo.repo };
+            const pr = context.payload.pull_request;
+
+            const m = /(?:closes|fixes|resolves)\s+#(\d+)/i.exec(process.env.PR_BODY || "");
+            if (!m) {
+              core.info("PR body has no Closes #N link — nothing to settle");
+              return;
+            }
+            const target = Number(m[1]);
+            const next = pr.merged ? "state:done" : "state:backlog";
+
+            const { data: issue } = await github.rest.issues.get({ ...repo, issue_number: target });
+            for (const l of issue.labels.map((l) => l.name ?? l)) {
+              if (STATES.includes(l) && l !== next) {
+                await github.rest.issues.removeLabel({ ...repo, issue_number: target, name: l })
+                  .catch((e) => { if (e.status !== 404) throw e; });
+              }
+            }
+            await github.rest.issues.addLabels({ ...repo, issue_number: target, labels: [next] });
+
+            if (!pr.merged) {
+              await github.rest.issues.createComment({
+                ...repo, issue_number: target,
+                body: `PR #${pr.number} was closed without merging — back to the backlog.`,
+              });
+            }

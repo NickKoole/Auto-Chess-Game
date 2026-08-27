@@ -1,0 +1,46 @@
+name: Epic
+description: A slice of the game too big for one unattended run. Gets split into child tickets.
+labels: ["type:epic", "state:backlog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Agents never build epics. Fill in the breakdown below, then add the
+        **`split`** label — an Action turns each checkbox into a real child
+        ticket linked back here.
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What does the game do once every child ticket is merged?
+    validations:
+      required: true
+
+  - type: textarea
+    id: children
+    attributes:
+      label: Breakdown
+      description: One checkbox per child ticket. The text becomes the child's title, so make each one a complete, standalone task.
+      value: |
+        - [ ]
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: design
+    attributes:
+      label: Shared design notes
+      description: Context every child ticket will need. This gets copied into each one.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: ["sim", "api", "client", "balance", "content", "infra"]
+    validations:
+      required: true

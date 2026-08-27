@@ -1,0 +1,49 @@
+{
+  "$comment": "Reviewer permissions. Strictly read-only. A reviewer that can edit the code it is reviewing produces a clean report that hides its own work, and its approval stops distinguishing 'this was correct' from 'this was made correct'. It may build and run tests, because verifying a claim is not the same as changing the answer.",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+
+      "Bash(dotnet build:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet format --verify-no-changes:*)",
+
+      "Bash(npm run:*)",
+      "Bash(npm ci)",
+      "Bash(npx vitest:*)",
+      "Bash(npx vue-tsc:*)",
+      "Bash(npx tsc:*)",
+
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git status:*)"
+    ],
+    "deny": [
+      "Write",
+      "Edit",
+      "NotebookEdit",
+
+      "Bash(dotnet ef:*)",
+      "Bash(dotnet run:*)",
+      "Bash(dotnet add:*)",
+      "Bash(dotnet nuget:*)",
+      "Bash(npm install:*)",
+
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(git reset:*)",
+      "Bash(gh:*)",
+      "Bash(rm:*)",
+      "WebFetch",
+      "WebSearch",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ]
+  }
+}

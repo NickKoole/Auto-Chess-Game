@@ -1,0 +1,164 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Both jobs self-skip until their half of the repo exists, so CI is green
+  # (and honest) while the project is still being scaffolded ticket by ticket.
+
+  server:
+    name: server (.NET)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: probe
+        shell: bash
+        run: |
+          if [ -n "$(find server -name '*.csproj' -o -name '*.sln' 2>/dev/null | head -1)" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No .NET project under server/ yet — skipping."
+          fi
+
+      - uses: actions/setup-dotnet@v4
+        if: steps.probe.outputs.exists == 'true'
+        with:
+          dotnet-version: "10.0.x"   # must match the local SDK — see CLAUDE.md
+
+      - name: Restore
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: server
+        run: dotnet restore
+
+      - name: Build
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: server
+        run: dotnet build --no-restore --configuration Release /warnaserror
+
+      - name: Test
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: server
+        run: dotnet test --no-build --configuration Release --verbosity normal
+
+      # Formatting is a check, never a mutation, in CI.
+      - name: Format check
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: server
+        run: dotnet format --verify-no-changes --verbosity diagnostic
+        continue-on-error: true
+
+  client:
+    name: client (Vue)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: probe
+        shell: bash
+        run: |
+          if [ -f client/package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            if [ -f client/package-lock.json ]; then
+              echo "lock=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "lock=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No client/package.json yet — skipping."
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.probe.outputs.exists == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: ${{ steps.probe.outputs.lock == 'true' && 'npm' || '' }}
+          cache-dependency-path: ${{ steps.probe.outputs.lock == 'true' && 'client/package-lock.json' || '' }}
+
+      - name: Install
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: client
+        shell: bash
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      # --if-present so a half-built client doesn't fail CI for tooling it
+      # hasn't adopted yet.
+      - name: Typecheck
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: client
+        run: npm run --if-present typecheck
+
+      - name: Lint
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: client
+        run: npm run --if-present lint
+
+      - name: Test
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: client
+        run: npm run --if-present test -- --run
+
+      - name: Build
+        if: steps.probe.outputs.exists == 'true'
+        working-directory: client
+        run: npm run --if-present build
+
+  contract:
+    name: contract (OpenAPI -> TS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: probe
+        shell: bash
+        run: |
+          if [ -f client/package.json ] && [ -n "$(find server -name '*.csproj' 2>/dev/null | head -1)" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Both halves not present yet — skipping contract check."
+          fi
+
+      - uses: actions/setup-dotnet@v4
+        if: steps.probe.outputs.exists == 'true'
+        with:
+          dotnet-version: "10.0.x"
+
+      - uses: actions/setup-node@v4
+        if: steps.probe.outputs.exists == 'true'
+        with:
+          node-version-file: .nvmrc
+
+      # Building the API re-emits the OpenAPI document; regenerating the client
+      # types from it must then be a no-op. If either produces a diff, the
+      # committed contract is stale — which is exactly the drift CLAUDE.md says
+      # should be a build error rather than a runtime surprise.
+      - name: Rebuild contract and regenerate types
+        if: steps.probe.outputs.exists == 'true'
+        shell: bash
+        run: |
+          cd server && dotnet build src/Api/Api.csproj --configuration Release
+          cd ../client && npm run generate:api
+
+      - name: Fail if the contract or generated types drifted
+        if: steps.probe.outputs.exists == 'true'
+        shell: bash
+        run: |
+          if ! git diff --exit-code -- server/src/Api/openapi client/src/api; then
+            echo "::error::OpenAPI contract or generated client types are out of date."
+            echo "Run: cd server && dotnet build src/Api/Api.csproj && cd ../client && npm run generate:api"
+            exit 1
+          fi

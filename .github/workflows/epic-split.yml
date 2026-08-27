@@ -1,0 +1,111 @@
+name: Split epic into tickets
+
+# Add the `split` label to an epic and each checkbox in its Breakdown becomes a
+# real child ticket, pre-filled with the epic's shared design notes and linked
+# back to the parent.
+#
+# Deliberately deterministic — it parses checkboxes, it does not ask a model to
+# invent tickets. You decide what the children are; this saves the typing.
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: epic-split-${{ github.event.issue.number }}
+
+jobs:
+  split:
+    if: github.event.label.name == 'split'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        with:
+          script: |
+            const repo = { owner: context.repo.owner, repo: context.repo.repo };
+            const parent = context.payload.issue;
+            const n = parent.number;
+            const body = process.env.ISSUE_BODY || "";
+            const names = parent.labels.map((l) => l.name);
+
+            const done = async (msg) => {
+              await github.rest.issues.createComment({ ...repo, issue_number: n, body: msg });
+              await github.rest.issues.removeLabel({ ...repo, issue_number: n, name: "split" })
+                .catch((e) => { if (e.status !== 404) throw e; });
+            };
+
+            if (!names.includes("type:epic")) {
+              return done("`split` only applies to `type:epic` tickets.");
+            }
+
+            // Walk the body heading by heading. Simpler and more obviously
+            // correct than a regex that has to guess where a section ends —
+            // notably when the section is the last one in the body.
+            const section = (heading) => {
+              const want = heading.toLowerCase();
+              const out = [];
+              let inside = false;
+              for (const line of body.split(/\r?\n/)) {
+                const h = /^#{1,6}\s*(.+?)\s*$/.exec(line);
+                if (h) { inside = h[1].toLowerCase() === want; continue; }
+                if (inside) out.push(line);
+              }
+              return out.join("\n").trim();
+            };
+
+            const breakdown = section("Breakdown");
+            if (!breakdown) {
+              return done("No `Breakdown` section found — nothing to split.");
+            }
+
+            const titles = [...breakdown.matchAll(/^\s*[-*]\s*\[[ xX]\]\s*(.+?)\s*$/gm)]
+              .map((m) => m[1].trim())
+              .filter((t) => t.length > 2);
+
+            if (titles.length === 0) {
+              return done("No checkboxes under `Breakdown` — nothing to split.");
+            }
+
+            const shared = section("Shared design notes");
+            const area = names.find((x) => x.startsWith("area:")) ?? "area:sim";
+
+            const created = [];
+            for (const title of titles) {
+              const childBody = [
+                `Part of #${n}.`,
+                "",
+                "## Outcome",
+                "",
+                title,
+                "",
+                "## Acceptance criteria",
+                "",
+                "- [ ] <!-- fill this in before moving to state:ready -->",
+                "",
+                shared ? `## Design notes (inherited from the epic)\n\n${shared}\n` : "",
+                "## Out of scope",
+                "",
+                "Anything belonging to a sibling ticket under the same epic.",
+              ].filter((x) => x !== "").join("\n");
+
+              const { data: child } = await github.rest.issues.create({
+                ...repo,
+                title,
+                body: childBody,
+                labels: ["type:feature", "state:backlog", area],
+              });
+              created.push(child);
+              core.info(`created #${child.number}: ${title}`);
+            }
+
+            await done(
+              `### 🧩 Split into ${created.length} ticket${created.length === 1 ? "" : "s"}\n\n` +
+              created.map((c) => `- #${c.number} — ${c.title}`).join("\n") +
+              "\n\nEach one needs real acceptance criteria before it can reach `state:ready` — " +
+              "the readiness gate will bounce it otherwise."
+            );

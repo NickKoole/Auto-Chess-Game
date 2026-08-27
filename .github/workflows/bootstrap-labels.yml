@@ -1,0 +1,26 @@
+name: Bootstrap labels
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/labels.yml", ".github/scripts/sync-labels.mjs"]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: bootstrap-labels
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node .github/scripts/sync-labels.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}

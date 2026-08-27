@@ -1,0 +1,101 @@
+name: Ticket guard
+
+# Keeps the label state machine honest, and refuses to let a ticket reach
+# `state:ready` if an unattended agent couldn't act on it.
+#
+# This is the highest-value automation in the repo: the agent cannot ask you
+# what you meant, so a vague ticket is caught here rather than discovered after
+# a 40-minute run that produced the wrong thing.
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: ticket-guard-${{ github.event.issue.number }}
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          # Untrusted input. Never interpolate issue text into the script body.
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        with:
+          script: |
+            const STATES = [
+              "state:backlog", "state:ready", "state:building", "state:reviewing",
+              "state:needs-you", "state:approved", "state:done", "state:blocked",
+            ];
+
+            const issue = context.payload.issue;
+            const added = context.payload.label?.name;
+            const body = process.env.ISSUE_BODY || "";
+            const names = issue.labels.map((l) => l.name);
+            const repo = { owner: context.repo.owner, repo: context.repo.repo };
+            const n = issue.number;
+
+            const remove = (name) =>
+              github.rest.issues.removeLabel({ ...repo, issue_number: n, name })
+                .catch((e) => { if (e.status !== 404) throw e; });
+            const add = (name) =>
+              github.rest.issues.addLabels({ ...repo, issue_number: n, labels: [name] });
+
+            // --- one state label at a time --------------------------------------
+            const present = names.filter((x) => STATES.includes(x));
+
+            if (present.length === 0) {
+              await add("state:backlog");
+              core.info("no state label -> state:backlog");
+              return;
+            }
+
+            const keep = STATES.includes(added) ? added : present[present.length - 1];
+            for (const s of present.filter((x) => x !== keep)) {
+              core.info(`removing conflicting ${s} (keeping ${keep})`);
+              await remove(s);
+            }
+
+            // --- readiness gate --------------------------------------------------
+            if (keep !== "state:ready") return;
+
+            const problems = [];
+
+            if (names.includes("type:epic")) {
+              problems.push(
+                "This is an epic. Add the `split` label to generate its child tickets, " +
+                "and move *those* to `state:ready`."
+              );
+            }
+            if (!/^#{1,6}\s*Acceptance criteria\s*$/im.test(body)) {
+              problems.push("No `Acceptance criteria` heading — the agent has nothing to verify against.");
+            } else if (!/^\s*[-*]\s*\[[ xX]\]/m.test(body)) {
+              problems.push("`Acceptance criteria` has no checkboxes. Give the agent checkable items.");
+            }
+            if (!names.some((x) => x.startsWith("area:"))) {
+              problems.push("No `area:*` label — the agent uses it to decide which layer it may touch.");
+            }
+            if (names.includes("size:l")) {
+              problems.push("`size:l` is too broad for one unattended run. Convert this to an epic and split it.");
+            }
+
+            if (problems.length === 0) {
+              core.info("ticket passes the readiness gate");
+              return;
+            }
+
+            await remove("state:ready");
+            await add("state:backlog");
+            await github.rest.issues.createComment({
+              ...repo, issue_number: n,
+              body:
+                "### 🚧 Sent back to the backlog\n\n" +
+                "An agent runs this ticket unattended and can't ask you what you meant, " +
+                "so it has to be actionable as written:\n\n" +
+                problems.map((p) => `- ${p}`).join("\n") +
+                "\n\nFix the above and re-apply `state:ready`.",
+            });

@@ -1,0 +1,38 @@
+# Agent session state — local, per-machine, never shared.
+.agent-state/
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+artifacts/
+
+# SQLite databases (the schema lives in migrations, never in a committed .db)
+*.db
+*.db-shm
+*.db-wal
+
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# NOTE deliberately NOT ignored:
+#   server/src/Api/openapi/Api.json  — the API contract
+#   client/src/api/schema.d.ts       — types generated from it
+# Both are committed so contract drift shows up as a reviewable git diff.

@@ -1,0 +1,65 @@
+name: Feature
+description: A new player-facing capability for an agent to build.
+labels: ["type:feature", "state:backlog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This ticket is read by an agent working **unattended**, with no memory of
+        any conversation and no way to ask you a question. Write for a competent
+        stranger who cannot reach you: state the outcome, then the checks.
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What can the player do afterwards that they couldn't before?
+      placeholder: Players can lock the shop so its contents carry into the next round.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkboxes an agent can verify. Each one should map to a test.
+      value: |
+        - [ ]
+        - [ ]
+        - [ ] xUnit tests cover the above in `server/tests/GameSim.Tests`
+    validations:
+      required: true
+
+  - type: textarea
+    id: design
+    attributes:
+      label: Design notes
+      description: Constraints, formulas, edge cases, prior art — anything that stops the agent guessing.
+    validations:
+      required: false
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: Adjacent things the agent must NOT touch. This is the most useful box on the form — an unattended agent has no other way to know where to stop.
+      placeholder: Don't rebalance existing unit costs. Don't change the save format.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: ["sim", "api", "client", "balance", "content", "infra"]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size
+      description: "Pick l and the readiness check will tell you to split it."
+      options: ["s", "m", "l"]
+    validations:
+      required: true

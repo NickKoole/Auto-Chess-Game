@@ -1,0 +1,60 @@
+name: Bug
+description: Something behaves incorrectly.
+labels: ["type:bug", "state:backlog"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: Phrase it as the fixed behaviour — what should happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: Exact steps, and the seed if the sim is involved.
+      value: |
+        Seed:
+        Steps:
+        1.
+        Observed:
+        Expected:
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ] A test reproduces the bug and fails before the fix
+        - [ ] That test passes after the fix
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: Related-looking things the agent must leave alone.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: ["sim", "api", "client", "balance", "content", "infra"]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size
+      options: ["s", "m", "l"]
+    validations:
+      required: true
