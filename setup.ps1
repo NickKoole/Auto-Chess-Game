@@ -23,6 +23,17 @@ function Step($m) { Write-Host "`n=== $m" -ForegroundColor Cyan }
 function Ok($m)   { Write-Host "  [ok] $m" -ForegroundColor Green }
 function Note($m) { Write-Host "  [--] $m" -ForegroundColor DarkGray }
 
+# PowerShell 5.1 wraps a native command's stderr in an ErrorRecord whenever the
+# stream is redirected, and $ErrorActionPreference = "Stop" then promotes that to
+# a terminating error — so an ordinary non-zero exit becomes a stack trace before
+# we can turn it into a readable message. Run redirected native calls through
+# here, and test $LASTEXITCODE rather than $?, which the same wrapping corrupts.
+function Quiet([scriptblock]$Block) {
+  $prev = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try { & $Block } finally { $ErrorActionPreference = $prev }
+}
+
 # ---------------------------------------------------------------- preflight --
 Step "Preflight"
 foreach ($t in @("gh", "git", "node", "dotnet", "claude")) {
@@ -38,21 +49,22 @@ if ($sdks -notmatch '(?m)^10.') {
 }
 Ok ".NET 10 SDK present"
 
-gh auth status *> $null
-if (-not $?) { throw "gh is not authenticated. Run:  gh auth login" }
+Quiet { gh auth status *> $null }
+if ($LASTEXITCODE -ne 0) { throw "gh is not authenticated. Run:  gh auth login" }
 Ok "gh authenticated"
 
 # ------------------------------------------------------------------- repo ----
 Step "Repository"
-$remote = (git remote get-url origin 2>$null)
-if ($LASTEXITCODE -ne 0 -or -not $remote) {
+# `git remote` prints nothing and exits 0 when there are no remotes, so this
+# asks the question without provoking an error to swallow in the first place.
+if ((git remote) -notcontains "origin") {
   $me = (gh api user --jq .login)
   Note "Creating $me/$RepoName ($Visibility)"
   gh repo create "$RepoName" "--$Visibility" --source=. --remote=origin
-  if (-not $?) { throw "gh repo create failed" }
+  if ($LASTEXITCODE -ne 0) { throw "gh repo create failed" }
   Ok "created and linked"
 } else {
-  Ok "origin already set: $remote"
+  Ok "origin already set: $(git remote get-url origin)"
 }
 
 $branch = (git rev-parse --abbrev-ref HEAD)
@@ -71,7 +83,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 git push -u origin main
-if (-not $?) { throw "git push failed" }
+if ($LASTEXITCODE -ne 0) { throw "git push failed" }
 Ok "pushed to origin/main"
 
 $nwo = (gh repo view --json nameWithOwner --jq .nameWithOwner)
@@ -81,7 +93,7 @@ Step "Labels"
 $env:GITHUB_TOKEN = (gh auth token)
 $env:GITHUB_REPOSITORY = $nwo
 node .github/scripts/sync-labels.mjs
-if (-not $?) { throw "label sync failed" }
+if ($LASTEXITCODE -ne 0) { throw "label sync failed" }
 
 # ------------------------------------------------------------------- done ----
 Step "Done"
