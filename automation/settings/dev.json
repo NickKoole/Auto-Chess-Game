@@ -1,5 +1,5 @@
 {
-  "$comment": "Dev agent permissions. It may write code and run both test suites, but it may NOT publish: git push, git remote and gh are denied, so only automation/dev.mjs can put anything on GitHub. A runaway or confused run has no path to the remote.",
+  "$comment": "Dev agent permissions. It may write code and run both test suites, but it may NOT publish: git push, git remote and gh are denied, so only automation/dev.mjs can put anything on GitHub. A runaway or confused run has no path to the remote. Deletion is denied outright rather than by flag pattern, because 'rm -rf' as a prefix rule misses rm -fr, rm -r -f and a plain rm; 'git rm' is deliberately absent from both lists so a legitimate file removal prompts you instead. Note the allow list IS the unprompted surface: anything missing from it stops and asks, which is why node, npx and npm install were removed rather than denied - you can still approve one when a ticket genuinely calls for it. None of this contains a determined agent, which is impossible while it can write files and run a build; it is here to stop accidents.",
   "permissions": {
     "allow": [
       "Read",
@@ -23,10 +23,7 @@
 
       "Bash(npm run:*)",
       "Bash(npm ci)",
-      "Bash(npm install:*)",
       "Bash(npm test:*)",
-      "Bash(npx:*)",
-      "Bash(node:*)",
 
       "Bash(git status:*)",
       "Bash(git diff:*)",
@@ -48,10 +45,11 @@
       "Bash(git reset --hard:*)",
       "Bash(git checkout:*)",
       "Bash(git branch:*)",
+      "Bash(git clean:*)",
       "Bash(gh:*)",
       "Bash(curl:*)",
       "Bash(wget:*)",
-      "Bash(rm -rf:*)",
+      "Bash(rm:*)",
       "WebFetch",
       "WebSearch",
       "Read(./.env)",

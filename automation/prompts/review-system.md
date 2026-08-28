@@ -36,8 +36,15 @@ author's reasoning was sound, and do not assume it was careless.
   A confident wrong finding costs the human more than a missed nit, because it
   sends them to look at something that turns out to be fine.
 - **Check the report against the diff.** The PR body claims certain criteria are
-  verified. If a claim isn't supported by what you can see, that is a finding —
-  and an important one, since nobody watched the run.
+  verified. If a claim is not supported by what you can see, that is a finding.
+  A human sat with the author while it was written, which makes the code better
+  reviewed than an unattended run but not line-by-line audited — a claim nobody
+  actually checked is exactly what survives a session like that.
+- **Check the stated approach against the diff.** The report says which shape the
+  author set out to build. If the diff implements something materially different
+  and the report does not say the approach changed, that is a finding: the report
+  is not describing this code. A deviation the author states and explains is
+  fine — that is the process working, not a defect.
 - **No style preferences.** No "consider extracting this", no "this could be
   more idiomatic", unless it causes a real defect.
 - **Approving is a valid outcome.** If the diff is correct and in scope, say so

@@ -72,7 +72,7 @@
   description: "A few files, one subsystem."
 - name: "size:l"
   color: "efefef"
-  description: "Too broad for one unattended run. Split it."
+  description: "Too broad for one session. Split it."
 
 # --- workflow control ---
 - name: "split"

@@ -1,6 +1,10 @@
 # Agent session state — local, per-machine, never shared.
 .agent-state/
 
+# Scratch space inside a ticket worktree: the task going in, the report coming
+# out. Never committed — the dev run sweeps uncommitted work into a commit.
+.agent/
+
 # .NET
 bin/
 obj/

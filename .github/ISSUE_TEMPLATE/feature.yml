@@ -5,9 +5,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        This ticket is read by an agent working **unattended**, with no memory of
-        any conversation and no way to ask you a question. Write for a competent
-        stranger who cannot reach you: state the outcome, then the checks.
+        An agent builds this ticket with you sitting alongside it, so it can ask.
+        Write it as if it could not: a ticket you have to explain from scratch in
+        the session is one you had not finished thinking about. State the
+        outcome, then the checks.
 
   - type: textarea
     id: outcome
@@ -42,7 +43,7 @@ body:
     id: out-of-scope
     attributes:
       label: Out of scope
-      description: Adjacent things the agent must NOT touch. This is the most useful box on the form — an unattended agent has no other way to know where to stop.
+      description: Adjacent things the agent must NOT touch. This is the most useful box on the form — scope creep is far easier to prevent here than to unpick from a diff.
       placeholder: Don't rebalance existing unit costs. Don't change the save format.
     validations:
       required: false

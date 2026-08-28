@@ -1,28 +1,37 @@
 #!/usr/bin/env node
-// Dev agent — headless. Build a ticket, push a draft PR, then hand straight to
-// the reviewer.
+// Dev session. Set up an isolated worktree for a ticket, sit with Claude while
+// it builds, then push a draft PR and hand straight to the reviewer.
 //
 //   node automation/dev.mjs 42          build (or continue) ticket 42
 //   node automation/dev.mjs             list the ready pool and pick one
 //   node automation/dev.mjs 42 --fresh  discard the agent's memory, start cold
 //   node automation/dev.mjs 42 --no-review   stop after the PR
-//   node automation/dev.mjs 42 --timeout 90  minutes, default 45
 //
-// The run is unattended by design: you fire it and walk away. Safety comes from
-// the destination, not from supervision — work lands on a DRAFT PR on its own
-// branch, and the agent is denied `git push` and `gh` outright (see
-// settings/dev.json), so only this script can publish anything.
+// You are in the loop for the whole build: Claude runs attached to this
+// terminal, so it asks you directly rather than guessing and explaining itself
+// afterwards. Everything around the session is still automated — worktree,
+// commit sweep, push, draft PR, review.
+//
+// Safety does not come from watching, and never did: the agent is denied
+// `git push`, `git remote` and `gh` outright (see settings/dev.json), so only
+// this script publishes, and only onto a DRAFT PR on the ticket's own branch.
 
 import { spawnSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { randomUUID } from "node:crypto";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   MARK_DEV, MARK_REVIEW, ROOT, areaOf, args, assertGh, clearSession, comment,
   commitsAhead, ensureWorktree, fmtDuration, getIssue, ghJson, isDirty,
-  labelNames, listByState, loadSession, must, runClaude, saveSession, setState,
-  stateOf, template, timeOf,
+  labelNames, listByState, loadSession, must, runClaudeInteractive, saveSession,
+  setState, stateOf, template, timeOf,
 } from "./lib/core.mjs";
+
+// Scratch space inside the worktree: the task going in, the report coming out.
+// Gitignored, so the commit sweep never picks it up.
+const AGENT_DIR = ".agent";
+const NO_REPORT = "_The session ended without a written report._";
 
 const PROMPTS = join(ROOT, "automation", "prompts");
 const SETTINGS = join(ROOT, "automation", "settings", "dev.json");
@@ -89,6 +98,19 @@ function gatherFeedback(issue, session) {
   ].join("\n");
 }
 
+/**
+ * The report the agent left behind. An interactive session has no captured
+ * output to mine for one — you read it as it happened — so the report is a file
+ * it writes before finishing.
+ */
+function readReport(dir) {
+  try {
+    return readFileSync(join(dir, AGENT_DIR, "report.md"), "utf8").trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 /** Open a draft PR, or return the one that already exists for this branch. */
 function ensurePr(issue, wt, report) {
   const found = ghJson(["pr", "list", "--head", wt.branch, "--state", "open", "--json", "number,url", "--limit", "1"]);
@@ -98,7 +120,7 @@ function ensurePr(issue, wt, report) {
     report,
     "",
     "---",
-    "🤖 Built headless by the dev agent, then reviewed automatically.",
+    "🤖 Built in a dev session with a human in the loop, then reviewed automatically.",
     "Leave a normal comment with what you want changed, then re-run:",
     "",
     "```",
@@ -163,13 +185,6 @@ async function main() {
     const sessionId = session?.sessionId ?? randomUUID();
     const feedback = resuming ? gatherFeedback(issue, session) : "";
 
-    if (resuming && !feedback) {
-      console.log("\nNo new feedback since the last run — nothing to act on.");
-      console.log("Comment on the PR with what you want changed, then re-run.");
-      setState(n, "state:needs-you");
-      return 0;
-    }
-
     const prompt = template(join(PROMPTS, "dev.md"), {
       MODE: resuming
         ? "You have worked on this ticket before and your commits are already on the branch."
@@ -183,32 +198,35 @@ async function main() {
       FEEDBACK: feedback,
     });
 
-    console.log(`\nrunning claude (headless, ${resuming ? "resumed" : "new"} session)…\n`);
-    const result = runClaude({
+    // The ticket goes in as a file rather than as one enormous argv entry: it
+    // contains the whole issue body and every comment, which no shell should be
+    // asked to quote. A stale report from a previous run has to go, or it would
+    // be picked up as if it described this one.
+    const agentDir = join(wt.dir, AGENT_DIR);
+    mkdirSync(agentDir, { recursive: true });
+    // Self-ignoring, so the commit sweep cannot pick this up even on a branch
+    // cut before the root .gitignore knew about `.agent/`.
+    writeFileSync(join(agentDir, ".gitignore"), "*\n");
+    writeFileSync(join(agentDir, "task.md"), prompt);
+    rmSync(join(agentDir, "report.md"), { force: true });
+
+    console.log(`\nstarting claude — ${resuming ? "resuming your" : "a new"} session.`);
+    console.log("You are in the loop: answer its questions, steer it, and exit when done.\n");
+
+    const result = runClaudeInteractive({
       cwd: wt.dir,
-      prompt,
+      initialPrompt: `Read ${AGENT_DIR}/task.md and follow it.`,
       settings: SETTINGS,
       systemPromptFile: join(PROMPTS, "dev-system.md"),
       sessionId: resuming ? null : sessionId,
       resume: resuming ? sessionId : null,
-      timeoutMs: Number(a.get("--timeout", 45)) * 60_000,
     });
 
-    console.log(`claude finished in ${fmtDuration(result.seconds)} (ok=${result.ok})`);
-
-    if (!result.ok) {
-      setState(n, "state:needs-you");
-      comment(n, [
-        MARK_DEV,
-        "### ⚠️ Dev agent run failed",
-        "",
-        "```",
-        result.text.slice(0, 6000),
-        "```",
-        "",
-        "Nothing was pushed. Comment with guidance and re-run, or use `--fresh` to start cold.",
-      ].join("\n"));
-      return 1;
+    console.log(`\nsession ended after ${fmtDuration(result.seconds)}`);
+    if (result.code !== 0) {
+      // Not fatal. Everything below lands on a draft branch, and losing work
+      // because the session exited untidily would be the worse outcome.
+      console.log(`(claude exited ${result.code} — continuing with whatever was committed)`);
     }
 
     // Sweep up anything left uncommitted so no work is silently lost.
@@ -218,25 +236,29 @@ async function main() {
     }
 
     const ahead = commitsAhead(wt.dir, wt.base);
+
+    const report = readReport(wt.dir);
+
     if (ahead === 0) {
       setState(n, "state:needs-you");
+      console.log("\nNothing was committed. Nothing pushed.");
       comment(n, [
         MARK_DEV,
-        "### 🤔 The dev agent produced no changes",
+        "### 🤔 The dev session ended with no changes",
         "",
-        "It reported:",
-        "",
-        result.text.slice(0, 4000),
-        "",
-        "This usually means the acceptance criteria aren't concrete enough to act on.",
+        report ?? "_No report was written._",
       ].join("\n"));
       return 1;
+    }
+
+    if (!report) {
+      console.log(`(no ${AGENT_DIR}/report.md was written — the PR body will be a placeholder)`);
     }
 
     console.log(`pushing ${ahead} commit${ahead === 1 ? "" : "s"}…`);
     must("git", ["push", "-u", "origin", wt.branch], { cwd: wt.dir });
 
-    const pr = ensurePr(issue, wt, result.text);
+    const pr = ensurePr(issue, wt, report ?? NO_REPORT);
     if (pr) console.log(`PR: ${pr.url}`);
 
     saveSession(n, {
@@ -250,17 +272,15 @@ async function main() {
     });
 
     if (pr) {
-      const summary = [
+      comment(n, [
         MARK_DEV,
-        `### ✅ Dev agent finished — PR #${pr.number}`,
+        `### ✅ Dev session finished — PR #${pr.number}`,
         "",
-        result.text.slice(0, 50_000),
+        (report ?? NO_REPORT).slice(0, 50_000),
         "",
         "---",
-        `${result.turns ?? "?"} turns · ${fmtDuration(result.seconds)}` +
-          (result.cost != null ? ` · $${result.cost.toFixed(2)}` : ""),
-      ].join("\n");
-      comment(n, summary);
+        fmtDuration(result.seconds),
+      ].join("\n"));
     }
 
     if (a.has("--no-review")) {

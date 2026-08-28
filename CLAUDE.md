@@ -78,7 +78,8 @@ wall-clock delta. This is the whole reason the backend exists.
 - Save state is plain serializable data: no behaviour, no polymorphic graphs.
 - EF Core owns the schema. Every schema change ships with a migration.
 - SQLite runs in-process, so integration tests need no external service — keep
-  it that way. Agents run unattended and cannot start a database for you.
+  it that way. Nothing in the pipeline can start a database for you — the review
+  agent runs unattended, and CI has no service container.
 
 ## Testing
 

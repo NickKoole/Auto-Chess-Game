@@ -1,4 +1,5 @@
-// Shared plumbing for the local agents: gh CLI, git worktrees, headless Claude.
+// Shared plumbing for the local agents: gh CLI, git worktrees, and both ways of
+// running Claude — interactive for the dev session, headless for the reviewer.
 // Zero dependencies by design — this must run from a bare checkout.
 
 import { spawnSync } from "node:child_process";
@@ -235,6 +236,37 @@ export function runClaude({
     cost: parsed.total_cost_usd ?? null,
     turns: parsed.num_turns ?? null,
     seconds,
+  };
+}
+
+/**
+ * Claude attached to your terminal, for the dev run. There is no captured output
+ * to parse here — you are the one reading it — so the agent leaves its report in
+ * a file and the runner picks that up after you exit. No timeout either: the
+ * session lasts as long as you sit with it.
+ */
+export function runClaudeInteractive({
+  cwd, initialPrompt, settings, systemPromptFile, sessionId, resume,
+}) {
+  const args = ["--permission-mode", "acceptEdits"];
+  if (settings) args.push("--settings", settings);
+  if (systemPromptFile) args.push("--append-system-prompt-file", systemPromptFile);
+  if (resume) args.push("--resume", resume);
+  else if (sessionId) args.push("--session-id", sessionId);
+  if (initialPrompt) args.push(initialPrompt);
+
+  const started = Date.now();
+  const res = spawnSync("claude", IS_WIN ? args.map(quote) : args, {
+    cwd,
+    stdio: "inherit",
+    shell: IS_WIN,
+  });
+  if (res.error) throw res.error;
+
+  return {
+    code: res.status ?? 1,
+    sessionId: resume ?? sessionId ?? null,
+    seconds: Math.round((Date.now() - started) / 1000),
   };
 }
 

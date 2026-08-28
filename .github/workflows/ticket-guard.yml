@@ -1,11 +1,12 @@
 name: Ticket guard
 
 # Keeps the label state machine honest, and refuses to let a ticket reach
-# `state:ready` if an unattended agent couldn't act on it.
+# `state:ready` if it is not actionable as written.
 #
-# This is the highest-value automation in the repo: the agent cannot ask you
-# what you meant, so a vague ticket is caught here rather than discovered after
-# a 40-minute run that produced the wrong thing.
+# The agent can ask you what you meant — you are in the session with it. The
+# point of the gate is that you should not be answering it from scratch: a
+# ticket with no checkable criteria is one you have not finished thinking
+# about, and the session is an expensive place to find that out.
 
 on:
   issues:
@@ -80,7 +81,7 @@ jobs:
               problems.push("No `area:*` label — the agent uses it to decide which layer it may touch.");
             }
             if (names.includes("size:l")) {
-              problems.push("`size:l` is too broad for one unattended run. Convert this to an epic and split it.");
+              problems.push("`size:l` is too broad for one session. Convert this to an epic and split it.");
             }
 
             if (problems.length === 0) {
@@ -94,8 +95,7 @@ jobs:
               ...repo, issue_number: n,
               body:
                 "### 🚧 Sent back to the backlog\n\n" +
-                "An agent runs this ticket unattended and can't ask you what you meant, " +
-                "so it has to be actionable as written:\n\n" +
+                "This has to be actionable as written before an agent starts on it:\n\n" +
                 problems.map((p) => `- ${p}`).join("\n") +
                 "\n\nFix the above and re-apply `state:ready`.",
             });

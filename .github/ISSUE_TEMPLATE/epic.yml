@@ -1,5 +1,5 @@
 name: Epic
-description: A slice of the game too big for one unattended run. Gets split into child tickets.
+description: A slice of the game too big for one session. Gets split into child tickets.
 labels: ["type:epic", "state:backlog"]
 body:
   - type: markdown
