@@ -97,7 +97,7 @@ public sealed class ArchitectureTests
 
         while (dir is not null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "IdleAutoChess.slnx")))
+            if (File.Exists(Path.Combine(dir.FullName, "AutoChess.slnx")))
             {
                 return dir.FullName;
             }
@@ -106,6 +106,6 @@ public sealed class ArchitectureTests
         }
 
         throw new InvalidOperationException(
-            $"Could not locate IdleAutoChess.slnx above {AppContext.BaseDirectory}.");
+            $"Could not locate AutoChess.slnx above {AppContext.BaseDirectory}.");
     }
 }

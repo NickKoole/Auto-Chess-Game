@@ -1,4 +1,4 @@
-# Idle Auto Chess — repo conventions
+# Auto Chess — repo conventions
 
 Read this before touching code. It binds human and agent contributors equally.
 
@@ -21,7 +21,7 @@ Read this before touching code. It binds human and agent contributors equally.
 
 ```
 server/
-  IdleAutoChess.slnx
+  AutoChess.slnx
   Directory.Build.props        shared compiler settings, enforced not advised
   .config/dotnet-tools.json    dotnet-ef pinned per-repo, not installed globally
   src/GameSim/                 headless, deterministic, zero I/O  <-- the real game

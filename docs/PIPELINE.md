@@ -160,12 +160,12 @@ always means a human approved.
 
 ## Worktrees
 
-Each ticket builds in `../Idle-Auto-Chess-Game-work/issue-<n>/` on branch
+Each ticket builds in `../Auto-Chess-Game-work/issue-<n>/` on branch
 `agent/<n>-<slug>`, so your main checkout stays free while a session is open.
 
 ```bash
 git worktree list
-git worktree remove ../Idle-Auto-Chess-Game-work/issue-42
+git worktree remove ../Auto-Chess-Game-work/issue-42
 git worktree prune
 ```
 

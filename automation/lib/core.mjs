@@ -4,7 +4,7 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
@@ -12,7 +12,10 @@ const IS_WIN = process.platform === "win32";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const STATE_DIR = join(ROOT, ".agent-state");
-export const WORKTREE_ROOT = resolve(ROOT, "..", "Idle-Auto-Chess-Game-work");
+// Derived from the checkout directory rather than hardcoded, so renaming the
+// repo or the folder cannot silently point worktrees at a path that no longer
+// matches the branch they belong to.
+export const WORKTREE_ROOT = resolve(ROOT, "..", `${basename(ROOT)}-work`);
 
 // One of these sits on an issue at any time. `needs-you` is the one that matters:
 // it means the machine is done and the ball is in your court.

@@ -45,7 +45,7 @@ async function api(method, path, body) {
       authorization: `Bearer ${TOKEN}`,
       accept: "application/vnd.github+json",
       "content-type": "application/json",
-      "user-agent": "idle-auto-chess-label-sync",
+      "user-agent": "auto-chess-label-sync",
     },
     body: body ? JSON.stringify(body) : undefined,
   });
