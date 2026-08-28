@@ -199,13 +199,18 @@ export function commitsAhead(cwd, base) {
  *
  * The prompt goes in on stdin so it never has to survive shell quoting, and
  * permissions come from a checked-in settings file rather than a flag soup —
- * which also means the deny list is reviewable in git.
+ * which also means the deny list is reviewable in git. The model is pinned in
+ * that same file. `fallbackModel` is the one thing that stays a flag — it is
+ * not a property of the run, only of what to do when the pinned model is
+ * unavailable, and this run has nobody sitting on it to retry by hand.
  */
 export function runClaude({
-  cwd, prompt, settings, systemPromptFile, sessionId, resume, timeoutMs = 45 * 60_000,
+  cwd, prompt, settings, systemPromptFile, sessionId, resume, fallbackModel,
+  timeoutMs = 45 * 60_000,
 }) {
   const args = ["-p", "--output-format", "json", "--permission-mode", "acceptEdits"];
   if (settings) args.push("--settings", settings);
+  if (fallbackModel) args.push("--fallback-model", fallbackModel);
   if (systemPromptFile) args.push("--append-system-prompt-file", systemPromptFile);
   if (resume) args.push("--resume", resume);
   else if (sessionId) args.push("--session-id", sessionId);

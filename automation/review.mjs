@@ -25,6 +25,10 @@ import {
 
 const PROMPTS = join(ROOT, "automation", "prompts");
 const SETTINGS = join(ROOT, "automation", "settings", "review.json");
+// The model itself is pinned in review.json. This is only where to land if it
+// is overloaded: an unattended run has no one to retry it, and a review that
+// never ran leaves the ticket sitting in state:needs-you for the wrong reason.
+const FALLBACK_MODEL = "claude-opus-4-8";
 const DIFF_BUDGET = 120_000; // characters of diff sent inline
 const a = args();
 
@@ -127,6 +131,7 @@ async function main() {
       prompt,
       settings: SETTINGS,
       systemPromptFile: join(PROMPTS, "review-system.md"),
+      fallbackModel: FALLBACK_MODEL,
       sessionId: randomUUID(), // always cold — never resumed
       timeoutMs: Number(a.get("--timeout", 30)) * 60_000,
     });

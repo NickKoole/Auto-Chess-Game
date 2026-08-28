@@ -158,6 +158,13 @@ code and no investment in defending it.
 Neither agent can approve a PR. GitHub review state stays yours, so an approval
 always means a human approved.
 
+Both agents are pinned to `claude-opus-5` in their settings files, alongside the
+permissions. Left unset, the model follows the CLI default, which moves on
+upgrade — and for the attached dev run it would also inherit whatever `/model`
+you last picked, so two runs of the same ticket a week apart would not be the
+same experiment. The reviewer additionally carries a `--fallback-model`: it runs
+unattended, and an overloaded model should degrade the review, not skip it.
+
 ## Worktrees
 
 Each ticket builds in `../Auto-Chess-Game-work/issue-<n>/` on branch
