@@ -3,6 +3,7 @@
 ```bash
 node automation/dev.mjs 42     # build ticket 42 with Claude, then review it automatically
 node automation/review.mjs 42  # re-review by hand
+node automation/land.mjs 42    # merge it once you have approved it, then clean up
 ```
 
 `dev.mjs` is a session, not a job: it sets up the worktree, opens Claude in your
@@ -41,6 +42,7 @@ Full workflow: [../docs/PIPELINE.md](../docs/PIPELINE.md).
 | `claim.mjs` | Ticket → worktree → branch → `.agent/task.md` → push guard. Stops before the agent. |
 | `finish.mjs` | Commit sweep → push → draft PR → spawns the reviewer. The only thing that may publish. |
 | `review.mjs` | Fresh read-only audit of the PR diff → severity-ranked findings → one PR comment. |
+| `land.mjs` | Push what is left → ready → wait for CI → squash-merge → remove the worktree. Refuses without `state:approved`. |
 | `lib/core.mjs` | gh CLI, git worktrees, both Claude spawns, session store, push guard. |
 | `prompts/dev-system.md` | Standing rules for the dev agent: scope, when to ask, plan-first method, the report. |
 | `prompts/review-system.md` | Standing rules for the reviewer, including what counts as a real finding. |
@@ -69,6 +71,19 @@ so the hook is scoped with `extensions.worktreeConfig` and a per-worktree
 memory of writing the code, and it's read-only. Both properties are enforced by
 the permission layer rather than by asking politely, because an approval only
 means something if the reviewer couldn't have quietly fixed things first.
+
+**Nothing merges without you.** `state:approved` is written by no script in this
+directory — not `claim.mjs`, not `finish.mjs`, not `review.mjs` — and `land.mjs`
+refuses to run without it. That label is the one point in the pipeline where a
+human says yes, so a command that could set it *and* merge would hand the machine
+its own approval. `state:done` is the mirror image: only `pr-closed.yml` writes
+it, from the `Closes #N` trailer, so nothing here can mark work finished that
+GitHub does not agree is merged.
+
+`land.mjs` is also the only thing that cleans up. Worktrees, branches and
+`.agent-state` files for merged tickets used to accumulate until someone noticed;
+running it on an already-merged ticket skips the approval requirement, because
+the merge consumed that label and what is left is only litter.
 
 ## What the permission files do and don't do
 
@@ -124,6 +139,20 @@ its memory but keeps the branch, so it re-reads the code with fresh eyes.
 working as intended: something tried to push from an agent worktree directly.
 Run `node automation/finish.mjs 42` instead. If you genuinely need to push by
 hand from there, `AGENT_PUSH_OK=1 git push` is the deliberate override.
+
+**`#42 is state:needs-you, not state:approved`** — `land.mjs` will not merge a
+ticket you have not approved. Read the PR and the reviewer's findings, then set
+the label. This is deliberate and there is no flag for it.
+
+**`CI is not green on PR #N`** — the merge did not happen and nothing was
+deleted. Fix the branch, re-run `dev.mjs 42` to push the fix, then `land.mjs 42`
+again. `land.mjs` is the first thing in the pipeline that looks at CI at all: the
+reviewer reads the diff, not the build.
+
+**`could not remove the worktree`** — the merge succeeded; only the tidy-up
+stopped. Something in that checkout is modified or untracked. Look at it before
+running the `--force` command it printed, because that is the one thing here that
+destroys work rather than filing it somewhere recoverable.
 
 **`No worktree recorded for #42`** — `finish.mjs` reads the worktree path from
 `.agent-state/issue-42.json`, and that ticket was never claimed (or the state

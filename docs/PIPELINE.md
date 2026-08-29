@@ -38,8 +38,8 @@ the review that follows.
                     │                                        │
         comment what you want changed              happy with it
                     │                                        │
-        $ node automation/dev.mjs 42                  mark ready, approve,
-        (resumes the same session,                    and merge
+        $ node automation/dev.mjs 42                  label state:approved,
+        (resumes the same session,                    then land.mjs 42
          re-reviews automatically)                          │
                     │                                        ▼
                     └────────────► back to needs-you      state:done
@@ -65,6 +65,9 @@ node automation/dev.mjs 42 --fresh      # discard the agent's memory, start cold
 node automation/dev.mjs 42 --no-review  # stop after the PR
 
 node automation/review.mjs 42     # re-review by hand
+
+node automation/land.mjs 42       # merge an approved ticket and clean up after it
+node automation/land.mjs 42 --dry-run   # check the preconditions, change nothing
 ```
 
 Re-running `dev.mjs 42` on a ticket that already has a PR is a **revision run**:
@@ -118,8 +121,8 @@ One `state:*` label per issue, enforced by `ticket-guard.yml`.
 | `state:building` | A dev session is open. |
 | `state:reviewing` | A review run is in progress. |
 | `state:needs-you` | Machine's done. Your turn. |
-| `state:approved` | You approved. Ready to merge. |
-| `state:done` | Merged. |
+| `state:approved` | You approved. `land.mjs` refuses to merge without it. |
+| `state:done` | Merged. Set by the `pr-closed` workflow, never by a script. |
 | `state:blocked` | Needs a decision or something external. Set automatically if a run crashes. |
 
 Nothing on your machine watches these. They're for *you* — a filter for "what
