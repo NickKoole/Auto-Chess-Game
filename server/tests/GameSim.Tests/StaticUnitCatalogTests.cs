@@ -70,6 +70,34 @@ public sealed class StaticUnitCatalogTests
             $"Expected at least 6 definitions, found {Catalog.All.Count}.");
     }
 
+    [Theory]
+    [InlineData("crossbowman", 0.25)]
+    [InlineData("mage", 0.05)]
+    public void Deliberately_tuned_units_keep_their_own_variance(string id, double expected)
+    {
+        Assert.Equal(expected, Catalog.Get(id).DamageVariance);
+    }
+
+    [Fact]
+    public void Every_other_unit_uses_the_default_variance()
+    {
+        // The criterion is "0.15 unless deliberately tuned otherwise", and
+        // nothing was checking it against the roster: a typo giving militia
+        // 0.5 passed the whole suite. Naming the two exceptions is what makes
+        // this an assertion rather than a restatement of whatever is there.
+        string[] tuned = ["crossbowman", "mage"];
+
+        string[] offenders =
+        [
+            .. Catalog.All
+                .Where(d => !tuned.Contains(d.Id, StringComparer.Ordinal))
+                .Where(d => d.DamageVariance != UnitDefinition.DefaultDamageVariance)
+                .Select(d => $"{d.Id}={d.DamageVariance}")
+        ];
+
+        Assert.Empty(offenders);
+    }
+
     [Fact]
     public void Includes_both_melee_and_ranged_units()
     {

@@ -163,7 +163,9 @@ public sealed class UnitDefinitionTests
         // NaN is the one that bites: every comparison against it is false, so a
         // `variance < 0 || variance > 1` guard would wave it straight through
         // and every damage roll from that unit would come out NaN.
-        Assert.Throws<ArgumentOutOfRangeException>(() => Build(damageVariance: variance));
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => Build(damageVariance: variance));
+        Assert.Contains("archer", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("damageVariance", ex.Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -195,7 +197,12 @@ public sealed class UnitDefinitionTests
     [InlineData("   ")]
     public void Rejects_a_missing_display_name(string? displayName)
     {
-        Assert.ThrowsAny<ArgumentException>(() => Build(displayName: displayName!));
+        var ex = Assert.ThrowsAny<ArgumentException>(() => Build(displayName: displayName!));
+
+        // Named the unit, so a blank name in a six-entry roster points at the
+        // entry to fix rather than just at the parameter.
+        Assert.Contains("archer", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("displayName", ex.Message, StringComparison.Ordinal);
     }
 
 }
