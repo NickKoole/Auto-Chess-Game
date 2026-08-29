@@ -1,7 +1,7 @@
 ---
 description: Needs a state:ready ticket (not an epic). Claims a worktree, builds it with you here, then asks before the draft PR and review.
 argument-hint: [issue-number, or blank to pick from state:ready] [--fresh] [--no-review]
-allowed-tools: Read, Write, Edit, Glob, Grep, TodoWrite, Bash(node automation/claim.mjs:*), Bash(node automation/finish.mjs:*), Bash(node automation/review.mjs:*), Bash(gh issue list:*), Bash(dotnet build:*), Bash(dotnet restore:*), Bash(dotnet test:*), Bash(dotnet format:*), Bash(dotnet ef migrations:*), Bash(dotnet tool restore:*), Bash(npm run:*), Bash(npm ci), Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git show:*), Bash(git add:*), Bash(git commit:*), Bash(git rev-parse:*)
+allowed-tools: Read, Write, Edit, Glob, Grep, TodoWrite, Bash(node automation/claim.mjs:*), Bash(node automation/finish.mjs:*), Bash(node automation/review.mjs:*), Bash(gh issue list:*), Bash(gh pr view:*), Bash(dotnet build:*), Bash(dotnet restore:*), Bash(dotnet test:*), Bash(dotnet format:*), Bash(dotnet ef migrations:*), Bash(dotnet tool restore:*), Bash(npm run:*), Bash(npm ci), Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git show:*), Bash(git add:*), Bash(git commit:*), Bash(git rev-parse:*)
 ---
 
 Build ticket `$ARGUMENTS` end to end. You are the dev agent for this run — the
@@ -80,8 +80,8 @@ Now — and only now — ask with AskUserQuestion:
   `building → reviewing → needs-you`.
 
   It runs for minutes, so read the background output as it goes rather than
-  waiting for the exit: report the `PR: <url>` line the moment it appears, then
-  relay the reviewer's verdict and finding count when that arrives.
+  waiting for the exit: report the `PR: <url>` line the moment it appears. When
+  the process exits, go to step 7 — the verdict line alone is not the report.
 - **Publish PR only** — `node automation/finish.mjs <n> --no-review`. Report the
   PR URL and say the reviewer can be run later with
   `node automation/review.mjs <n>`.
@@ -94,3 +94,50 @@ If `--no-review` was in `$ARGUMENTS`, skip the question and take the
 
 Never run `finish.mjs` without asking first: it pushes the branch and opens a
 draft PR, and that is the one irreversible step in this command.
+
+## 7. Bring the review back here, in plain words
+
+Only if a review ran. By the time `finish.mjs` exits, the reviewer has already
+posted its findings to the PR — so fetch them and summarise them here. Nobody
+should have to open GitHub to find out what the review said, and "3 findings"
+on its own tells them nothing.
+
+Read the PR number from `.agent-state/issue-<n>.json`, then:
+
+```
+gh pr view <pr> --json comments --jq '[.comments[] | select(.body | contains("<!-- agent:review -->"))] | last | .body'
+```
+
+Select on the `<!-- agent:review -->` marker rather than taking the last
+comment. A human comment landing after the review would otherwise be summarised
+as if it were the review.
+
+Then write a **short summary in plain language** — an answer, not a transcript,
+and not the raw markdown pasted through:
+
+- **Lead with the verdict in one sentence**: approved or not, how many findings,
+  how many actually block a merge.
+- **Say what it checked**, in a line or two — that it re-ran the build and the
+  tests, and anything it confirmed for itself instead of taking on trust. That
+  is what makes the verdict worth anything, and it is invisible otherwise.
+- **Put each finding in ordinary words**, worst first, a line or two each: what
+  is wrong, which file, and why it matters. Drop the severity labels; write
+  "worth fixing before merge" or "take it or leave it" instead.
+- **Say which ones you think are right**, and where you think the reviewer is
+  wrong. You wrote the code. Relaying findings without judgement makes the
+  human do the work twice.
+- **End with what you need from them**, as two or three concrete choices.
+
+Keep it to roughly a screen, and link the PR for the full text. No severity
+tables, no internal jargon: the question behind all of this is "is my code good,
+and what do I do now?"
+
+State these two plainly every time, because both are easy to miss:
+
+- **It is not an approval.** The reviewer is denied `gh`, so it cannot approve
+  anything — GitHub review state stays the human's.
+- **The PR is a draft**, and the ticket has moved to `state:needs-you`.
+
+If the reviewer failed, or posted no machine-readable verdict, say that instead
+of inventing a summary — the code is fine, only the review did not run, and
+`node automation/review.mjs <n>` retries it.
