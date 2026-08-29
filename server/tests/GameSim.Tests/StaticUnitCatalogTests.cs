@@ -71,20 +71,6 @@ public sealed class StaticUnitCatalogTests
     }
 
     [Fact]
-    public void Ids_are_unique_across_the_roster()
-    {
-        string[] duplicated =
-        [
-            .. Catalog.All
-                .GroupBy(d => d.Id, StringComparer.Ordinal)
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key)
-        ];
-
-        Assert.Empty(duplicated);
-    }
-
-    [Fact]
     public void Includes_both_melee_and_ranged_units()
     {
         Assert.Contains(Catalog.All, d => d.AttackRangeHexes == 1);
@@ -92,15 +78,24 @@ public sealed class StaticUnitCatalogTests
     }
 
     [Fact]
-    public void Enumeration_order_is_stable_between_catalogs()
+    public void Enumerates_in_source_order()
     {
-        // Two catalogs built from the same source must list their units in the
-        // same order, or anything downstream that iterates them — a draft pool,
-        // a shop roll — stops being reproducible from a seed.
-        string[] first = [.. new StaticUnitCatalog().All.Select(d => d.Id)];
-        string[] second = [.. new StaticUnitCatalog().All.Select(d => d.Id)];
+        // Pinned against a literal sequence, so a reordered, sorted or
+        // truncated roster fails here. Anything downstream that iterates the
+        // roster to reach an outcome — a draft pool, a shop roll — needs an
+        // order fixed by the source.
+        //
+        // What this does NOT catch, checked by mutation rather than assumed:
+        // rewriting All as [.. _byId.Values] still passes, because .NET's
+        // Dictionary keeps its entries in an insertion-ordered array and this
+        // catalog never removes one. That order is not contractual and has
+        // changed between runtimes, which is why the assignment reads from
+        // `definitions`; but no runtime assertion here can tell the two apart
+        // today, and pretending otherwise would make this the kind of test that
+        // only looks like a guarantee.
+        string[] expected = ["militia", "knight", "berserker", "archer", "crossbowman", "mage"];
 
-        Assert.Equal(first, second);
+        Assert.Equal(expected, Catalog.All.Select(d => d.Id));
     }
 
     [Fact]
