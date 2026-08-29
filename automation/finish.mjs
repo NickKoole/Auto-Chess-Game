@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   AGENT_DIR, MARK_DEV, PUSH_ENV, ROOT, args, assertGh, comment, commitsAhead,
-  fmtDuration, getIssue, ghJson, isDirty, isEntrypoint, loadSession, must,
+  fmtDuration, getIssue, gh, ghJson, isDirty, isEntrypoint, loadSession, must,
   saveSession, setState,
 } from "./lib/core.mjs";
 
@@ -33,24 +33,61 @@ function readReport(dir) {
   }
 }
 
-/** Open a draft PR, or return the one that already exists for this branch. */
-function ensurePr(issue, wt, report) {
-  const found = ghJson(["pr", "list", "--head", wt.branch, "--state", "open", "--json", "number,url", "--limit", "1"]);
-  if (found?.length) return found[0];
+const findPr = (branch) =>
+  ghJson(["pr", "list", "--head", branch, "--state", "open", "--json", "number,url", "--limit", "1"])?.[0] ?? null;
 
-  const body = [
-    report,
+/**
+ * The PR description: this run's report, then the standing footer.
+ *
+ * Assembled here and nowhere else. It gets written twice — once when the PR is
+ * opened, and again on every revision run — and the footer carries
+ * `Closes #<issue>`. A body rebuilt without that trailer stops closing its
+ * ticket on merge and says nothing about having done so, which is exactly the
+ * kind of drift two copies of this list would eventually produce.
+ */
+export function prBody(issueNumber, report) {
+  return [
+    report ?? NO_REPORT,
     "",
     "---",
     "🤖 Built in a dev session with a human in the loop, then reviewed automatically.",
     "Leave a normal comment with what you want changed, then re-run:",
     "",
     "```",
-    `node automation/dev.mjs ${issue.number}`,
+    `node automation/dev.mjs ${issueNumber}`,
     "```",
     "",
-    `Closes #${issue.number}`,
+    `Closes #${issueNumber}`,
   ].join("\n");
+}
+
+/**
+ * Open a draft PR, or bring the existing one's description up to date.
+ *
+ * A revision run pushes onto a PR that already exists, and used to leave its
+ * description showing the first round. That is worse than a missing
+ * description: the reviewer checks the diff against it and a human approves on
+ * it, so a stale one misleads both rather than merely telling them nothing.
+ */
+function ensurePr(issue, wt, report) {
+  const existing = findPr(wt.branch);
+
+  if (existing) {
+    // A run with no report has nothing better to say than what is already
+    // there. Stamping the placeholder over a good description would discard the
+    // previous round's for nothing.
+    if (report) {
+      gh(["pr", "edit", String(existing.number), "--body-file", "-"], {
+        cwd: ROOT,
+        input: prBody(issue.number, report),
+      });
+      console.log(`refreshed PR #${existing.number} description from this run's report`);
+    } else {
+      console.log(`(no report this run — PR #${existing.number} keeps its description)`);
+    }
+
+    return existing;
+  }
 
   must("gh", [
     "pr", "create",
@@ -59,10 +96,9 @@ function ensurePr(issue, wt, report) {
     "--head", wt.branch,
     "--title", issue.title,
     "--body-file", "-",
-  ], { cwd: ROOT, input: body });
+  ], { cwd: ROOT, input: prBody(issue.number, report) });
 
-  const created = ghJson(["pr", "list", "--head", wt.branch, "--state", "open", "--json", "number,url", "--limit", "1"]);
-  return created?.[0] ?? null;
+  return findPr(wt.branch);
 }
 
 function handOffToReview(issueNumber) {
@@ -126,7 +162,10 @@ export function finish(n, { review = true, session: sessionResult = null } = {})
   console.log(`pushing ${ahead} commit${ahead === 1 ? "" : "s"}…`);
   must("git", ["push", "-u", "origin", wt.branch], { cwd: wt.dir, env: PUSH_ENV });
 
-  const pr = ensurePr(issue, wt, report ?? NO_REPORT);
+  // The raw report, not `report ?? NO_REPORT`: ensurePr has to tell "this run
+  // wrote nothing" apart from "this run wrote the placeholder", because only
+  // the first should leave an existing description alone.
+  const pr = ensurePr(issue, wt, report);
   if (pr) console.log(`PR: ${pr.url}`);
 
   saveSession(n, {
