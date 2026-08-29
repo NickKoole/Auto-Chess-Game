@@ -93,10 +93,13 @@ uncommitted work into a commit, pushes, opens the draft PR, and starts the
 reviewer.
 
 The PR body comes from `.agent/report.md`, which the agent writes before
-finishing. Both files live in a gitignored `.agent/` directory inside the
-worktree, so nothing about the plumbing reaches a commit. If the session ends
-without a report — you quit early, or it forgot — the PR gets a placeholder and
-the runner says so on the way out.
+finishing, and a revision run refreshes it — so the description always describes
+the commits actually on the branch rather than the first round. Both files live
+in a gitignored `.agent/` directory inside the worktree, so nothing about the
+plumbing reaches a commit. If the session ends without a report — you quit
+early, or it forgot — a new PR gets a placeholder body and an existing one keeps
+the description it already has, rather than losing a good one to the
+placeholder. Either way the runner says so on the way out.
 
 ## Giving feedback
 

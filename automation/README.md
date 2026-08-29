@@ -95,7 +95,9 @@ Inside the worktree, gitignored:
 - `.agent/task.md` — the ticket, plus every comment since the last session. The
   runner writes it; Claude is pointed at it on startup.
 - `.agent/report.md` — Claude writes it before finishing. The runner turns it
-  into the PR body. No report means a placeholder PR body and a warning.
+  into the PR body, and refreshes that body on every later revision run, so the
+  description never describes an earlier round. No report means a placeholder
+  body on a new PR, no change to an existing one, and a warning either way.
 
 ## Troubleshooting
 
