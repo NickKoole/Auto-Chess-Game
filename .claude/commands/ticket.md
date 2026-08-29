@@ -1,6 +1,6 @@
 ---
-description: Build a GitHub ticket in its own worktree, then offer to run the reviewer
-argument-hint: [issue-number] [--fresh] [--no-review]
+description: Needs a state:ready ticket (not an epic). Claims a worktree, builds it with you here, then asks before the draft PR and review.
+argument-hint: [issue-number, or blank to pick from state:ready] [--fresh] [--no-review]
 allowed-tools: Read, Write, Edit, Glob, Grep, TodoWrite, Bash(node automation/claim.mjs:*), Bash(node automation/finish.mjs:*), Bash(node automation/review.mjs:*), Bash(gh issue list:*), Bash(dotnet build:*), Bash(dotnet restore:*), Bash(dotnet test:*), Bash(dotnet format:*), Bash(dotnet ef migrations:*), Bash(dotnet tool restore:*), Bash(npm run:*), Bash(npm ci), Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git show:*), Bash(git add:*), Bash(git commit:*), Bash(git rev-parse:*)
 ---
 
