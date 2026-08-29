@@ -23,7 +23,7 @@
 import { join } from "node:path";
 import {
   AGENT_DIR, DEV_SETTINGS, MARK_DEV, PROMPTS, args, comment, fmtDuration,
-  runClaudeInteractive, setState,
+  isEntrypoint, runClaudeInteractive, setState,
 } from "./lib/core.mjs";
 import { claim } from "./claim.mjs";
 import { finish } from "./finish.mjs";
@@ -63,21 +63,26 @@ async function main() {
   });
 }
 
-try {
-  process.exit(await main());
-} catch (err) {
-  const n = args().number();
-  if (n) {
-    setState(n, "state:blocked");
-    comment(n, [
-      MARK_DEV,
-      "### 💥 Dev agent crashed",
-      "",
-      "```",
-      String(err?.message ?? err).slice(0, 4000),
-      "```",
-    ].join("\n"));
+// Guarded like claim.mjs and finish.mjs. Without it, merely importing this
+// module claims a ticket and opens a Claude session as a side effect — running
+// the whole pipeline on whatever happens to be in state:ready.
+if (isEntrypoint(import.meta.url)) {
+  try {
+    process.exit(await main());
+  } catch (err) {
+    const n = args().number();
+    if (n) {
+      setState(n, "state:blocked");
+      comment(n, [
+        MARK_DEV,
+        "### 💥 Dev agent crashed",
+        "",
+        "```",
+        String(err?.message ?? err).slice(0, 4000),
+        "```",
+      ].join("\n"));
+    }
+    console.error(err);
+    process.exit(1);
   }
-  console.error(err);
-  process.exit(1);
 }
