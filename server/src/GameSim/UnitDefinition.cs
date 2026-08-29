@@ -40,14 +40,7 @@ public sealed record UnitDefinition
         AttackDamage = RequirePositive(attackDamage, id, nameof(attackDamage));
         AttackIntervalTicks = RequirePositive(attackIntervalTicks, id, nameof(attackIntervalTicks));
         MovementTicksPerHex = RequirePositive(movementTicksPerHex, id, nameof(movementTicksPerHex));
-
-        if (attackRangeHexes < 0)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(attackRangeHexes),
-                attackRangeHexes,
-                $"Unit '{id}': attackRangeHexes must not be negative, but was {attackRangeHexes}.");
-        }
+        AttackRangeHexes = RequirePositive(attackRangeHexes, id, nameof(attackRangeHexes));
 
         // Written as a positive assertion rather than `< 0 || > 1` so that NaN
         // is rejected too: every comparison against NaN is false, so the
@@ -60,7 +53,6 @@ public sealed record UnitDefinition
                 $"Unit '{id}': damageVariance must be between 0 and 1 inclusive, but was {damageVariance}.");
         }
 
-        AttackRangeHexes = attackRangeHexes;
         DamageVariance = damageVariance;
     }
 
@@ -82,7 +74,13 @@ public sealed record UnitDefinition
     /// <summary>Ticks to cross one hex. Higher is slower — this is a cost, not a speed.</summary>
     public int MovementTicksPerHex { get; }
 
-    /// <summary>Reach in hexes. 1 is melee; anything greater is ranged.</summary>
+    /// <summary>
+    /// Reach as a hex distance to the target, so 1 means an adjacent hex and is
+    /// the shortest legal reach — a unit that could attack nothing at all is not
+    /// a unit. Melee and ranged are not kinds here, only ends of this number:
+    /// something that later grants +1 range to a melee unit needs no new
+    /// concept, and no code may treat "melee" as a category.
+    /// </summary>
     public int AttackRangeHexes { get; }
 
     /// <summary>
@@ -91,9 +89,6 @@ public sealed record UnitDefinition
     /// in integer maths so a battle stays byte-identical across runtimes.
     /// </summary>
     public double DamageVariance { get; }
-
-    /// <summary>True when the unit must be adjacent to attack.</summary>
-    public bool IsMelee => AttackRangeHexes <= 1;
 
     private static int RequirePositive(int value, string id, string field)
     {

@@ -121,23 +121,25 @@ public sealed class UnitDefinitionTests
     }
 
     [Theory]
+    [InlineData(0)]
     [InlineData(-1)]
     [InlineData(-10)]
-    public void Rejects_negative_attack_range(int range)
+    public void Rejects_non_positive_attack_range(int range)
     {
+        // Zero is rejected alongside the negatives: range is the hex distance
+        // to the target, so 1 is an adjacent hex and the shortest reach that
+        // means anything. A zero-range unit could never attack.
         var ex = Assert.Throws<ArgumentOutOfRangeException>(() => Build(attackRangeHexes: range));
         Assert.Contains("archer", ex.Message, StringComparison.Ordinal);
         Assert.Contains("attackRangeHexes", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Accepts_zero_attack_range()
+    public void Accepts_the_shortest_legal_reach()
     {
-        // Only negative range is invalid. Zero is reserved for a unit that
-        // cannot attack at all, which the ticket does not forbid.
-        UnitDefinition unit = Build(attackRangeHexes: 0);
+        UnitDefinition unit = Build(attackRangeHexes: 1);
 
-        Assert.Equal(0, unit.AttackRangeHexes);
+        Assert.Equal(1, unit.AttackRangeHexes);
     }
 
     [Theory]
@@ -196,12 +198,4 @@ public sealed class UnitDefinitionTests
         Assert.ThrowsAny<ArgumentException>(() => Build(displayName: displayName!));
     }
 
-    [Theory]
-    [InlineData(1, true)]
-    [InlineData(2, false)]
-    [InlineData(4, false)]
-    public void Reports_melee_by_reach(int range, bool expected)
-    {
-        Assert.Equal(expected, Build(attackRangeHexes: range).IsMelee);
-    }
 }
