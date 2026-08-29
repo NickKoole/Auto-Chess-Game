@@ -36,6 +36,10 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 
+# Claude Code: the shared command and settings are committed, local overrides
+# are per-machine.
+.claude/settings.local.json
+
 # NOTE deliberately NOT ignored:
 #   server/src/Api/openapi/Api.json  — the API contract
 #   client/src/api/schema.d.ts       — types generated from it
