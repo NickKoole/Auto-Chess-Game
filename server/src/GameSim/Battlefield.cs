@@ -15,7 +15,11 @@ namespace GameSim;
 /// <para>
 /// Occupancy lives here rather than beside the board, because from story 1.3
 /// onwards every tick moves units, and a mover that had to reach past the board
-/// to find out what is in its way would end up owning this array anyway.
+/// to find out what is in its way would end up owning this array anyway. That
+/// mover will not be <see cref="TryPlace"/>: deployment and movement obey
+/// different rules on the same tiles — crossing the neutral band is legal
+/// movement and illegal deployment — so movement needs its own entry point
+/// here, checking bounds and occupancy but not the bands.
 /// </para>
 /// </summary>
 public sealed class Battlefield
@@ -56,9 +60,22 @@ public sealed class Battlefield
         _ => throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown side."),
     };
 
-    /// <summary>Whether a side may deploy on a coordinate, ignoring what stands there.</summary>
+    /// <summary>
+    /// Whether a side may deploy on a coordinate, ignoring what stands there.
+    /// <para>
+    /// False for anything off the board. The band is a row rule, so it is
+    /// tempting to answer with a row comparison alone — but this is public, and
+    /// a caller reaching it directly rather than through <see cref="CheckTile"/>
+    /// would then be told that (row 6, column 99) is a legal player tile.
+    /// </para>
+    /// </summary>
     public static bool IsDeploymentBandOf(BattleSide side, HexCoord coord)
     {
+        if (!IsInBounds(coord))
+        {
+            return false;
+        }
+
         (int firstRow, int lastRow) = DeploymentBand(side);
         return coord.Row >= firstRow && coord.Row <= lastRow;
     }
@@ -133,8 +150,14 @@ public sealed class Battlefield
     public bool IsOccupied(HexCoord coord) => UnitAt(coord) is not null;
 
     /// <summary>
-    /// Puts a unit on the tile it says it is standing on, or explains why it may
-    /// not stand there. A tile holds at most one unit.
+    /// Deploys a unit onto the tile it says it is standing on, or explains why
+    /// it may not stand there. A tile holds at most one unit.
+    /// <para>
+    /// Deployment only. This applies the band rules, so it rejects the neutral
+    /// band and the opposing half outright — which makes it the wrong method to
+    /// move a unit with, since a unit advancing from row 5 to row 4 is making a
+    /// legal move onto a tile it could never have deployed on.
+    /// </para>
     /// </summary>
     public bool TryPlace(BattleUnit unit, [NotNullWhen(false)] out PlacementError? error)
     {

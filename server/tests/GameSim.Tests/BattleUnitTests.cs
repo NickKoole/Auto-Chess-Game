@@ -52,22 +52,6 @@ public sealed class BattleUnitTests
         Assert.Equal(position, unit.Position);
     }
 
-    [Theory]
-    [InlineData(1, true)]
-    [InlineData(0, false)]
-    [InlineData(-30, false)]
-    public void Is_alive_until_hp_reaches_zero(int currentHp, bool expected)
-    {
-        // Overkill drives HP below zero rather than clamping, so the test covers
-        // the negative case too.
-        var unit = new BattleUnit(Definition(), BattleSide.Player, new HexCoord(7, 0))
-        {
-            CurrentHp = currentHp,
-        };
-
-        Assert.Equal(expected, unit.IsAlive);
-    }
-
     [Fact]
     public void Rejects_a_missing_definition()
     {

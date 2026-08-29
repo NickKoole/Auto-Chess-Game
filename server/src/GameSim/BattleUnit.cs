@@ -54,9 +54,6 @@ public sealed class BattleUnit
     /// </summary>
     public int AttackCooldownTicks { get; set; }
 
-    /// <summary>Whether this unit is still in the fight.</summary>
-    public bool IsAlive => CurrentHp > 0;
-
     /// <inheritdoc />
     public override string ToString() =>
         $"{Side} {Definition.Id} at {Position} ({CurrentHp}/{Definition.MaxHp} hp)";

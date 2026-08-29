@@ -109,6 +109,19 @@ public sealed class BattlefieldTests
     }
 
     [Theory]
+    [InlineData(BattleSide.Player, 6, 99)]
+    [InlineData(BattleSide.Player, 6, -1)]
+    [InlineData(BattleSide.Opponent, 1, 99)]
+    public void No_side_may_deploy_off_the_board_however_right_the_row_looks(
+        BattleSide side, int row, int col)
+    {
+        // The band is a row rule, so a row-only comparison would call these
+        // legal. They are asked of the predicate directly, because a caller who
+        // reaches past CheckTile is exactly who this guard is for.
+        Assert.False(Battlefield.IsDeploymentBandOf(side, new HexCoord(row, col)));
+    }
+
+    [Theory]
     [InlineData(-1, 0)]
     [InlineData(8, 8)]
     public void Deploying_off_the_board_is_rejected_before_any_band_rule(int row, int col)

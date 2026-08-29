@@ -140,10 +140,12 @@ public sealed class BattleSetupTests
     }
 
     [Fact]
-    public void Accepts_the_same_tile_used_by_each_side_on_its_own_half()
+    public void Accepts_the_same_column_in_each_sides_own_band()
     {
-        // Same column, mirrored rows: two units close to each other but on
-        // different tiles must not trip the duplicate check.
+        // The duplicate check keys on the whole coordinate, not on the column:
+        // these are two different tiles and must both stand. ("The same tile
+        // used by both sides" is not testable — the bands are disjoint, so the
+        // second side is rejected for the band before any duplicate check.)
         Assert.True(BattleSetup.TryCreate([At(5, 4)], [At(2, 4)], out BattleSetup? setup, out _));
 
         Assert.Equal(2, setup.Units.Count);
