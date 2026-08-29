@@ -45,9 +45,15 @@ public sealed class Battlefield
     public static bool IsInBounds(HexCoord coord) =>
         coord.Row >= 0 && coord.Row < Rows && coord.Col >= 0 && coord.Col < Columns;
 
-    /// <summary>Whether a coordinate is in the neutral band, where nothing may deploy.</summary>
+    /// <summary>
+    /// Whether a coordinate is in the neutral band, where nothing may deploy.
+    /// False off the board, for the same reason as
+    /// <see cref="IsDeploymentBandOf"/>: both are public row rules, and a
+    /// passability check in story 1.3 is exactly the caller that would ask one
+    /// of them directly rather than through <see cref="CheckTile"/>.
+    /// </summary>
     public static bool IsNeutralBand(HexCoord coord) =>
-        coord.Row >= NeutralFirstRow && coord.Row <= NeutralLastRow;
+        IsInBounds(coord) && coord.Row >= NeutralFirstRow && coord.Row <= NeutralLastRow;
 
     /// <summary>
     /// The rows a side may deploy in, inclusive: the player holds 5-7, the

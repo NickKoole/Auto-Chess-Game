@@ -109,6 +109,18 @@ public sealed class BattlefieldTests
     }
 
     [Theory]
+    [InlineData(3, 99)]
+    [InlineData(4, -1)]
+    [InlineData(3, 8)]
+    public void No_tile_off_the_board_is_neutral_however_right_the_row_looks(int row, int col)
+    {
+        // Mirrors the deployment-band guard below. Both are public row rules,
+        // and hardening one but not the other is worse than hardening neither:
+        // it reads as a considered decision that these differ.
+        Assert.False(Battlefield.IsNeutralBand(new HexCoord(row, col)));
+    }
+
+    [Theory]
     [InlineData(BattleSide.Player, 6, 99)]
     [InlineData(BattleSide.Player, 6, -1)]
     [InlineData(BattleSide.Opponent, 1, 99)]
