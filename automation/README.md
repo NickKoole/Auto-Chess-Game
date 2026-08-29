@@ -27,12 +27,11 @@ terminal by construction, so it cannot run two tickets in parallel; the split
 can. What it costs you is session resume — `--fresh` and `--resume` need the
 Claude session id, which only the attached path gets back.
 
-The ticket the agent reads is `.agent/task.md`, and the launch line that keeps
-the permission fence and the pinned model is printed by `claim.mjs`:
-
-```bash
-claude --settings automation/settings/dev.json
-```
+`claim.mjs` prints the exact `claude` line to run, built from the same argv
+`dev.mjs` uses — permission mode, the settings file, `dev-system.md`, the
+session id, and the pointer at `.agent/task.md`. Paste it rather than
+reconstructing it: an agent launched without `--append-system-prompt-file` has
+none of its standing rules about scope, asking, or writing the report.
 
 Full workflow: [../docs/PIPELINE.md](../docs/PIPELINE.md).
 

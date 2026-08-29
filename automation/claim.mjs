@@ -17,8 +17,8 @@ import { join } from "node:path";
 import {
   AGENT_DIR, DEV_SETTINGS, MARK_DEV, MARK_REVIEW, PROMPTS, areaOf, args, assertGh,
   chooseIssue, clearSession, comment, ensureWorktree, ghJson, installPushGuard,
-  isEntrypoint, labelNames, loadSession, saveSession, setState, stateOf, template,
-  timeOf,
+  interactiveCommand, isEntrypoint, labelNames, loadSession, saveSession, setState,
+  stateOf, template, timeOf,
 } from "./lib/core.mjs";
 import { randomUUID } from "node:crypto";
 
@@ -54,6 +54,20 @@ function gatherFeedback(issue, session) {
     ...items.map((i) => `**${i.who}** (${i.source}):\n\n> ${i.body.replace(/\n/g, "\n> ")}\n`),
   ].join("\n");
 }
+
+/**
+ * The exact session dev.mjs would run, as a line you can paste. It carries the
+ * permission file, the pinned model, the standing dev-agent rules and the
+ * session id — drop any of them and you get a different agent than the one the
+ * pipeline is built around.
+ */
+export const devCommand = (sessionId, resuming) => interactiveCommand({
+  initialPrompt: `Read ${AGENT_DIR}/task.md and follow it.`,
+  settings: DEV_SETTINGS,
+  systemPromptFile: join(PROMPTS, "dev-system.md"),
+  sessionId: resuming ? null : sessionId,
+  resume: resuming ? sessionId : null,
+});
 
 /**
  * Set up the ticket's worktree and return what the caller needs to run an agent
@@ -131,16 +145,17 @@ async function main() {
   const claimed = await claim({ number: a.number(), fresh: a.has("--fresh") });
   if (!claimed) return 0;
 
-  const { issue, wt } = claimed;
+  const { issue, wt, sessionId, resuming } = claimed;
   console.log(`worktree: ${wt.dir}`);
   console.log(`branch:   ${wt.branch} (from ${wt.base})`);
-  console.log("\nStart an agent in that directory. To keep the permission fence and");
-  console.log("the pinned model, launch it as:\n");
-  console.log(`  claude --settings ${DEV_SETTINGS}`);
-  console.log(`\nand point it at ${AGENT_DIR}/task.md. When the session ends:\n`);
+
+  console.log("\nStart the agent from that directory:\n");
+  console.log(`  cd ${wt.dir}`);
+  console.log(`  ${devCommand(sessionId, resuming)}\n`);
+  console.log("Then, back here, when the session ends:\n");
   console.log(`  node automation/finish.mjs ${issue.number}\n`);
   console.log("The worktree refuses any push that does not come from finish.mjs,");
-  console.log("so a session launched without those settings still cannot publish.");
+  console.log("so a session started some other way still cannot publish.");
   return 0;
 }
 

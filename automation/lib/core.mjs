@@ -320,20 +320,34 @@ export function runClaude({
 }
 
 /**
- * Claude attached to your terminal, for the dev run. There is no captured output
- * to parse here — you are the one reading it — so the agent leaves its report in
- * a file and the runner picks that up after you exit. No timeout either: the
- * session lasts as long as you sit with it.
+ * The argv for an attached dev session. Shared so that the line claim.mjs
+ * prints for you to run by hand is the same one dev.mjs runs itself — a
+ * printed command that quietly drops the system prompt or the permission mode
+ * would be worse than none at all.
  */
-export function runClaudeInteractive({
-  cwd, initialPrompt, settings, systemPromptFile, sessionId, resume,
-}) {
+export function interactiveArgs({ initialPrompt, settings, systemPromptFile, sessionId, resume }) {
   const args = ["--permission-mode", "acceptEdits"];
   if (settings) args.push("--settings", settings);
   if (systemPromptFile) args.push("--append-system-prompt-file", systemPromptFile);
   if (resume) args.push("--resume", resume);
   else if (sessionId) args.push("--session-id", sessionId);
   if (initialPrompt) args.push(initialPrompt);
+  return args;
+}
+
+/** The same session, as something you can paste into a terminal. */
+export const interactiveCommand = (opts) =>
+  ["claude", ...interactiveArgs(opts).map((a) => (/[\s&|<>^"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a))].join(" ");
+
+/**
+ * Claude attached to your terminal, for the dev run. There is no captured output
+ * to parse here — you are the one reading it — so the agent leaves its report in
+ * a file and the runner picks that up after you exit. No timeout either: the
+ * session lasts as long as you sit with it.
+ */
+export function runClaudeInteractive(opts) {
+  const args = interactiveArgs(opts);
+  const { cwd } = opts;
 
   const started = Date.now();
   const res = spawnSync("claude", IS_WIN ? args.map(quote) : args, {
