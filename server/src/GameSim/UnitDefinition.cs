@@ -32,7 +32,17 @@ public sealed record UnitDefinition
         double damageVariance = DefaultDamageVariance)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
-        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+
+        // Thrown by hand rather than via ThrowIfNullOrWhiteSpace so the message
+        // names the unit like every other failure here. The BCL helper names
+        // only the parameter, which tells you a displayName was blank but not
+        // which of six roster entries to go and look at.
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            throw new ArgumentException(
+                $"Unit '{id}': displayName must not be null or blank.",
+                nameof(displayName));
+        }
 
         Id = id;
         DisplayName = displayName;
