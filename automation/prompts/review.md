@@ -10,7 +10,8 @@ the test suite rather than trusting the report below.
 
 ## What the dev agent claims it did
 
-Nobody watched this run. Treat the claims below as unverified.
+A human steered this session, so its shape was seen as it happened — but not
+line by line. Treat the claims below as unverified.
 
 {{DEV_REPORT}}
 
