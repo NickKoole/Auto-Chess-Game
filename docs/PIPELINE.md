@@ -51,7 +51,7 @@ Polling exists to answer *"is there work for me?"* — a question that only
 matters when a process is already running, idle, and can't see where work comes
 from. Starting the dev agent by hand removes the first condition, and that
 removes the second: the only remaining hand-off is dev → review, and both are in
-the same process tree. `dev.mjs` just spawns `review.mjs`.
+the same process tree. `finish.mjs` just spawns `review.mjs`.
 
 So GitHub is the ticket store, the diff host, and the record. It never tells
 your machine to do anything.
@@ -144,10 +144,18 @@ Coordination only. It dispatches nothing.
 
 The dev agent is denied `git push`, `git remote`, `gh`, branch switching, and
 every form of `rm` and `git clean` (`automation/settings/dev.json`). It writes
-code and commits; **only `dev.mjs`
+code and commits; **only `finish.mjs`
 publishes.** Watching the session is not what keeps that true, which is the
 point: even with you at the keyboard, work can only land on a draft PR on the
 ticket's own branch — never on `main`, and never on a remote you did not intend.
+
+The permission list binds a session launched with `--settings dev.json`, which
+is not every session that could open in that worktree. So `claim.mjs` also
+installs a `pre-push` hook that refuses any push without `AGENT_PUSH_OK` — set
+only by `finish.mjs`. That one binds the checkout instead of the session, so it
+survives an agent started by something else. It is scoped to the worktree with
+`extensions.worktreeConfig` and a per-worktree `core.hooksPath`, so pushes from
+your main checkout are unaffected.
 
 The reviewer is denied `Write`, `Edit`, and `gh`. A reviewer that could quietly
 fix what it finds would produce a clean report hiding its own work, and its
@@ -175,6 +183,19 @@ git worktree list
 git worktree remove ../Auto-Chess-Game-work/issue-42
 git worktree prune
 ```
+
+`dev.mjs` is one blocking terminal, so it builds one ticket at a time. To run
+several at once, use its two halves directly and let anything you like own the
+sessions in between:
+
+```bash
+node automation/claim.mjs 42   # worktree, branch, task file, push guard
+node automation/finish.mjs 42  # sweep → push → draft PR → reviewer
+```
+
+Session state is keyed by issue number, and so are the state labels, so parallel
+tickets do not collide. What the split gives up is session resume: `--fresh` and
+`--resume` need the Claude session id, which only the attached path gets back.
 
 ## Session state
 

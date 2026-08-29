@@ -1,7 +1,5 @@
 # Local agents
 
-Two scripts. You start the first; it starts the second.
-
 ```bash
 node automation/dev.mjs 42     # build ticket 42 with Claude, then review it automatically
 node automation/review.mjs 42  # re-review by hand
@@ -12,13 +10,39 @@ terminal, and waits. You steer the build and answer its questions. When you exit
 it commits, pushes, opens the draft PR, and hands off to the reviewer — which
 *is* headless, and deliberately so.
 
+## Running the session somewhere else
+
+`dev.mjs` holds no logic of its own. It is the one-terminal path through two
+halves you can also run yourself:
+
+```bash
+node automation/claim.mjs 42   # worktree, branch, task file, push guard
+#   ...run an agent in the worktree, however you like...
+node automation/finish.mjs 42  # sweep → push → draft PR → reviewer
+```
+
+Use those directly when something else owns the session: an Orca terminal, a
+second machine, or several tickets at once. `dev.mjs` is a single blocking
+terminal by construction, so it cannot run two tickets in parallel; the split
+can. What it costs you is session resume — `--fresh` and `--resume` need the
+Claude session id, which only the attached path gets back.
+
+The ticket the agent reads is `.agent/task.md`, and the launch line that keeps
+the permission fence and the pinned model is printed by `claim.mjs`:
+
+```bash
+claude --settings automation/settings/dev.json
+```
+
 Full workflow: [../docs/PIPELINE.md](../docs/PIPELINE.md).
 
 | Path | Role |
 | --- | --- |
-| `dev.mjs` | Claims a ticket → worktree → interactive `claude` → commit sweep → push → draft PR → spawns the reviewer. |
+| `dev.mjs` | `claim` → interactive `claude` → `finish`. One terminal, one ticket. |
+| `claim.mjs` | Ticket → worktree → branch → `.agent/task.md` → push guard. Stops before the agent. |
+| `finish.mjs` | Commit sweep → push → draft PR → spawns the reviewer. The only thing that may publish. |
 | `review.mjs` | Fresh read-only audit of the PR diff → severity-ranked findings → one PR comment. |
-| `lib/core.mjs` | gh CLI, git worktrees, both Claude spawns, session store. |
+| `lib/core.mjs` | gh CLI, git worktrees, both Claude spawns, session store, push guard. |
 | `prompts/dev-system.md` | Standing rules for the dev agent: scope, when to ask, plan-first method, the report. |
 | `prompts/review-system.md` | Standing rules for the reviewer, including what counts as a real finding. |
 | `prompts/dev.md`, `review.md` | Per-run task templates. `{{VAR}}` placeholders. |
@@ -27,10 +51,20 @@ Full workflow: [../docs/PIPELINE.md](../docs/PIPELINE.md).
 
 ## The two structural guarantees
 
-**The dev agent cannot publish.** Only `dev.mjs` pushes, and only after you exit
-the session. You being in the room is not what makes this safe — the permission
+**The dev agent cannot publish.** Only `finish.mjs` pushes, and only after the
+session ends. You being in the room is not what makes this safe — the permission
 layer is — so an agent that goes off the rails still has no route to the remote,
 and everything lands on a draft PR on its own branch.
+
+This is enforced twice, because the two mechanisms fail differently. The
+permission file denies `git push`, `git remote` and `gh`, but that only binds a
+session someone launched with `--settings dev.json` — it is advisory the moment
+another launcher starts the agent. So `claim.mjs` also installs a `pre-push`
+hook in the worktree that refuses any push without `AGENT_PUSH_OK`, which only
+`finish.mjs` sets. That one binds the checkout rather than the session, so it
+holds whatever opened it. Worktrees share `.git/hooks` with the main checkout,
+so the hook is scoped with `extensions.worktreeConfig` and a per-worktree
+`core.hooksPath`; your own pushes from the main tree are untouched.
 
 **The reviewer cannot edit or approve.** It starts in a fresh session with no
 memory of writing the code, and it's read-only. Both properties are enforced by
@@ -84,3 +118,12 @@ its memory but keeps the branch, so it re-reads the code with fresh eyes.
 **A session died halfway** — the ticket is left in `state:building` or
 `state:blocked`. Nothing is watching, so nothing will retry it; just re-run
 `dev.mjs 42` when you're ready.
+
+**`refusing push: this worktree publishes through automation/finish.mjs`** —
+working as intended: something tried to push from an agent worktree directly.
+Run `node automation/finish.mjs 42` instead. If you genuinely need to push by
+hand from there, `AGENT_PUSH_OK=1 git push` is the deliberate override.
+
+**`No worktree recorded for #42`** — `finish.mjs` reads the worktree path from
+`.agent-state/issue-42.json`, and that ticket was never claimed (or the state
+file was deleted). Run `node automation/claim.mjs 42` first.

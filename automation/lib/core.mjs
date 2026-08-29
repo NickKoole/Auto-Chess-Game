@@ -3,7 +3,8 @@
 // Zero dependencies by design — this must run from a bare checkout.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { createInterface } from "node:readline/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
@@ -12,6 +13,11 @@ const IS_WIN = process.platform === "win32";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const STATE_DIR = join(ROOT, ".agent-state");
+export const PROMPTS = join(ROOT, "automation", "prompts");
+export const DEV_SETTINGS = join(ROOT, "automation", "settings", "dev.json");
+// Scratch space inside a worktree: the task going in, the report coming out.
+// Gitignored, so the commit sweep never picks it up.
+export const AGENT_DIR = ".agent";
 // Derived from the checkout directory rather than hardcoded, so renaming the
 // repo or the folder cannot silently point worktrees at a path that no longer
 // matches the branch they belong to.
@@ -98,6 +104,37 @@ export const labelNames = (issue) => issue.labels.map((l) => l.name ?? l);
 export const stateOf = (issue) => labelNames(issue).find((l) => STATES.includes(l)) ?? null;
 export const areaOf = (issue) =>
   (labelNames(issue).find((l) => l.startsWith("area:")) ?? "area:sim").slice(5);
+
+/**
+ * The ticket to work on: the number you passed, or a pick from the ready pool.
+ * Epics are filtered out of the menu because nothing builds one directly.
+ */
+export async function chooseIssue(explicit) {
+  if (explicit) return getIssue(explicit);
+
+  const ready = listByState("state:ready").filter(
+    (i) => !labelNames(i).includes("type:epic")
+  );
+  if (!ready.length) {
+    console.log("Nothing in state:ready. File a ticket, or pass an issue number.");
+    return null;
+  }
+
+  console.log("\nReady to build:\n");
+  ready.forEach((i, idx) => console.log(`  ${String(idx + 1).padStart(2)}. #${i.number}  ${i.title}`));
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const answer = (await rl.question("\nWhich one? (number, or blank to cancel) ")).trim();
+  rl.close();
+  if (!answer) return null;
+
+  const pick = ready[Number(answer) - 1] ?? ready.find((i) => String(i.number) === answer);
+  if (!pick) {
+    console.log("Not a valid choice.");
+    return null;
+  }
+  return getIssue(pick.number);
+}
 
 export function setState(n, next) {
   if (!STATES.includes(next)) throw new Error(`unknown state: ${next}`);
@@ -190,6 +227,41 @@ export const isDirty = (cwd) => run("git", ["status", "--porcelain"], { cwd }).s
 export function commitsAhead(cwd, base) {
   const r = run("git", ["rev-list", "--count", `origin/${base}..HEAD`], { cwd });
   return r.code === 0 ? Number(r.stdout) || 0 : 0;
+}
+
+/** Env that opens the push guard. Only finish.mjs sets it. */
+export const PUSH_ENV = { ...process.env, AGENT_PUSH_OK: "1" };
+
+/**
+ * Refuse any push out of this worktree that did not come from finish.mjs.
+ *
+ * The permission file already denies the dev agent `git push`, but that only
+ * binds a session someone launched with `--settings dev.json`. This binds the
+ * worktree itself, so it holds whatever opened the session — dev.mjs, an Orca
+ * terminal, or you typing `claude` by hand.
+ *
+ * Worktrees share `.git/hooks` with the main checkout, so a plain hook here
+ * would also block your own pushes from the main tree. `extensions.worktreeConfig`
+ * plus a per-worktree `core.hooksPath` keeps it contained to this checkout.
+ */
+export function installPushGuard(dir) {
+  const hooks = join(dir, AGENT_DIR, "hooks");
+  mkdirSync(hooks, { recursive: true });
+
+  const hook = join(hooks, "pre-push");
+  writeFileSync(hook, [
+    "#!/bin/sh",
+    "# Written by automation/claim.mjs. Publishing goes through automation/finish.mjs,",
+    "# which sets AGENT_PUSH_OK. Delete the worktree to be rid of this.",
+    '[ "$AGENT_PUSH_OK" = "1" ] && exit 0',
+    'echo "refusing push: this worktree publishes through automation/finish.mjs" >&2',
+    "exit 1",
+    "",
+  ].join("\n"));
+  chmodSync(hook, 0o755);
+
+  must("git", ["config", "extensions.worktreeConfig", "true"], { cwd: dir });
+  must("git", ["config", "--worktree", "core.hooksPath", hooks], { cwd: dir });
 }
 
 // --- claude ------------------------------------------------------------------
@@ -299,6 +371,20 @@ export function args(argv = process.argv.slice(2)) {
       return n ? Number(n) : null;
     },
   };
+}
+
+/**
+ * True when this module is the file node was asked to run, rather than an
+ * import. claim.mjs and finish.mjs are both a CLI and a library — dev.mjs
+ * imports them so there is exactly one copy of each half.
+ */
+export function isEntrypoint(metaUrl) {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(fileURLToPath(metaUrl)) === realpathSync(process.argv[1]);
+  } catch {
+    return false;
+  }
 }
 
 export const fmtDuration = (s) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`);
