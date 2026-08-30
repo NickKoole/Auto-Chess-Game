@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// Land an approved ticket: push what is left, take the PR out of draft, wait
+// Ship an approved ticket: push what is left, take the PR out of draft, wait
 // for CI, squash-merge, and clear away the worktree.
 //
-//   node automation/land.mjs 3              land ticket 3
-//   node automation/land.mjs 3 --dry-run    check every precondition, change nothing
-//   node automation/land.mjs 3 --keep       merge, but leave the worktree in place
-//   node automation/land.mjs 3 --timeout 30 how long to wait for CI, in minutes
+//   node automation/ship.mjs 3              ship ticket 3
+//   node automation/ship.mjs 3 --dry-run    check every precondition, change nothing
+//   node automation/ship.mjs 3 --keep       merge, but leave the worktree in place
+//   node automation/ship.mjs 3 --timeout 30 how long to wait for CI, in minutes
 //
 // The last step of the pipeline, and the only one that is destructive on
 // purpose. Two labels it deliberately does NOT write:
@@ -110,7 +110,7 @@ async function waitForChecks(pr, { timeoutMs, intervalMs = 15_000 }) {
     if (Date.now() > deadline) {
       throw new Error(
         "CI still running after the timeout: " + pending.map(([n]) => n).join(", ") +
-        ". Re-run land.mjs when it settles, or pass --timeout <minutes>."
+        ". Re-run ship.mjs when it settles, or pass --timeout <minutes>."
       );
     }
 
@@ -136,7 +136,7 @@ function preflight(n) {
 
   // A live worktree, not merely a directory that exists: an interrupted removal
   // leaves the now-empty folder behind with no .git in it, and reading HEAD out
-  // of that would refuse the landing over a directory holding nothing.
+  // of that would refuse to ship over a directory holding nothing.
   const worktreeLives = Boolean(session.dir) && existsSync(join(session.dir, ".git"));
 
   if (worktreeLives) {
@@ -147,7 +147,7 @@ function preflight(n) {
     if (isDirty(session.dir)) {
       problems.push(
         session.dir + " has uncommitted changes. Commit them and re-run finish.mjs, " +
-        "or discard them — landing would leave them behind with nowhere to go."
+        "or discard them — shipping would leave them behind with nowhere to go."
       );
     }
   }
@@ -250,7 +250,7 @@ function cleanUp(n, session, worktreeLives) {
   return true;
 }
 
-export async function land(n, { dryRun = false, keep = false, timeoutMinutes = 20 } = {}) {
+export async function ship(n, { dryRun = false, keep = false, timeoutMinutes = 20 } = {}) {
   assertGh();
 
   const { issue, session, pr, worktreeLives, problems } = preflight(n);
@@ -259,7 +259,7 @@ export async function land(n, { dryRun = false, keep = false, timeoutMinutes = 2
   if (pr) console.log("PR:  " + pr.url + (pr.state === "MERGED" ? "  (already merged)" : ""));
 
   if (problems.length > 0) {
-    console.log("\nNot landing:\n");
+    console.log("\nNot shipping:\n");
     problems.forEach((p) => console.log("  · " + p));
     return 1;
   }
@@ -277,7 +277,7 @@ export async function land(n, { dryRun = false, keep = false, timeoutMinutes = 2
     return 0;
   }
 
-  // Re-running after an interrupted landing should finish the job, not refuse.
+  // Re-running after an interrupted run should finish the job, not refuse.
   if (pr.state === "MERGED") {
     console.log("\nalready merged — clearing away what is left.");
     return keep || cleanUp(n, session, worktreeLives) ? 0 : 1;
@@ -324,19 +324,19 @@ if (isEntrypoint(import.meta.url)) {
   const n = a.number();
   if (!n) {
     console.error(
-      "Which ticket? Usage: node automation/land.mjs <issue> [--dry-run] [--keep] [--timeout <minutes>]"
+      "Which ticket? Usage: node automation/ship.mjs <issue> [--dry-run] [--keep] [--timeout <minutes>]"
     );
     process.exit(1);
   }
   try {
-    process.exit(await land(n, {
+    process.exit(await ship(n, {
       dryRun: a.has("--dry-run"),
       keep: a.has("--keep"),
       timeoutMinutes: Number(a.get("--timeout", "20")) || 20,
     }));
   } catch (err) {
     // No label change on failure: the ticket is approved and stays approved. A
-    // landing that fell over is something to retry, not a build to re-open.
+    // run that fell over is something to retry, not a build to re-open.
     console.error("\n" + (err?.message ?? err));
     process.exit(1);
   }
