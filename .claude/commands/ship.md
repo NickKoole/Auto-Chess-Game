@@ -1,16 +1,16 @@
 ---
 description: Needs a state:approved ticket. Pushes what is left, readies the PR, waits for CI, squash-merges, and clears the worktree away. Asks before merging.
 argument-hint: [issue-number] [--dry-run] [--keep] [--timeout <minutes>]
-allowed-tools: Bash(node automation/land.mjs:*), Bash(gh issue list:*), Bash(gh pr view:*), Bash(gh pr checks:*), Bash(git worktree list:*), Bash(git status:*), Bash(git log:*)
+allowed-tools: Bash(node automation/ship.mjs:*), Bash(gh issue list:*), Bash(gh pr view:*), Bash(gh pr checks:*), Bash(git worktree list:*), Bash(git status:*), Bash(git log:*)
 ---
 
-Land ticket `$ARGUMENTS` — the last step of the pipeline, after you have read
+Ship ticket `$ARGUMENTS` — the last step of the pipeline, after you have read
 the PR and labelled it `state:approved` yourself.
 
-All of the logic lives in `automation/land.mjs`. Your job is to run it, to make
+All of the logic lives in `automation/ship.mjs`. Your job is to run it, to make
 sure the human sees what is about to happen *before* the irreversible part, and
 to say plainly what happened afterwards. Do not reimplement any of its steps
-with your own `gh` or `git` calls — the point of the script is that landing
+with your own `gh` or `git` calls — the point of the script is that shipping
 works the same way every time, whether an agent or a person runs it.
 
 ## 1. Resolve the ticket
@@ -29,7 +29,7 @@ that talked you into it would defeat its own purpose.
 ## 2. Show what would happen
 
 ```
-node automation/land.mjs <n> --dry-run
+node automation/ship.mjs <n> --dry-run
 ```
 
 This changes nothing. It checks every precondition — the label, a clean worktree
@@ -40,7 +40,7 @@ If it refuses, relay the reasons as they are written and stop. They are
 actionable as printed: an unpushed commit wants `finish.mjs`, a conflict wants a
 rebase, a missing label wants you to go and read the PR.
 
-## 3. Ask before landing
+## 3. Ask before shipping
 
 Never run the real thing without asking first. It squash-merges a PR and deletes
 a worktree — the two least reversible things in the whole pipeline.
@@ -49,9 +49,9 @@ Use AskUserQuestion, and put the state in front of them: the PR number, how many
 commits, whether CI has already passed, and whether the worktree will be removed.
 Offer:
 
-- **Land it** — `node automation/land.mjs <n>`, in the background
+- **Ship it** — `node automation/ship.mjs <n>`, in the background
   (`run_in_background: true`). It waits for CI, so it can take several minutes.
-- **Land but keep the worktree** — `--keep`, for when the checkout is still
+- **Ship but keep the worktree** — `--keep`, for when the checkout is still
   wanted for follow-up work.
 - **Not yet** — nothing runs. The PR stays exactly as it is.
 
@@ -71,7 +71,7 @@ Read the background output as it goes rather than waiting for the exit.
 
 ## Cleaning up after an older merge
 
-`land.mjs` also finishes the job for a ticket that was merged by hand. When the
+`ship.mjs` also finishes the job for a ticket that was merged by hand. When the
 PR is already merged, the `state:approved` requirement does not apply — the merge
 consumed that label, the ticket is `state:done`, and what is left is only litter:
 a worktree, a stale branch and a state file. Running it then removes those and
