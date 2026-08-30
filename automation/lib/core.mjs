@@ -347,7 +347,7 @@ export const interactiveCommand = (opts) =>
  */
 export function runClaudeInteractive(opts) {
   const args = interactiveArgs(opts);
-  const { cwd } = opts;
+  const { cwd, sessionId, resume } = opts;
 
   const started = Date.now();
   const res = spawnSync("claude", IS_WIN ? args.map(quote) : args, {
