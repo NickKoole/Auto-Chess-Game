@@ -45,6 +45,17 @@ public sealed class BattleUnit
     public int CurrentHp { get; set; }
 
     /// <summary>
+    /// Whether this unit is still in the fight.
+    ///
+    /// The one place the "dead at zero or below" rule is written down, so that
+    /// the tick loop, the targeting pass and the outcome check cannot each
+    /// arrive at a slightly different idea of dead — and so that overkill, which
+    /// drives <see cref="CurrentHp"/> negative rather than clamping it, does not
+    /// have to be remembered at every call site.
+    /// </summary>
+    public bool IsAlive => CurrentHp > 0;
+
+    /// <summary>
     /// Ticks remaining before this unit may attack again. Zero means ready, and
     /// it is reset to <see cref="UnitDefinition.AttackIntervalTicks"/> after a
     /// swing. Counted down rather than compared against a timestamp, because
