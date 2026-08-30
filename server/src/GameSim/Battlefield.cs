@@ -5,14 +5,13 @@ namespace GameSim;
 /// <summary>
 /// The 8x8 pointy-top hex board a battle is fought on, and which unit stands on
 /// each tile.
-/// <para>
+///
 /// The fight runs vertically: the player deploys along the bottom (rows 5-7) and
 /// advances north, the opponent deploys along the top (rows 0-2) and advances
 /// south, and rows 3-4 are a neutral band nobody may deploy into but everybody
 /// may walk through. With pointy-top hexes in offset rows, a row is a clean
 /// horizontal band, so battle lines form along rows and close on each other.
-/// </para>
-/// <para>
+///
 /// Occupancy lives here rather than beside the board, because from story 1.3
 /// onwards every tick moves units, and a mover that had to reach past the board
 /// to find out what is in its way would end up owning this array anyway. That
@@ -20,7 +19,6 @@ namespace GameSim;
 /// different rules on the same tiles — crossing the neutral band is legal
 /// movement and illegal deployment — so movement needs its own entry point
 /// here, checking bounds and occupancy but not the bands.
-/// </para>
 /// </summary>
 public sealed class Battlefield
 {
@@ -68,12 +66,11 @@ public sealed class Battlefield
 
     /// <summary>
     /// Whether a side may deploy on a coordinate, ignoring what stands there.
-    /// <para>
+    ///
     /// False for anything off the board. The band is a row rule, so it is
     /// tempting to answer with a row comparison alone — but this is public, and
     /// a caller reaching it directly rather than through <see cref="CheckTile"/>
     /// would then be told that (row 6, column 99) is a legal player tile.
-    /// </para>
     /// </summary>
     public static bool IsDeploymentBandOf(BattleSide side, HexCoord coord)
     {
@@ -89,11 +86,10 @@ public sealed class Battlefield
     /// <summary>
     /// Checks everything about a tile that does not depend on what is standing
     /// on it, and returns null when the tile is legal for this side.
-    /// <para>
+    ///
     /// The single home of the geography rules: <see cref="TryPlace"/> calls it
     /// before checking occupancy, and <see cref="BattleSetup"/> calls it while
     /// validating a whole army. Two copies of these three checks would drift.
-    /// </para>
     /// </summary>
     public static PlacementError? CheckTile(BattleSide side, HexCoord coord)
     {
@@ -158,12 +154,11 @@ public sealed class Battlefield
     /// <summary>
     /// Deploys a unit onto the tile it says it is standing on, or explains why
     /// it may not stand there. A tile holds at most one unit.
-    /// <para>
+    ///
     /// Deployment only. This applies the band rules, so it rejects the neutral
     /// band and the opposing half outright — which makes it the wrong method to
     /// move a unit with, since a unit advancing from row 5 to row 4 is making a
     /// legal move onto a tile it could never have deployed on.
-    /// </para>
     /// </summary>
     public bool TryPlace(BattleUnit unit, [NotNullWhen(false)] out PlacementError? error)
     {

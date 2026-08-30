@@ -1,13 +1,12 @@
 namespace GameSim;
 
 /// <summary>
-/// The immutable template for a kind of unit — what it <em>is</em>, never what it
+/// The immutable template for a kind of unit — what it is, never what it
 /// is currently doing.
-/// <para>
+///
 /// One definition is shared by every unit of that kind, so nothing in the
 /// simulation may write to it. The mutable per-battle state — current HP,
 /// position, attack cooldown — belongs on the battle instance instead.
-/// </para>
 /// </summary>
 public sealed record UnitDefinition
 {

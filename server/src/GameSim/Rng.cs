@@ -9,12 +9,11 @@ public readonly record struct RngState(ulong S0, ulong S1, ulong S2, ulong S3);
 /// <summary>
 /// Deterministic pseudo-random number generator (xoshiro256**, seeded via
 /// splitmix64).
-/// <para>
+///
 /// This is the ONLY source of randomness permitted in the simulation. Thread an
 /// instance through explicitly — never reach for <see cref="System.Random"/>,
 /// <c>Random.Shared</c>, or <see cref="System.Guid.NewGuid"/>, all of which
 /// make a battle unreplayable.
-/// </para>
 /// </summary>
 public sealed class Rng
 {

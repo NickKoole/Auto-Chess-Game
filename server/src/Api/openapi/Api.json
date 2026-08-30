@@ -37,7 +37,8 @@
           "status": {
             "type": "string"
           }
-        }
+        },
+        "description": "Liveness payload."
       }
     }
   },
