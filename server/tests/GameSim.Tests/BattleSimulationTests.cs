@@ -216,6 +216,57 @@ public sealed class BattleSimulationTests
     }
 
     [Fact]
+    public void The_loop_gives_every_living_unit_one_turn_per_tick_in_that_order()
+    {
+        // Asserts on the loop, not on the helper that feeds it. Without this,
+        // RunTick could iterate Setup.Units directly — acting on the dead — or
+        // iterate backwards, and every other test would still pass.
+        Assert.True(BattleSetup.TryCreate(
+            [At(7, 4), At(5, 0), At(7, 1)],
+            [At(2, 3), At(0, 5)],
+            out BattleSetup? setup,
+            out _));
+
+        var battle = new BattleSimulation(setup, Seed, new BattleOptions { MaxTicks = 1 });
+        battle.Run();
+
+        Assert.Equal(setup.Units, battle.TurnsTakenLastTick);
+    }
+
+    [Fact]
+    public void The_loop_gives_no_turn_to_a_dead_unit()
+    {
+        BattleSetup setup = Setup();
+        setup.Units[1].CurrentHp = 0;
+
+        var battle = new BattleSimulation(setup, Seed, new BattleOptions { MaxTicks = 1 });
+        battle.Run();
+
+        Assert.Equal(
+            new[] { setup.Units[0], setup.Units[2], setup.Units[3] },
+            battle.TurnsTakenLastTick);
+    }
+
+    [Fact]
+    public void Takes_no_turns_at_all_before_it_runs()
+    {
+        Assert.Empty(new BattleSimulation(Setup(), Seed).TurnsTakenLastTick);
+    }
+
+    [Fact]
+    public void Gives_each_unit_exactly_one_turn_per_tick_however_long_the_battle()
+    {
+        // The recorded turns are per tick, not cumulative, so a loop that acted
+        // twice per tick — or leaked turns between ticks — shows up here.
+        BattleSetup setup = Setup();
+        var battle = new BattleSimulation(setup, Seed, new BattleOptions { MaxTicks = 40 });
+
+        battle.Run();
+
+        Assert.Equal(setup.Units, battle.TurnsTakenLastTick);
+    }
+
+    [Fact]
     public void Dead_units_drop_out_of_the_action_order_without_disturbing_it()
     {
         BattleSetup setup = Setup();

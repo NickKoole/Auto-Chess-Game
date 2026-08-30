@@ -18,6 +18,13 @@ namespace GameSim;
 /// </summary>
 public sealed class BattleSimulation
 {
+    // The turns taken in the tick currently running, cleared at the top of each
+    // one. Only the latest tick is kept: this exists so the loop's turn order is
+    // observable while units have no behaviour to observe, and a battle-long
+    // history would be a thousand-entry event log built for a test — which is
+    // story 1.6's job, done properly.
+    private readonly List<BattleUnit> _turnsThisTick = [];
+
     /// <summary>
     /// Prepares a battle. Nothing runs until <see cref="Run"/> is called.
     /// </summary>
@@ -62,6 +69,20 @@ public sealed class BattleSimulation
 
     /// <summary>How the battle ended, or null while it has not been run.</summary>
     public BattleResult? Result { get; private set; }
+
+    /// <summary>
+    /// The units that took a turn in the most recently completed tick, in the
+    /// order they took it. Empty until the first tick has run.
+    ///
+    /// This is what makes "each tick, units act in the setup's order" a
+    /// property a test can fail on. Until story 1.4 gives a turn a visible
+    /// effect, a loop that iterated <see cref="BattleSetup.Units"/> directly —
+    /// dead units included — or iterated backwards would be indistinguishable
+    /// from a correct one, because nothing a turn does is recorded anywhere
+    /// else. Asserting on <see cref="LivingUnits"/> alone tests the helper that
+    /// produces the order, not the loop that consumes it.
+    /// </summary>
+    public IReadOnlyList<BattleUnit> TurnsTakenLastTick => _turnsThisTick;
 
     /// <summary>
     /// Every unit still alive, in the order they act.
@@ -141,8 +162,11 @@ public sealed class BattleSimulation
     /// </summary>
     private void RunTick()
     {
+        _turnsThisTick.Clear();
+
         foreach (BattleUnit unit in LivingUnits())
         {
+            _turnsThisTick.Add(unit);
             Act(unit, Rng);
         }
     }
