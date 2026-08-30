@@ -2,12 +2,11 @@ namespace GameSim;
 
 /// <summary>
 /// A hex in cube coordinates, where the three axes sum to zero.
-/// <para>
+///
 /// Offset coordinates are the storage format — they index a rectangular array
 /// and read like a grid. Cube is the arithmetic format: distance, neighbours and
 /// line-drawing are all trivial here and all fiddly in offset space. Convert,
 /// compute, convert back.
-/// </para>
 /// </summary>
 public readonly record struct CubeCoord
 {
@@ -41,15 +40,13 @@ public readonly record struct CubeCoord
 
     /// <summary>
     /// Hex distance: the number of steps between two hexes.
-    /// <para>
+    ///
     /// Half the sum of the axis deltas, in pure integer maths. The sum is always
     /// even — the axes sum to zero, so the deltas do too — which means the
     /// division is exact and never truncates.
-    /// </para>
     /// </summary>
     public int DistanceTo(CubeCoord other) =>
         (Math.Abs(X - other.X) + Math.Abs(Y - other.Y) + Math.Abs(Z - other.Z)) / 2;
 
-    /// <inheritdoc />
     public override string ToString() => $"({X}, {Y}, {Z})";
 }

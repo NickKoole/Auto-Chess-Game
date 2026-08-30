@@ -16,6 +16,18 @@
     <!-- Determinism: culture-sensitive parsing and formatting is a classic
          source of "works on my machine" divergence in a simulation. -->
     <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!-- On for the validation, not for the .xml artifact. It makes the compiler
+         resolve every cref, so a rename that leaves a doc comment pointing at a
+         method that no longer exists fails the build (CS1574) instead of rotting
+         quietly. Renames here happen by hand or by an agent running sed, with no
+         C# language server in the editor to fix crefs up, so the build is the
+         only backstop. It also carries summaries on the API DTOs through to the
+         client's generated types.
+         CS1591 is suppressed deliberately: documenting every public member,
+         xUnit facts included, is not the goal and would be pure noise. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
 </Project>

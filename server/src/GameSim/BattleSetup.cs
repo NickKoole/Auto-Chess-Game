@@ -5,12 +5,11 @@ namespace GameSim;
 /// <summary>
 /// A validated pair of armies on a board: the starting position a battle runs
 /// from.
-/// <para>
+///
 /// There is no public constructor, so a <see cref="BattleSetup"/> cannot exist
 /// in an illegal state — if you are holding one, every placement was legal, both
 /// sides brought units, and no two units share a tile. That is what lets the
 /// simulation itself skip re-checking any of it.
-/// </para>
 /// </summary>
 public sealed class BattleSetup
 {
@@ -25,23 +24,21 @@ public sealed class BattleSetup
 
     /// <summary>
     /// Every unit in both armies, ordered by owner, then row, then column.
-    /// <para>
+    ///
     /// The order is part of the contract, not an implementation detail. Tick
     /// order decides who wins a mutual kill, so a battle replayed from the same
     /// seed and the same setup can only be byte-identical if the units start in
     /// the same order — however the caller happened to list them.
-    /// </para>
     /// </summary>
     public IReadOnlyList<BattleUnit> Units { get; }
 
     /// <summary>
     /// Validates two armies and, if both are legal, builds the setup.
-    /// <para>
+    ///
     /// Every placement is checked before anything is built, and
-    /// <paramref name="errors"/> comes back holding <em>all</em> of the reasons
+    /// <paramref name="errors"/> comes back holding all of the reasons
     /// rather than only the first: an illegal army is something a player fixes,
     /// and fixing it one tile per attempt is miserable.
-    /// </para>
     /// </summary>
     /// <exception cref="ArgumentNullException">Either list, or a definition inside one, is null.</exception>
     public static bool TryCreate(

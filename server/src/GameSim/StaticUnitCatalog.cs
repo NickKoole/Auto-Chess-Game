@@ -2,11 +2,10 @@ namespace GameSim;
 
 /// <summary>
 /// The built-in unit roster, written in code.
-/// <para>
+///
 /// Stats are tuned for a small board — 8 rows deep with a 2-row neutral gap —
 /// so armies close within a handful of ticks. Read the movement costs and
 /// ranges against that, not against a large field.
-/// </para>
 /// </summary>
 public sealed class StaticUnitCatalog : IUnitCatalog
 {
@@ -46,10 +45,8 @@ public sealed class StaticUnitCatalog : IUnitCatalog
         All = [.. definitions];
     }
 
-    /// <inheritdoc />
     public IReadOnlyList<UnitDefinition> All { get; }
 
-    /// <inheritdoc />
     public UnitDefinition Get(string id)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
