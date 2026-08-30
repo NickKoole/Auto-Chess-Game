@@ -64,9 +64,10 @@ public sealed class BattleSimulationTests
 
         BattleResult result = battle.Run();
 
+        Assert.Equal(BattleOutcome.Draw, result.Outcome);
+        Assert.Equal(BattleEndReason.TickCap, result.Reason);
         Assert.Equal(7, result.EndTick);
         Assert.Equal(7, battle.Tick);
-        Assert.Equal(BattleEndReason.TickCap, result.Reason);
     }
 
     [Fact]
@@ -105,6 +106,7 @@ public sealed class BattleSimulationTests
 
         Assert.Equal(BattleOutcome.OpponentWin, result.Outcome);
         Assert.Equal(BattleEndReason.Elimination, result.Reason);
+        Assert.Equal(0, result.EndTick);
     }
 
     [Fact]
@@ -120,6 +122,7 @@ public sealed class BattleSimulationTests
         // resolved battle rather than a stalled one.
         Assert.Equal(BattleOutcome.Draw, result.Outcome);
         Assert.Equal(BattleEndReason.Elimination, result.Reason);
+        Assert.Equal(0, result.EndTick);
     }
 
     [Fact]

@@ -159,6 +159,20 @@ public sealed class BattleSimulation
     /// Sequential by construction. Nothing here may be parallelised, however
     /// independent two units look — the moment two turns can interleave, which
     /// one claims a contested tile stops being a property of the seed.
+    ///
+    /// <para>
+    /// The acting set is fixed at the top of the tick, not re-checked as it
+    /// runs: <see cref="LivingUnits"/> is materialised once, so from story 1.5
+    /// a unit killed earlier in this same tick still takes its own turn. That
+    /// is a rule, not an oversight — it means a tick resolves as a
+    /// simultaneous exchange, so who struck first within it cannot decide who
+    /// gets to strike at all, and trading blows stays symmetrical. The
+    /// alternative (a liveness check inside the loop, letting the dead drop out
+    /// mid-tick) makes turn order far more decisive and is the kind of thing
+    /// that shows up as an unexplained balance bias. Whichever 1.5 settles on
+    /// needs a test that can tell the two apart; nothing can die yet, so no
+    /// test here distinguishes them.
+    /// </para>
     /// </summary>
     private void RunTick()
     {
