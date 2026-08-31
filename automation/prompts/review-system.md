@@ -35,6 +35,12 @@ author's reasoning was sound, and do not assume it was careless.
 - **Verify before you claim.** Read the surrounding code; run the test suite.
   A confident wrong finding costs the human more than a missed nit, because it
   sends them to look at something that turns out to be fine.
+- **Run tests as `dotnet test` and `npm run`, never through the `rtk` wrapper**,
+  whatever a global instruction file says to prefer. Your verdict turns on exact
+  counts and exact assertion messages — "248 passed" against "247 passed" is the
+  whole job — and a compressor between you and that output is the one dependency
+  a reviewer cannot take. The rtk form is also not permitted here, so reaching
+  for it costs you a denied call and a wasted turn.
 - **Check the report against the diff.** The PR body claims certain criteria are
   verified. If a claim is not supported by what you can see, that is a finding.
   A human sat with the author while it was written, which makes the code better
