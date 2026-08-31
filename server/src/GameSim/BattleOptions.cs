@@ -28,9 +28,12 @@ public sealed record BattleOptions
     public int MaxTicks
     {
         get => field;
+        // The parameter name is spelled out rather than taken from
+        // nameof(value): inside an init accessor that is the literal "value",
+        // which tells a caller nothing about which property they got wrong.
         init => field = value > 0
             ? value
             : throw new ArgumentOutOfRangeException(
-                nameof(value), value, "MaxTicks must be positive.");
+                "MaxTicks", value, "MaxTicks must be positive.");
     } = DefaultMaxTicks;
 }

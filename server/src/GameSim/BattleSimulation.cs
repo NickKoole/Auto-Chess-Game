@@ -81,8 +81,17 @@ public sealed class BattleSimulation
     /// from a correct one, because nothing a turn does is recorded anywhere
     /// else. Asserting on <see cref="LivingUnits"/> alone tests the helper that
     /// produces the order, not the loop that consumes it.
+    ///
+    /// <para>
+    /// A copy, because the backing list is cleared and refilled every tick: a
+    /// caller handed the live list would watch it empty underneath them the
+    /// moment the next tick began. Not reachable while <see cref="Run"/> is
+    /// atomic, but it is exactly the trap a per-tick stepping entry point would
+    /// spring, and a copy of at most a board's worth of units is not worth
+    /// economising on.
+    /// </para>
     /// </summary>
-    public IReadOnlyList<BattleUnit> TurnsTakenLastTick => _turnsThisTick;
+    public IReadOnlyList<BattleUnit> TurnsTakenLastTick => [.. _turnsThisTick];
 
     /// <summary>
     /// Every unit still alive, in the order they act.

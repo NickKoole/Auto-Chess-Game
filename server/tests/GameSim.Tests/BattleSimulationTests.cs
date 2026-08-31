@@ -318,7 +318,28 @@ public sealed class BattleSimulationTests
     [InlineData(-1)]
     public void Refuses_a_non_positive_tick_cap(int cap)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new BattleOptions { MaxTicks = cap });
+        var error = Assert.Throws<ArgumentOutOfRangeException>(
+            () => new BattleOptions { MaxTicks = cap });
+
+        // Names the property, not the init accessor's implicit "value", which
+        // would tell a caller nothing about what they got wrong.
+        Assert.Equal("MaxTicks", error.ParamName);
+        Assert.Equal(cap, error.ActualValue);
+    }
+
+    [Fact]
+    public void Hands_out_a_copy_of_the_turns_rather_than_its_live_buffer()
+    {
+        // The buffer is cleared and refilled every tick, so a caller holding
+        // the list itself would watch it empty underneath them once the sim can
+        // be stepped a tick at a time.
+        var battle = new BattleSimulation(Setup(), Seed, new BattleOptions { MaxTicks = 1 });
+        battle.Run();
+
+        IReadOnlyList<BattleUnit> taken = battle.TurnsTakenLastTick;
+
+        Assert.NotSame(taken, battle.TurnsTakenLastTick);
+        Assert.Equal(taken, battle.TurnsTakenLastTick);
     }
 
     [Fact]
