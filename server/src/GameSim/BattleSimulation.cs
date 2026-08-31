@@ -152,7 +152,7 @@ public sealed class BattleSimulation
 
             if (Tick >= Options.MaxTicks)
             {
-                var drawn = new BattleResult(BattleOutcome.Draw, BattleEndReason.TickCap, Tick);
+                var drawn = new BattleResult(BattleEnding.TickCapDraw, Tick);
                 Result = drawn;
                 return drawn;
             }
@@ -191,6 +191,15 @@ public sealed class BattleSimulation
     /// alive for the whole of the tick it dies in, and trading blows stays
     /// symmetrical.
     /// </para>
+    ///
+    /// <para>
+    /// Story 1.5 adds a third step after apply: any unit in the acting set that
+    /// is no longer alive is removed from the board. It is exactly the acting
+    /// set — the units alive at the top of this tick — because nothing outside
+    /// this tick's apply phase can kill a unit, so a unit found dead here died in
+    /// this tick and has not been removed before. That is what makes the removal
+    /// safe to do unconditionally, without a "was this already handled" check.
+    /// </para>
     /// </summary>
     private void RunTick()
     {
@@ -200,13 +209,19 @@ public sealed class BattleSimulation
 
         // The clock advances before anyone decides, so readiness is a property
         // of the tick a unit is deciding in rather than of the one before it.
-        // Only an actual step resets a cooldown, down in the apply phase — which
-        // is what lets a blocked unit keep the readiness it has accumulated.
+        // Only an actual step, or an actual swing, resets a cooldown, down in the
+        // apply phase — which is what lets a blocked or waiting unit keep the
+        // readiness it has accumulated.
         foreach (BattleUnit unit in acting)
         {
             if (unit.MovementCooldownTicks > 0)
             {
                 unit.MovementCooldownTicks--;
+            }
+
+            if (unit.AttackCooldownTicks > 0)
+            {
+                unit.AttackCooldownTicks--;
             }
         }
 
@@ -219,6 +234,14 @@ public sealed class BattleSimulation
         }
 
         Apply(Setup.Battlefield, decisions);
+
+        foreach (BattleUnit unit in acting)
+        {
+            if (!unit.IsAlive)
+            {
+                Setup.Battlefield.Remove(unit);
+            }
+        }
     }
 
     /// <summary>
@@ -266,21 +289,72 @@ public sealed class BattleSimulation
         {
             // Nothing left to fight. The battle is already decided; this is just
             // the tick that has not noticed yet.
-            return new UnitDecision(unit, null);
+            return new UnitDecision(unit, null, null);
         }
 
-        // In range: hold position. Story 1.5 hangs the swing here.
+        // In range: hold position and swing if ready. Ranged and melee are not
+        // different cases here — there is no projectile travel time, so a hit
+        // this tick lands this tick regardless of AttackRangeHexes.
         if (unit.Position.DistanceTo(target.Position) <= unit.Definition.AttackRangeHexes)
         {
-            return new UnitDecision(unit, null);
+            if (unit.AttackCooldownTicks > 0)
+            {
+                return new UnitDecision(unit, null, null);
+            }
+
+            int damage = RollDamage(unit.Definition, rng);
+            return new UnitDecision(unit, null, new AttackDecision(target, damage));
         }
 
         if (unit.MovementCooldownTicks > 0)
         {
-            return new UnitDecision(unit, null);
+            return new UnitDecision(unit, null, null);
         }
 
-        return new UnitDecision(unit, StepToward(unit, target));
+        return new UnitDecision(unit, StepToward(unit, target), null);
+    }
+
+    /// <summary>
+    /// One landed hit's damage: <see cref="UnitDefinition.AttackDamage"/> scaled
+    /// by a variance rolled uniformly from <paramref name="rng"/>, floored to an
+    /// integer.
+    ///
+    /// The only place in the simulation that rolls damage, and it is called from
+    /// exactly one branch of <see cref="Decide"/> — when a hit is actually about
+    /// to land. There is no early return between that call and the roll, so the
+    /// draw happens on every landed hit and only on a landed hit; a second call
+    /// site, or a branch that could skip the roll after deciding to attack, would
+    /// let two runs of the same seed draw a different number of times and
+    /// diverge from that point on.
+    ///
+    /// <para>
+    /// The variance is rolled as an integer basis-point offset — never as a
+    /// <see langword="double"/> multiplier — and the damage is derived with
+    /// integer division, which truncates toward zero and so floors a
+    /// non-negative result. <c>CLAUDE.md</c> requires this: a
+    /// <see langword="double"/> multiply-then-floor is not guaranteed
+    /// bit-identical across runtimes, and this number decides an outcome.
+    /// </para>
+    /// </summary>
+    private static int RollDamage(UnitDefinition definition, Rng rng)
+    {
+        const int BasisPointScale = 10_000;
+
+        // A fixed conversion of a catalog constant, done the same way on every
+        // call — not a source of cross-run drift, unlike the roll itself.
+        int varianceBasisPoints = (int)Math.Round(
+            definition.DamageVariance * BasisPointScale,
+            MidpointRounding.AwayFromZero);
+
+        // Uniform over [-varianceBasisPoints, +varianceBasisPoints]. Valid even
+        // at zero variance: NextInt(0, 1) always returns 0.
+        int rolledOffset = rng.NextInt(-varianceBasisPoints, varianceBasisPoints + 1);
+
+        // varianceBasisPoints never exceeds BasisPointScale (DamageVariance is
+        // capped at 1.0), so this is never negative.
+        long multiplier = BasisPointScale + rolledOffset;
+
+        return (int)(definition.AttackDamage * multiplier / BasisPointScale);
     }
 
     /// <summary>
@@ -293,11 +367,23 @@ public sealed class BattleSimulation
     /// which units happened to end up moving, rather than on
     /// <see cref="BattleSetup.Units"/> order alone, and two replays of one seed
     /// would diverge the first time a tile was contested. Hence the battlefield
-    /// arriving as a parameter: it is the only state applying needs.
+    /// arriving as a parameter, and hence every attack's damage arriving already
+    /// rolled on <see cref="UnitDecision.Attack"/>: this method only spends what
+    /// <see cref="Decide"/> already drew.
     ///
-    /// It is also the only place a movement cooldown is reset, so a unit that
-    /// decided to move and then lost the tile keeps its readiness and goes as
-    /// soon as the tile frees.
+    /// It is also the only place a movement or attack cooldown is reset, so a
+    /// unit that decided to move and then lost the tile — or one that held its
+    /// swing because its target died to someone else this same tick — keeps its
+    /// readiness rather than being charged for an attempt it did not complete.
+    ///
+    /// <para>
+    /// Damage is summed here with no regard for what order the decisions arrive
+    /// in and no check that the target is still alive: two attackers each
+    /// decided against the same tick-start snapshot, where their shared target
+    /// was alive, so both hits are real and adding them in either order gives
+    /// the same total. That is what lets two units kill a shared target — or
+    /// kill each other — on the same tick.
+    /// </para>
     /// </summary>
     private static void Apply(Battlefield field, IReadOnlyList<UnitDecision> decisions)
     {
@@ -307,26 +393,29 @@ public sealed class BattleSimulation
 
         foreach (UnitDecision decision in decisions)
         {
-            if (decision.MoveTo is not HexCoord destination)
+            if (decision.MoveTo is HexCoord destination)
             {
-                continue;
+                // Two units wanted the same empty tile. The one earlier in
+                // BattleSetup.Units order has already taken it, and this one
+                // stays put for the tick rather than re-pathing — re-pathing can
+                // cascade into a second contested tile and turns a tick into
+                // constraint solving.
+                if (claimed.Add(destination))
+                {
+                    // Cannot throw: the destination was empty when this unit
+                    // decided, nothing may move into a tile vacated during the
+                    // tick, and the claim above rules out two units taking the
+                    // same one.
+                    field.Move(decision.Unit, destination);
+                    decision.Unit.MovementCooldownTicks = decision.Unit.Definition.MovementTicksPerHex;
+                }
             }
 
-            // Two units wanted the same empty tile. The one earlier in
-            // BattleSetup.Units order has already taken it, and this one stays
-            // put for the tick rather than re-pathing — re-pathing can cascade
-            // into a second contested tile and turns a tick into constraint
-            // solving.
-            if (!claimed.Add(destination))
+            if (decision.Attack is AttackDecision attack)
             {
-                continue;
+                attack.Target.CurrentHp -= attack.Damage;
+                decision.Unit.AttackCooldownTicks = decision.Unit.Definition.AttackIntervalTicks;
             }
-
-            // Cannot throw: the destination was empty when this unit decided,
-            // nothing may move into a tile vacated during the tick, and the
-            // claim above rules out two units taking the same one.
-            field.Move(decision.Unit, destination);
-            decision.Unit.MovementCooldownTicks = decision.Unit.Definition.MovementTicksPerHex;
         }
     }
 
@@ -489,14 +578,14 @@ public sealed class BattleSimulation
         // same tick has to resolve somehow, and awarding it to whichever side
         // the loop happened to reach first would make the outcome depend on
         // iteration order.
-        BattleOutcome outcome = (playerAlive, opponentAlive) switch
+        BattleEnding ending = (playerAlive, opponentAlive) switch
         {
-            (true, false) => BattleOutcome.PlayerWin,
-            (false, true) => BattleOutcome.OpponentWin,
-            _ => BattleOutcome.Draw,
+            (true, false) => BattleEnding.PlayerEliminatedOpponent,
+            (false, true) => BattleEnding.OpponentEliminatedPlayer,
+            _ => BattleEnding.MutualElimination,
         };
 
-        return new BattleResult(outcome, BattleEndReason.Elimination, Tick);
+        return new BattleResult(ending, Tick);
     }
 
     private bool HasLivingUnits(BattleSide side)

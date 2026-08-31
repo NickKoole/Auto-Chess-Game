@@ -25,4 +25,24 @@ namespace GameSim;
 /// fight. Those are one outcome as far as applying it goes, and telling them
 /// apart is the event log's job, not this type's.
 /// </param>
-internal readonly record struct UnitDecision(BattleUnit Unit, HexCoord? MoveTo);
+/// <param name="Attack">
+/// The hit this unit lands this tick, or null if it does not attack — because it
+/// is out of range, its attack cooldown has not elapsed, or it has nothing left
+/// to fight. The damage is rolled here, in the decide phase, because that is the
+/// only phase with access to the battle's <see cref="Rng"/>; carrying the rolled
+/// value forward is what lets the static apply phase commit it without ever
+/// touching the generator itself.
+/// </param>
+internal readonly record struct UnitDecision(BattleUnit Unit, HexCoord? MoveTo, AttackDecision? Attack);
+
+/// <summary>
+/// One landed hit, decided but not yet applied: who it lands on and how much it
+/// deals, already rolled.
+/// </summary>
+/// <param name="Target">The unit being hit. Never null.</param>
+/// <param name="Damage">
+/// Hit points to remove, already floored to an integer. Rolled once, from the
+/// battle's single <see cref="Rng"/>, at the moment the hit was decided to land —
+/// never re-rolled or re-derived when this is applied.
+/// </param>
+internal readonly record struct AttackDecision(BattleUnit Target, int Damage);
