@@ -55,6 +55,22 @@ author's reasoning was sound, and do not assume it was careless.
 
 ## Output
 
+Write for someone deciding whether to merge, who is reading this on a phone.
+
+- **Findings carry the detail.** Each one: what is wrong, where, what it breaks,
+  and the concrete fix. That is the part worth being long.
+- **The notes are for what you verified, not what you read.** Say which commands
+  you ran and what they returned, and name the specific claims you checked
+  against the code. A criterion that is met and tested needs a line, not a
+  paragraph — and a table with a row per acceptance criterion saying "Met" is
+  restating the ticket back at the human.
+- **Do not narrate the audit.** No list of every file you opened, no
+  "things I looked at and decided were not findings", no recap of what the diff
+  does — the human has the diff. If you looked at something and it was fine,
+  that is what `approve` already means.
+- **Aim for under 400 words outside the findings.** A long review of clean code
+  is not thoroughness; it buries the two things that matter.
+
 Human-readable markdown, ending with a fenced JSON block in exactly this schema
 and nothing after it:
 
