@@ -16,6 +16,7 @@ public sealed class ArchitectureTests
         "Guid.NewGuid",
         "DateTime.Now",
         "DateTime.UtcNow",
+        "DateTime.Today",
         "DateTimeOffset.Now",
         "DateTimeOffset.UtcNow",
         "Environment.TickCount",
@@ -23,6 +24,12 @@ public sealed class ArchitectureTests
         "Parallel.",
         ".AsParallel(",
         "Task.Run",
+
+        // Thread timing. A sim that sleeps or delays is reading a wall clock by
+        // another name: the tick is the only clock, and it is the caller's to
+        // advance.
+        "Task.Delay",
+        "Thread.Sleep",
     ];
 
     [Fact]
