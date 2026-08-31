@@ -210,8 +210,10 @@ public sealed class BattleSimulationTests
                 (BattleSide.Player, new HexCoord(5, 0)),
                 (BattleSide.Player, new HexCoord(7, 1)),
                 (BattleSide.Player, new HexCoord(7, 4)),
-                (BattleSide.Opponent, new HexCoord(0, 5)),
+                // Front-to-back for the opponent too, which is descending row:
+                // row 2 is its front line, row 0 its back line.
                 (BattleSide.Opponent, new HexCoord(2, 3)),
+                (BattleSide.Opponent, new HexCoord(0, 5)),
             ],
             battle.LivingUnits().Select(u => (u.Side, u.Position)));
 

@@ -4,9 +4,11 @@ namespace GameSim;
 /// Which army a unit belongs to.
 ///
 /// The numbering is load-bearing: it is the first key in the deterministic unit
-/// order, so renumbering these members reorders every battle and changes who
-/// wins a mutual kill. Where each side may deploy is a property of the board
-/// rather than of the side, and lives on <see cref="Battlefield"/>.
+/// order — which then runs front-to-back within each army and finally by column
+/// — so renumbering these members reorders every battle and changes who wins a
+/// mutual kill. Where each side may deploy, and which way it advances, are
+/// properties of the board rather than of the side, and live on
+/// <see cref="Battlefield"/>.
 /// </summary>
 public enum BattleSide
 {
