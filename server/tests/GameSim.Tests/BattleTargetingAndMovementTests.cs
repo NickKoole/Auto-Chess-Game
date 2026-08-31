@@ -345,9 +345,13 @@ public sealed class BattleTargetingAndMovementTests
     [Fact]
     public void Settles_instead_of_oscillating()
     {
-        // Only steps that strictly reduce the distance are candidates, so a unit
-        // can never return to a tile it has left. Comparing an odd tick count
-        // against an even one is what would expose a two-tile shuffle.
+        // Only steps that strictly reduce the distance to the target are
+        // candidates, so nothing here shuffles on the spot. That is a weaker
+        // claim than it looks — targets move, so a unit's distance to its own
+        // target can rise between ticks — which is exactly why this is an
+        // empirical check on a real battle rather than an appeal to the rule.
+        // Comparing an odd tick count against an even one is what would expose a
+        // two-tile shuffle.
         static BattleSetup Build() => Setup(
             [At(Runner, 7, 1), At(Runner, 7, 2), At(Runner, 6, 4)],
             [At(Runner, 0, 1), At(Runner, 1, 5)]);

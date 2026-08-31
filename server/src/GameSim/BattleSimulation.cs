@@ -218,20 +218,30 @@ public sealed class BattleSimulation
             decisions.Add(Decide(unit, Rng));
         }
 
-        Apply(decisions);
+        Apply(Setup.Battlefield, decisions);
     }
 
     /// <summary>
     /// One unit's choice for this tick, read off the board as it stood before
     /// anything in this tick moved.
     ///
-    /// This is the only phase that may draw from <paramref name="rng"/> — hence
-    /// the explicit parameter, and hence <see cref="Apply"/> not being given one
-    /// at all. Because it runs in <see cref="BattleSetup.Units"/> order and
-    /// applying decisions cannot draw, the sequence of draws in a battle is a
-    /// function of that order alone, and not of which units happened to end up
-    /// moving. Story 1.4 spends nothing: targeting and stepping are both settled
-    /// by documented tie breaks rather than by rolls.
+    /// This is the only phase that may draw from <paramref name="rng"/>, and the
+    /// explicit parameter is where those draws are meant to come from. Because it
+    /// runs in <see cref="BattleSetup.Units"/> order and <see cref="Apply"/>
+    /// genuinely cannot draw — it is static, so there is no <c>this.Rng</c> for it
+    /// to reach — the sequence of draws in a battle is a function of that order
+    /// alone, and not of which units happened to end up moving. Story 1.4 spends
+    /// nothing: targeting and stepping are both settled by documented tie breaks
+    /// rather than by rolls.
+    ///
+    /// <para>
+    /// The parameter is a signpost rather than a fence: this method is an
+    /// instance method, so <see cref="Rng"/> is in scope whatever its signature
+    /// says. What actually holds the rule is
+    /// <c>Targeting_and_movement_spend_no_randomness</c> and
+    /// <c>The_loop_itself_consumes_no_randomness</c>, which compare the
+    /// generator's state after a battle against a freshly seeded one.
+    /// </para>
     ///
     /// <para>
     /// It does write one thing — <see cref="BattleUnit.Target"/>, on the unit
@@ -276,12 +286,20 @@ public sealed class BattleSimulation
     /// <summary>
     /// Applies every decision, in the order they were decided.
     ///
-    /// Deliberately has no access to <see cref="Rng"/>: see
-    /// <see cref="Decide"/>. It is also the only place a movement cooldown is
-    /// reset, so a unit that decided to move and then lost the tile keeps its
-    /// readiness and goes as soon as the tile frees.
+    /// Static, and that is the point rather than a tidiness choice: a static
+    /// method has no <c>this</c>, so it cannot reach <see cref="Rng"/> however
+    /// much a future author would like it to. Applying a decision must never
+    /// draw — a draw here would make the sequence of random values depend on
+    /// which units happened to end up moving, rather than on
+    /// <see cref="BattleSetup.Units"/> order alone, and two replays of one seed
+    /// would diverge the first time a tile was contested. Hence the battlefield
+    /// arriving as a parameter: it is the only state applying needs.
+    ///
+    /// It is also the only place a movement cooldown is reset, so a unit that
+    /// decided to move and then lost the tile keeps its readiness and goes as
+    /// soon as the tile frees.
     /// </summary>
-    private void Apply(IReadOnlyList<UnitDecision> decisions)
+    private static void Apply(Battlefield field, IReadOnlyList<UnitDecision> decisions)
     {
         // The tiles taken this tick. A set for lookup only — it is never
         // enumerated, so its order cannot reach an outcome.
@@ -307,7 +325,7 @@ public sealed class BattleSimulation
             // Cannot throw: the destination was empty when this unit decided,
             // nothing may move into a tile vacated during the tick, and the
             // claim above rules out two units taking the same one.
-            Setup.Battlefield.Move(decision.Unit, destination);
+            field.Move(decision.Unit, destination);
             decision.Unit.MovementCooldownTicks = decision.Unit.Definition.MovementTicksPerHex;
         }
     }
@@ -365,12 +383,22 @@ public sealed class BattleSimulation
     /// Greedy and deliberately not a pathfinder: only neighbours strictly closer
     /// to the target are considered at all. On an open 8x8 field with no terrain
     /// that is sufficient, it is far easier to keep deterministic than A*, and it
-    /// makes oscillation impossible by construction rather than by a guard —
-    /// distance to the target falls by one on every step a unit ever takes, so it
-    /// can never come back to a tile it has left. The cost is that a unit stuck
-    /// behind a wall of its own army simply waits; if that shows up in
+    /// removes the shuffling-on-the-spot failure mode without needing a guard for
+    /// it: a step is only ever taken when it closes the distance, so a unit can
+    /// never trade a tile for one no better than it. The cost is that a unit
+    /// stuck behind a wall of its own army simply waits; if that shows up in
     /// playtesting it is a follow-up story, not a reason to build a pathfinder
     /// now.
+    ///
+    /// <para>
+    /// Note the limit of that: the step is closer to where the target stood
+    /// <em>this tick</em>. Targets move, so a unit's distance to its own target
+    /// can still rise between ticks, and it can revisit a tile it has left —
+    /// two units converging from different directions is enough. Story 1.5 makes
+    /// that sharper, because death re-points a unit at a new enemy
+    /// discontinuously. So this is not an unconditional no-oscillation proof, and
+    /// nobody should read it as one when deciding whether 1.5 needs a guard.
+    /// </para>
     ///
     /// <para>
     /// A pointy-top grid has no due-north neighbour, so a unit closing vertical
