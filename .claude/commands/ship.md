@@ -1,5 +1,5 @@
 ---
-description: Needs a state:approved ticket. Pushes what is left, readies the PR, waits for CI, squash-merges, and clears the worktree away. Asks before merging.
+description: Needs a state:approved ticket. Pushes what is left, readies the PR, waits for CI, squash-merges, and clears the worktree away. The dry run is the checkpoint, not a confirmation prompt.
 argument-hint: <issue-number> [--dry-run] [--keep] [--timeout <minutes>]
 allowed-tools: Bash(node automation/ship.mjs:*), Bash(gh issue list:*), Bash(gh pr view:*), Bash(gh pr checks:*), Bash(git worktree list:*), Bash(git status:*), Bash(git log:*)
 ---
@@ -8,8 +8,8 @@ Ship ticket `$ARGUMENTS` — the last step of the pipeline, after you have read
 the PR and labelled it `state:approved` yourself.
 
 All of the logic lives in `automation/ship.mjs`. Your job is to run it, to make
-sure the human sees what is about to happen *before* the irreversible part, and
-to say plainly what happened afterwards. Do not reimplement any of its steps
+sure the human sees what is about to happen *before* the irreversible part — via
+the dry run, not a prompt — and to say plainly what happened afterwards. Do not reimplement any of its steps
 with your own `gh` or `git` calls — the point of the script is that shipping
 works the same way every time, whether an agent or a person runs it.
 
@@ -61,20 +61,32 @@ rebase, a missing label wants you to go and read the PR.
 A missing `state:approved` is the same rule as in step 1: relay it, and do
 **not** offer to add the label to get past it.
 
-## 3. Ask before shipping
+## 3. Ship it
 
-Never run the real thing without asking first. It squash-merges a PR and deletes
-a worktree — the two least reversible things in the whole pipeline.
+Typing `/ship <n>` **is** the go-ahead. Do not follow a passing dry run with an
+AskUserQuestion that re-asks whether to merge. The command exists to merge, the
+number named the ticket deliberately, and step 2 has just printed exactly what
+is about to happen while changing nothing — that is the checkpoint. A
+confirmation on top of it is a prompt whose only available answer is the one
+already given, and it trains the reader to click through the prompts that do
+carry information.
 
-Use AskUserQuestion, and put the state in front of them: the PR number, how many
-commits, whether CI has already passed, and whether the worktree will be removed.
-Offer:
+So when step 2 passes, go straight to the real run, in the background
+(`run_in_background: true`) because it waits for CI and can take minutes:
 
-- **Ship it** — `node automation/ship.mjs <n>`, in the background
-  (`run_in_background: true`). It waits for CI, so it can take several minutes.
-- **Ship but keep the worktree** — `--keep`, for when the checkout is still
-  wanted for follow-up work.
-- **Not yet** — nothing runs. The PR stays exactly as it is.
+```
+node automation/ship.mjs <n>
+```
+
+Pass `--keep` if it was in `$ARGUMENTS` — it merges but leaves the worktree on
+disk, for when the checkout is still wanted for follow-up work. Do not offer it
+unprompted; the default is to clean up.
+
+**Ask only when there is a real question**, which is exactly what step 2 exists
+to surface: a dry-run refusal you cannot relay as actionable, a worktree holding
+uncommitted work, a PR whose contents do not look like the ticket you were
+asked to ship. Those have answers only the human has. "Shall I proceed?" does
+not — they already told you.
 
 ## 4. Report what happened
 
