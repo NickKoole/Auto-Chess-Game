@@ -23,7 +23,14 @@ public sealed class BattleSetup
     public Battlefield Battlefield { get; }
 
     /// <summary>
-    /// Every unit in both armies, ordered by owner, then row, then column.
+    /// Every unit in both armies, ordered by owner, then front-to-back within
+    /// each army, then by column.
+    ///
+    /// Front-to-back is <see cref="Battlefield.RowsToEnemyBackLine"/>, not the
+    /// raw row: the two armies advance in opposite directions, so ordering both
+    /// by ascending row would put the player's front rank first and the
+    /// opponent's rear rank first, and a mirror match would resolve its two
+    /// sides' internal contention in opposite orders.
     ///
     /// The order is part of the contract, not an implementation detail. Tick
     /// order decides who wins a mutual kill, so a battle replayed from the same
@@ -129,13 +136,15 @@ public sealed class BattleSetup
         ];
 
         // A total order, not merely a stable one: duplicates are already
-        // rejected above, so no two units share (side, row, column) and the sort
-        // cannot fall back on the caller's list order to break a tie.
+        // rejected above, so no two units of a side share (row, column), and
+        // rows-to-cross is one-to-one with the row within a side — so no two
+        // units can tie and the sort cannot fall back on the caller's list
+        // order to break one.
         BattleUnit[] ordered =
         [
             .. units
                 .OrderBy(u => (int)u.Side)
-                .ThenBy(u => u.Position.Row)
+                .ThenBy(u => Battlefield.RowsToEnemyBackLine(u.Side, u.Position))
                 .ThenBy(u => u.Position.Col)
         ];
 

@@ -67,7 +67,7 @@ public sealed class BattleSetupTests
     }
 
     [Fact]
-    public void Orders_units_by_owner_then_row_then_column()
+    public void Orders_units_by_owner_then_front_to_back_then_column()
     {
         // Deliberately listed out of order, and the opponent listed first, so a
         // setup that simply concatenated the caller's lists would fail here.
@@ -77,18 +77,77 @@ public sealed class BattleSetupTests
             out BattleSetup? setup,
             out _));
 
+        // Front-to-back is ascending row for the player and descending row for
+        // the opponent, because they advance in opposite directions: row 5 is
+        // the player's front line and row 2 is the opponent's.
         (BattleSide, HexCoord)[] expected =
         [
             (BattleSide.Player, new HexCoord(5, 1)),
             (BattleSide.Player, new HexCoord(5, 4)),
             (BattleSide.Player, new HexCoord(7, 3)),
+            (BattleSide.Opponent, new HexCoord(2, 6)),
             (BattleSide.Opponent, new HexCoord(0, 0)),
             (BattleSide.Opponent, new HexCoord(0, 5)),
-            (BattleSide.Opponent, new HexCoord(2, 6)),
         ];
 
         Assert.Equal(expected, setup.Units.Select(u => (u.Side, u.Position)));
     }
+
+    [Fact]
+    public void Orders_a_mirror_match_symmetrically()
+    {
+        // The same army twice, reflected across the halfway line: the player's
+        // row r faces the opponent's row 7 - r. Ordering both sides by raw
+        // ascending row pulls this pairing apart — the player acts front rank
+        // first and the opponent rear rank first — so a mirror match resolves
+        // its two sides' internal contention in opposite orders.
+        HexCoord[] army = [new(5, 1), new(6, 4), new(7, 0), new(5, 6)];
+
+        Assert.True(BattleSetup.TryCreate(
+            [.. army.Select(c => new UnitPlacement(Militia, c))],
+            [.. army.Select(c => new UnitPlacement(Militia, Mirror(c)))],
+            out BattleSetup? setup,
+            out _));
+
+        HexCoord[] player = [.. PositionsOf(setup, BattleSide.Player)];
+        HexCoord[] opponent = [.. PositionsOf(setup, BattleSide.Opponent)];
+
+        Assert.Equal(player.Select(Mirror), opponent);
+
+        // Symmetry alone would also hold if both armies were ordered
+        // back-to-front, so pin down which end of each army comes first.
+        Assert.Equal(
+            [new HexCoord(5, 1), new HexCoord(5, 6), new HexCoord(6, 4), new HexCoord(7, 0)],
+            player);
+    }
+
+    [Fact]
+    public void Orders_an_army_the_same_way_however_the_caller_lists_it()
+    {
+        // The order is a total order, so it cannot fall back on the incoming
+        // list to break a tie: two callers describing the same two armies get
+        // the same sequence out.
+        UnitPlacement[] player = [At(5, 1), At(7, 3), At(5, 4), At(6, 0)];
+        UnitPlacement[] opponent = [At(0, 2), At(2, 6), At(1, 1)];
+
+        Assert.True(BattleSetup.TryCreate(player, opponent, out BattleSetup? asListed, out _));
+        Assert.True(BattleSetup.TryCreate(
+            [.. player.Reverse()],
+            [.. opponent.Reverse()],
+            out BattleSetup? reversed,
+            out _));
+
+        Assert.Equal(
+            asListed.Units.Select(u => (u.Side, u.Position)),
+            reversed.Units.Select(u => (u.Side, u.Position)));
+    }
+
+    /// <summary>The tile a coordinate reflects onto across the halfway line.</summary>
+    private static HexCoord Mirror(HexCoord coord) =>
+        new(Battlefield.Rows - 1 - coord.Row, coord.Col);
+
+    private static IEnumerable<HexCoord> PositionsOf(BattleSetup setup, BattleSide side) =>
+        setup.Units.Where(u => u.Side == side).Select(u => u.Position);
 
     [Fact]
     public void Rejects_a_placement_off_the_board()

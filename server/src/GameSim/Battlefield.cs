@@ -65,6 +65,31 @@ public sealed class Battlefield
     };
 
     /// <summary>
+    /// How many rows a unit still has to cross to reach the far edge its side
+    /// is advancing on — the enemy's back line, row 0 for the player and row
+    /// <see cref="Rows"/> - 1 for the opponent.
+    ///
+    /// This is the front-to-back ordering key for a side's own units, and raw
+    /// row will not do the job: the two sides advance in opposite directions,
+    /// so ascending row is front-rank-first for the player and rear-rank-first
+    /// for the opponent. Keyed this way, mirrored positions on the two sides
+    /// also yield the same value, so a mirror match orders both armies
+    /// identically instead of resolving their internal contention in opposite
+    /// orders.
+    ///
+    /// Pure arithmetic on the row: unlike <see cref="IsDeploymentBandOf"/> it
+    /// does not check bounds, because it answers a question about direction
+    /// rather than about legality, and a caller sorting units it already holds
+    /// has coordinates the board accepted.
+    /// </summary>
+    public static int RowsToEnemyBackLine(BattleSide side, HexCoord coord) => side switch
+    {
+        BattleSide.Player => coord.Row,
+        BattleSide.Opponent => (Rows - 1) - coord.Row,
+        _ => throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown side."),
+    };
+
+    /// <summary>
     /// Whether a side may deploy on a coordinate, ignoring what stands there.
     ///
     /// False for anything off the board. The band is a row rule, so it is

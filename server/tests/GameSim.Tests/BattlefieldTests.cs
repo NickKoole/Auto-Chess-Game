@@ -53,6 +53,42 @@ public sealed class BattlefieldTests
     }
 
     [Theory]
+    // The player advances north toward row 0, the opponent south toward row 7,
+    // so the same row means opposite things to the two of them.
+    [InlineData(BattleSide.Player, 7, 7)]
+    [InlineData(BattleSide.Player, 5, 5)]
+    [InlineData(BattleSide.Player, 0, 0)]
+    [InlineData(BattleSide.Opponent, 0, 7)]
+    [InlineData(BattleSide.Opponent, 2, 5)]
+    [InlineData(BattleSide.Opponent, 7, 0)]
+    public void Counts_the_rows_a_side_still_has_to_cross(BattleSide side, int row, int expected)
+    {
+        Assert.Equal(expected, Battlefield.RowsToEnemyBackLine(side, new HexCoord(row, 3)));
+    }
+
+    [Fact]
+    public void Gives_mirrored_rows_the_same_number_of_rows_to_cross()
+    {
+        // The property the unit order relies on: reflect a tile across the
+        // halfway line, hand it to the other side, and it is the same distance
+        // along. Without it a mirror match could not order its two armies alike.
+        for (int row = 0; row < Battlefield.Rows; row++)
+        {
+            Assert.Equal(
+                Battlefield.RowsToEnemyBackLine(BattleSide.Player, new HexCoord(row, 3)),
+                Battlefield.RowsToEnemyBackLine(
+                    BattleSide.Opponent, new HexCoord(Battlefield.Rows - 1 - row, 3)));
+        }
+    }
+
+    [Fact]
+    public void Refuses_to_count_rows_for_a_side_that_does_not_exist()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => Battlefield.RowsToEnemyBackLine((BattleSide)7, new HexCoord(5, 3)));
+    }
+
+    [Theory]
     [InlineData(3)]
     [InlineData(4)]
     public void Neutral_band_spans_rows_three_and_four(int row)

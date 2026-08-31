@@ -96,8 +96,9 @@ public sealed class BattleSimulation
     /// <summary>
     /// Every unit still alive, in the order they act.
     ///
-    /// The order is <see cref="BattleSetup.Units"/>' order — side, then row,
-    /// then column, fixed when the setup was built — filtered, never re-sorted.
+    /// The order is <see cref="BattleSetup.Units"/>' order — side, then
+    /// front-to-back within the army, then column, fixed when the setup was
+    /// built — filtered, never re-sorted.
     /// Two properties follow from that, and both are load-bearing: it is a
     /// total order, so no two units can tie and fall back on something
     /// incidental; and it does not change as units move, so a battle cannot be
