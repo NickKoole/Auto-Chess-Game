@@ -28,7 +28,13 @@ const SETTINGS = join(ROOT, "automation", "settings", "review.json");
 // The model itself is pinned in review.json. This is only where to land if it
 // is overloaded: an unattended run has no one to retry it, and a review that
 // never ran leaves the ticket sitting in state:needs-you for the wrong reason.
-const FALLBACK_MODEL = "claude-opus-4-8";
+//
+// Haiku rather than an Opus, now that the pinned model is Sonnet: an Opus
+// fallback would quietly reintroduce the cost this pinning exists to avoid, on
+// a path nobody is watching. The trade is real and worth knowing — a fallback
+// review is materially weaker than the one you asked for, and it is trusted the
+// same way. If a verdict ever looks thin, check whether it ran here.
+const FALLBACK_MODEL = "claude-haiku-4-5-20251001";
 const DIFF_BUDGET = 120_000; // characters of diff sent inline
 const a = args();
 
