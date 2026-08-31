@@ -392,4 +392,64 @@ public sealed class BattlefieldTests
 
         Assert.Throws<ArgumentNullException>(() => field.Move(null!, new HexCoord(4, 2)));
     }
+
+    // --- removal, for a unit that has died ------------------------------------
+
+    [Fact]
+    public void Removing_a_unit_frees_its_tile()
+    {
+        var field = new Battlefield();
+        BattleUnit unit = Unit(BattleSide.Player, 6, 2);
+        Assert.True(field.TryPlace(unit, out _));
+
+        field.Remove(unit);
+
+        Assert.Null(field.UnitAt(new HexCoord(6, 2)));
+        Assert.False(field.IsOccupied(new HexCoord(6, 2)));
+        Assert.True(field.IsPassable(new HexCoord(6, 2)));
+    }
+
+    [Fact]
+    public void Removing_does_not_touch_the_units_own_position()
+    {
+        // The corpse still knows where it fell. Harmless once nothing may
+        // target or path through it, and simpler than inventing a value to
+        // reset Position to.
+        var field = new Battlefield();
+        BattleUnit unit = Unit(BattleSide.Player, 6, 2);
+        Assert.True(field.TryPlace(unit, out _));
+
+        field.Remove(unit);
+
+        Assert.Equal(new HexCoord(6, 2), unit.Position);
+    }
+
+    [Fact]
+    public void Removing_a_unit_the_board_does_not_hold_throws()
+    {
+        var field = new Battlefield();
+        BattleUnit unit = Unit(BattleSide.Player, 5, 2);
+
+        Assert.Throws<InvalidOperationException>(() => field.Remove(unit));
+    }
+
+    [Fact]
+    public void Removing_a_unit_twice_throws_the_second_time()
+    {
+        var field = new Battlefield();
+        BattleUnit unit = Unit(BattleSide.Player, 5, 2);
+        Assert.True(field.TryPlace(unit, out _));
+
+        field.Remove(unit);
+
+        Assert.Throws<InvalidOperationException>(() => field.Remove(unit));
+    }
+
+    [Fact]
+    public void Removing_rejects_a_missing_unit()
+    {
+        var field = new Battlefield();
+
+        Assert.Throws<ArgumentNullException>(() => field.Remove(null!));
+    }
 }
