@@ -224,6 +224,34 @@ public sealed class Battlefield
         unit.Position = destination;
     }
 
+    /// <summary>
+    /// Takes a dead unit off the board, freeing its tile from the next call to
+    /// <see cref="IsPassable"/> onward.
+    ///
+    /// Does not touch <see cref="BattleUnit.Position"/>: the corpse still knows
+    /// where it fell, which is harmless once nothing may target or path through
+    /// it, and simpler than inventing a value to reset it to.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// The unit is not standing where the board says it is. Removing a unit
+    /// already removed, or one the board never placed, is a programmer error —
+    /// the simulation removes a unit at most once, in the tick it died.
+    /// </exception>
+    public void Remove(BattleUnit unit)
+    {
+        ArgumentNullException.ThrowIfNull(unit);
+
+        HexCoord at = unit.Position;
+        if (!IsInBounds(at) || !ReferenceEquals(_tiles[Index(at)], unit))
+        {
+            throw new InvalidOperationException(
+                $"{unit.Side} {unit.Definition.Id} says it is at {at}, but the board does not " +
+                "have it there. It may already have been removed.");
+        }
+
+        _tiles[Index(at)] = null;
+    }
+
     private static int Index(HexCoord coord) => (coord.Row * Columns) + coord.Col;
 
     /// <summary>

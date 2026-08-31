@@ -1,11 +1,12 @@
 namespace GameSim;
 
 /// <summary>
-/// How a battle ended for the player.
+/// Who won a battle, from the player's point of view.
 ///
 /// Stated from the player's point of view rather than as a winning
 /// <see cref="BattleSide"/>, because a draw is not a side and modelling it as a
-/// nullable side would push that special case into every caller.
+/// nullable side would push that special case into every caller. Computed from
+/// the more precise <see cref="BattleEnding"/> via <see cref="BattleResult.Outcome"/>.
 /// </summary>
 public enum BattleOutcome
 {

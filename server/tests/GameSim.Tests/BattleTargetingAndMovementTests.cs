@@ -14,21 +14,27 @@ public sealed class BattleTargetingAndMovementTests
 {
     private const ulong Seed = 0xC0FFEE;
 
-    /// <summary>Crosses a hex every tick, so cadence never confuses a test about something else.</summary>
+    /// <summary>
+    /// Crosses a hex every tick, so cadence never confuses a test about something
+    /// else. HP is high enough that story 1.5's real combat cannot finish one of
+    /// these off within any run this file makes — this class is about targeting
+    /// and movement, and a unit that can now die mid-test would make combat, not
+    /// the thing under test, decide the outcome.
+    /// </summary>
     private static readonly UnitDefinition Runner = new(
         id: "runner",
         displayName: "Runner",
-        maxHp: 100,
+        maxHp: 1_000_000,
         attackDamage: 12,
         attackIntervalTicks: 12,
         movementTicksPerHex: 1,
         attackRangeHexes: 1);
 
-    /// <summary>Crosses a hex every 6 ticks — the roster's ordinary infantry pace.</summary>
+    /// <summary>Crosses a hex every 6 ticks — the roster's ordinary infantry pace. See <see cref="Runner"/> for why HP is unrealistically high.</summary>
     private static readonly UnitDefinition Militia = new(
         id: "militia",
         displayName: "Militia",
-        maxHp: 100,
+        maxHp: 1_000_000,
         attackDamage: 12,
         attackIntervalTicks: 12,
         movementTicksPerHex: 6,
@@ -44,11 +50,11 @@ public sealed class BattleTargetingAndMovementTests
         movementTicksPerHex: 3,
         attackRangeHexes: 1);
 
-    /// <summary>Reaches 3 hexes, so it has somewhere to stop short of contact.</summary>
+    /// <summary>Reaches 3 hexes, so it has somewhere to stop short of contact. See <see cref="Runner"/> for why HP is unrealistically high.</summary>
     private static readonly UnitDefinition Archer = new(
         id: "archer",
         displayName: "Archer",
-        maxHp: 70,
+        maxHp: 1_000_000,
         attackDamage: 14,
         attackIntervalTicks: 14,
         movementTicksPerHex: 1,
@@ -59,15 +65,18 @@ public sealed class BattleTargetingAndMovementTests
     /// on an 8x8 hex grid is 11 — so it is always already in range and never has
     /// a reason to move.
     ///
-    /// This is how a test in this story pins a unit in place. Nothing can die
-    /// yet, so a stationary opponent cannot be arranged by killing it, and
-    /// setting a movement cooldown by hand would be testing against the very
-    /// counter half these tests are about.
+    /// This is how a test in this story pins a unit in place. Since story 1.5,
+    /// "always in range" also means a Sentinel is always willing to swing, so its
+    /// HP is unrealistically high for the same reason as <see cref="Runner"/>'s:
+    /// two Sentinels facing off, or a wall of them, must stay standing for the
+    /// whole of a long test rather than trading itself down to nothing. Setting a
+    /// movement cooldown by hand would be testing against the very mechanism
+    /// these tests are about, which is why this exists instead.
     /// </summary>
     private static readonly UnitDefinition Sentinel = new(
         id: "sentinel",
         displayName: "Sentinel",
-        maxHp: 100,
+        maxHp: 1_000_000,
         attackDamage: 12,
         attackIntervalTicks: 12,
         movementTicksPerHex: 1,
@@ -359,8 +368,8 @@ public sealed class BattleTargetingAndMovementTests
         BattleSetup odd = Build();
         BattleSetup even = Build();
 
-        Assert.Equal(BattleEndReason.TickCap, Run(odd, 999).Reason);
-        Assert.Equal(BattleEndReason.TickCap, Run(even, 1000).Reason);
+        Assert.Equal(BattleEnding.TickCapDraw, Run(odd, 999).Ending);
+        Assert.Equal(BattleEnding.TickCapDraw, Run(even, 1000).Ending);
 
         Assert.Equal(
             odd.Units.Select(u => (u.Side, u.Definition.Id, u.Position)),
@@ -517,7 +526,7 @@ public sealed class BattleTargetingAndMovementTests
 
         BattleUnit stuck = From(setup, 7, 3);
 
-        Assert.Equal(BattleEndReason.TickCap, Run(setup, BattleOptions.DefaultMaxTicks).Reason);
+        Assert.Equal(BattleEnding.TickCapDraw, Run(setup, BattleOptions.DefaultMaxTicks).Ending);
         Assert.Equal(new HexCoord(7, 3), stuck.Position);
     }
 
@@ -566,13 +575,20 @@ public sealed class BattleTargetingAndMovementTests
     public void Targeting_and_movement_spend_no_randomness()
     {
         // Every tie in this story is broken by a documented rule on the
-        // coordinates. The day one of them reaches for the generator instead,
-        // this fails — and it should, because a tie break that consumes a draw
+        // coordinates, and since story 1.5 a landed hit is the only thing a
+        // battle may ever draw for. Glacial() keeps each unit's cadence and
+        // range shape but slows it far past anything that closes within this
+        // run, so nobody ever gets in range and there is nothing here left to
+        // draw for. The two corners are 8-10 hexes apart — every unit still
+        // takes its single always-ready first step, so the gap can close by up
+        // to 2, but even then it stays comfortably past the 3-hex reach of the
+        // longest-ranged unit here. The day targeting or movement reaches for
+        // the generator anyway, this fails — a tie break that consumes a draw
         // shifts the stream for every roll that comes after it.
         var battle = new BattleSimulation(
             Setup(
-                [At(Runner, 7, 1), At(Militia, 7, 2), At(Archer, 6, 4)],
-                [At(Runner, 0, 1), At(Militia, 1, 5)]),
+                [At(Glacial(Runner), 7, 0), At(Glacial(Militia), 7, 1), At(Glacial(Archer), 6, 0)],
+                [At(Glacial(Runner), 0, 7), At(Glacial(Militia), 0, 6)]),
             Seed,
             new BattleOptions { MaxTicks = 300 });
 
@@ -580,4 +596,21 @@ public sealed class BattleTargetingAndMovementTests
 
         Assert.Equal(new Rng(Seed).Snapshot(), battle.Rng.Snapshot());
     }
+
+    /// <summary>
+    /// A copy of <paramref name="definition"/> that takes 10,000 ticks to cross
+    /// one hex — far past any run this file makes — so it still takes its single
+    /// always-ready first step but then sits for the rest of the test. Keeps
+    /// every other stat, including range and interval, so a test using this is
+    /// still exercising the real shape of that unit's decisions, just without
+    /// ever letting movement actually close the distance.
+    /// </summary>
+    private static UnitDefinition Glacial(UnitDefinition definition) => new(
+        id: definition.Id,
+        displayName: definition.DisplayName,
+        maxHp: definition.MaxHp,
+        attackDamage: definition.AttackDamage,
+        attackIntervalTicks: definition.AttackIntervalTicks,
+        movementTicksPerHex: 10_000,
+        attackRangeHexes: definition.AttackRangeHexes);
 }

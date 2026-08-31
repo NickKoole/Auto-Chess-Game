@@ -6,16 +6,39 @@ public sealed class BattleSimulationTests
 {
     private const ulong Seed = 0xC0FFEE;
 
+    // HP is unrealistically high: this class is about the loop and its
+    // termination, not combat, and a unit that story 1.5's real damage can
+    // actually finish off mid-test would let combat decide outcomes these tests
+    // were not written to expect. Tests that do want a side eliminated use
+    // Kill() below instead, which is exact and instant rather than probabilistic.
     private static readonly UnitDefinition Militia = new(
         id: "militia",
         displayName: "Militia",
-        maxHp: 100,
+        maxHp: 1_000_000,
         attackDamage: 12,
         attackIntervalTicks: 12,
         movementTicksPerHex: 6,
         attackRangeHexes: 1);
 
+    /// <summary>
+    /// Never closes the distance within any run this class makes: one hex per
+    /// 10,000 ticks. Used only by <see cref="The_loop_itself_consumes_no_randomness"/>,
+    /// where the point is that nothing ever gets close enough to land a hit — a
+    /// unit still takes its single always-ready first step, then sits, which is
+    /// what exercises the tick loop without ever reaching combat.
+    /// </summary>
+    private static readonly UnitDefinition Snail = new(
+        id: "snail",
+        displayName: "Snail",
+        maxHp: 100,
+        attackDamage: 12,
+        attackIntervalTicks: 12,
+        movementTicksPerHex: 10_000,
+        attackRangeHexes: 1);
+
     private static UnitPlacement At(int row, int col) => new(Militia, new HexCoord(row, col));
+
+    private static UnitPlacement SnailAt(int row, int col) => new(Snail, new HexCoord(row, col));
 
     /// <summary>
     /// A fresh two-a-side setup. Built on every call rather than shared, because
@@ -44,17 +67,19 @@ public sealed class BattleSimulationTests
     // --- the loop and its termination ---------------------------------------
 
     [Fact]
-    public void Runs_to_the_default_tick_cap_and_draws_when_nobody_can_act()
+    public void Runs_to_the_default_tick_cap_and_draws_when_neither_side_can_finish_the_other_off()
     {
         var battle = new BattleSimulation(Setup(), Seed);
 
         BattleResult result = battle.Run();
 
-        // The correct outcome until story 1.5: units close on each other and
-        // then stand there, because nothing can deal damage yet, so neither army
-        // can ever be eliminated and the cap is the only exit.
+        // Militia's HP here is the unrealistically high figure from the fixture
+        // above: the armies close and genuinely trade blows for the whole battle,
+        // but neither can kill the other, so the cap is the only exit. That is
+        // the tick-cap draw as it actually happens now that units can hurt each
+        // other — a real stalemate, not a battle that never started fighting.
         Assert.Equal(BattleOutcome.Draw, result.Outcome);
-        Assert.Equal(BattleEndReason.TickCap, result.Reason);
+        Assert.Equal(BattleEnding.TickCapDraw, result.Ending);
         Assert.Equal(BattleOptions.DefaultMaxTicks, result.EndTick);
     }
 
@@ -66,7 +91,7 @@ public sealed class BattleSimulationTests
         BattleResult result = battle.Run();
 
         Assert.Equal(BattleOutcome.Draw, result.Outcome);
-        Assert.Equal(BattleEndReason.TickCap, result.Reason);
+        Assert.Equal(BattleEnding.TickCapDraw, result.Ending);
         Assert.Equal(7, result.EndTick);
         Assert.Equal(7, battle.Tick);
     }
@@ -93,7 +118,7 @@ public sealed class BattleSimulationTests
         BattleResult result = new BattleSimulation(setup, Seed).Run();
 
         Assert.Equal(BattleOutcome.PlayerWin, result.Outcome);
-        Assert.Equal(BattleEndReason.Elimination, result.Reason);
+        Assert.Equal(BattleEnding.PlayerEliminatedOpponent, result.Ending);
         Assert.Equal(0, result.EndTick);
     }
 
@@ -106,7 +131,7 @@ public sealed class BattleSimulationTests
         BattleResult result = new BattleSimulation(setup, Seed).Run();
 
         Assert.Equal(BattleOutcome.OpponentWin, result.Outcome);
-        Assert.Equal(BattleEndReason.Elimination, result.Reason);
+        Assert.Equal(BattleEnding.OpponentEliminatedPlayer, result.Ending);
         Assert.Equal(0, result.EndTick);
     }
 
@@ -122,7 +147,7 @@ public sealed class BattleSimulationTests
         // Distinct from the tick-cap draw: both armies are gone, which is a
         // resolved battle rather than a stalled one.
         Assert.Equal(BattleOutcome.Draw, result.Outcome);
-        Assert.Equal(BattleEndReason.Elimination, result.Reason);
+        Assert.Equal(BattleEnding.MutualElimination, result.Ending);
         Assert.Equal(0, result.EndTick);
     }
 
@@ -188,10 +213,18 @@ public sealed class BattleSimulationTests
         // Guards the rule rather than today's behaviour: the day the loop
         // shuffles its turn order, or reaches for a second generator to break a
         // tie, this fails. A battle's randomness must be spent by units acting,
-        // where the event log can account for it — and it must be spent in the
-        // decide phase, so the sequence of draws is a function of the setup's
-        // order rather than of which units happened to move.
-        var battle = new BattleSimulation(Setup(), Seed, new BattleOptions { MaxTicks = 200 });
+        // where the event log can account for it — and it must be spent only when
+        // a hit actually lands, so a battle where nothing ever gets in range must
+        // draw nothing at all. Snail units make that structural rather than
+        // probabilistic: too slow to close within this run, so no attack is ever
+        // possible, however long combat's own draws would otherwise run.
+        Assert.True(BattleSetup.TryCreate(
+            [SnailAt(7, 1), SnailAt(5, 3)],
+            [SnailAt(0, 2), SnailAt(2, 6)],
+            out BattleSetup? setup,
+            out _));
+
+        var battle = new BattleSimulation(setup, Seed, new BattleOptions { MaxTicks = 200 });
 
         battle.Run();
 
