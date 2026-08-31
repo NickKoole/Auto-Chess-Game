@@ -16,7 +16,9 @@ namespace GameSim;
 public sealed class BattleUnit
 {
     /// <summary>
-    /// Creates a unit ready to fight: at full health, with no attack pending.
+    /// Creates a unit ready to fight: at full health, with no target, and with
+    /// neither cooldown pending — so it may attack and it may move on the very
+    /// first tick of the battle.
     /// </summary>
     public BattleUnit(UnitDefinition definition, BattleSide side, HexCoord position)
     {
@@ -27,6 +29,7 @@ public sealed class BattleUnit
         Position = position;
         CurrentHp = definition.MaxHp;
         AttackCooldownTicks = 0;
+        MovementCooldownTicks = 0;
     }
 
     /// <summary>The immutable template this unit was built from.</summary>
@@ -54,6 +57,34 @@ public sealed class BattleUnit
     /// have to be remembered at every call site.
     /// </summary>
     public bool IsAlive => CurrentHp > 0;
+
+    /// <summary>
+    /// The enemy this unit is currently going after, or null before it has
+    /// picked one.
+    ///
+    /// Sticky: it is re-acquired only when it is null or the unit it names is
+    /// dead, never merely because something nearer wandered past. A unit that
+    /// re-chose the nearest enemy every tick would jitter between two equidistant
+    /// foes and never close on either, and — once story 1.5 lands attacks — would
+    /// spread its damage across a line instead of killing anything.
+    ///
+    /// A reference to the other unit rather than a coordinate or an id: the
+    /// target moves, and a coordinate would go stale within a tick. Nothing here
+    /// writes to it.
+    /// </summary>
+    public BattleUnit? Target { get; set; }
+
+    /// <summary>
+    /// Ticks remaining before this unit may move again. Zero means ready, and
+    /// it is reset to <see cref="UnitDefinition.MovementTicksPerHex"/> after a
+    /// step — so a unit that crosses a hex in 3 ticks steps on ticks 1, 4, 7.
+    ///
+    /// Only an actual step resets it. A unit that wanted to move and found its
+    /// way blocked keeps whatever readiness it had accumulated and goes on the
+    /// first tick the tile frees; charging it for an attempt would let a
+    /// traffic jam quietly halve an army's speed.
+    /// </summary>
+    public int MovementCooldownTicks { get; set; }
 
     /// <summary>
     /// Ticks remaining before this unit may attack again. Zero means ready, and
