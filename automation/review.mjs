@@ -94,9 +94,32 @@ async function main() {
     must("git", ["reset", "--hard", `origin/${wt.branch}`], { cwd: wt.dir });
     must("git", ["fetch", "origin", wt.base], { cwd: wt.dir });
 
-    const range = `origin/${wt.base}...HEAD`;
+    // What a re-review is actually for. The first pass audits the whole branch;
+    // a later one is almost always checking that two or three findings were
+    // addressed, and re-auditing all of it from cold costs the same as the
+    // first pass for a fraction of the value — the bulk of a review's spend is
+    // its own context, re-read on every turn, so the saving is in not carrying
+    // the settled code at all.
+    //
+    // Only ever a narrowing of the range, never of the rules: the reviewer is
+    // still told the whole ticket, still holds the full report, and is still
+    // free to open any file it wants. It is being told where to look first, not
+    // what it may conclude.
+    const reviewed = session.reviewedSha;
+    const incremental =
+      reviewed &&
+      run("git", ["cat-file", "-e", `${reviewed}^{commit}`], { cwd: wt.dir }).code === 0 &&
+      run("git", ["merge-base", "--is-ancestor", reviewed, "HEAD"], { cwd: wt.dir }).code === 0 &&
+      run("git", ["rev-list", "--count", `${reviewed}..HEAD`], { cwd: wt.dir }).stdout.trim() !== "0";
+
+    const range = incremental ? `${reviewed}..HEAD` : `origin/${wt.base}...HEAD`;
     const stat = run("git", ["diff", "--stat", range], { cwd: wt.dir }).stdout;
     let diff = run("git", ["diff", range], { cwd: wt.dir }).stdout;
+
+    if (incremental) {
+      const since = run("git", ["log", "--oneline", `${reviewed}..HEAD`], { cwd: wt.dir }).stdout.trim();
+      console.log(`re-review: ${reviewed.slice(0, 7)}..HEAD only (${since.split("\n").length} new commit(s))`);
+    }
 
     if (!diff.trim()) {
       setState(n, "state:needs-you");
@@ -123,6 +146,19 @@ async function main() {
       DEV_REPORT: (pr?.body ?? "").slice(0, 20_000) || "(none)",
       FILES: stat || "(none)",
       DIFF: diff + (truncated ? "\n\n[diff truncated — read the changed files directly for the rest]" : ""),
+      SCOPE: incremental
+        ? "**This is a re-review.** You already reviewed this branch up to `" +
+          reviewed.slice(0, 7) + "`, and the diff below is only what has changed " +
+          "since — usually the author answering your last findings.\n\n" +
+          "Audit that delta properly: a fix can be wrong, incomplete, or can break " +
+          "something that was fine before. Judge it against the whole ticket, not " +
+          "just against the lines in front of you, and open any file you need — the " +
+          "narrowed diff is where to start, not the limit of what you may look at. " +
+          "Do not re-litigate settled code, and do not re-raise a finding the author " +
+          "consciously declined and recorded in the report; say so once if you still " +
+          "disagree.\n\nRun the suite as usual. It covers the whole branch, not the delta."
+        : "This is the first review of this branch. The diff below is everything it " +
+          "changes against `" + wt.base + "`.",
     });
 
     console.log("running claude (fresh session, read-only)…\n");
@@ -190,7 +226,14 @@ async function main() {
     ].join("\n"));
 
     setState(n, "state:needs-you");
-    saveSession(n, { lastVerdict: verdict.verdict, lastReviewAt: new Date().toISOString() });
+    // Recorded only once a verdict actually parsed. A run that failed or came
+    // back unreadable has reviewed nothing, and moving the mark for it would
+    // narrow the next pass past code no one has looked at.
+    saveSession(n, {
+      lastVerdict: verdict.verdict,
+      lastReviewAt: new Date().toISOString(),
+      reviewedSha: run("git", ["rev-parse", "HEAD"], { cwd: wt.dir }).stdout.trim() || undefined,
+    });
 
     console.log(`\n#${n} → state:needs-you`);
     console.log(`verdict: ${verdict.verdict} · ${verdict.findings.length} findings (${blocking.length} blocking)`);

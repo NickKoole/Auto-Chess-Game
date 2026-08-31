@@ -4,6 +4,10 @@ Branch `{{BRANCH}}` against `{{BASE}}`. The branch is checked out in this
 worktree, so read any file in full where the diff alone lacks context — and run
 the test suite rather than trusting the report below.
 
+## Scope of this pass
+
+{{SCOPE}}
+
 ## The ticket this has to satisfy
 
 {{BODY}}
