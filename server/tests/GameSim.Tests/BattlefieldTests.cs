@@ -276,4 +276,120 @@ public sealed class BattlefieldTests
 
         Assert.Throws<ArgumentNullException>(() => field.TryPlace(null!, out _));
     }
+
+    // --- movement, which is not deployment -----------------------------------
+
+    [Fact]
+    public void An_empty_tile_on_the_board_is_passable()
+    {
+        var field = new Battlefield();
+
+        Assert.True(field.IsPassable(new HexCoord(3, 4)));
+    }
+
+    [Fact]
+    public void An_occupied_tile_is_not_passable()
+    {
+        var field = new Battlefield();
+        Assert.True(field.TryPlace(Unit(BattleSide.Player, 6, 2), out _));
+
+        Assert.False(field.IsPassable(new HexCoord(6, 2)));
+    }
+
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(8, 0)]
+    [InlineData(0, 8)]
+    public void A_tile_off_the_board_is_not_passable(int row, int col)
+    {
+        // Answers rather than throwing, unlike UnitAt: a mover asking about all
+        // six neighbours of an edge tile is asking a reasonable question, and
+        // making it pre-filter for bounds would put this check at every call
+        // site.
+        var field = new Battlefield();
+
+        Assert.False(field.IsPassable(new HexCoord(row, col)));
+    }
+
+    [Fact]
+    public void Moving_a_unit_takes_the_board_and_the_unit_with_it()
+    {
+        var field = new Battlefield();
+        BattleUnit unit = Unit(BattleSide.Player, 5, 2);
+        Assert.True(field.TryPlace(unit, out _));
+
+        field.Move(unit, new HexCoord(4, 2));
+
+        Assert.Equal(new HexCoord(4, 2), unit.Position);
+        Assert.Same(unit, field.UnitAt(new HexCoord(4, 2)));
+        Assert.Null(field.UnitAt(new HexCoord(5, 2)));
+    }
+
+    [Fact]
+    public void Movement_ignores_the_bands_that_deployment_enforces()
+    {
+        // The whole reason movement has its own entry point: a unit advancing
+        // from row 5 into the neutral band, and on into the opposing half, is
+        // making legal moves onto tiles it could never have deployed on.
+        var field = new Battlefield();
+        BattleUnit unit = Unit(BattleSide.Player, 5, 2);
+        Assert.True(field.TryPlace(unit, out _));
+
+        field.Move(unit, new HexCoord(4, 2));
+        field.Move(unit, new HexCoord(3, 2));
+        field.Move(unit, new HexCoord(1, 2));
+
+        Assert.Equal(new HexCoord(1, 2), unit.Position);
+        Assert.NotNull(Battlefield.CheckTile(BattleSide.Player, new HexCoord(1, 2)));
+    }
+
+    [Theory]
+    [InlineData(-1, 0)]
+    [InlineData(8, 0)]
+    [InlineData(0, 8)]
+    public void Moving_off_the_board_throws(int row, int col)
+    {
+        var field = new Battlefield();
+        BattleUnit unit = Unit(BattleSide.Player, 7, 0);
+        Assert.True(field.TryPlace(unit, out _));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => field.Move(unit, new HexCoord(row, col)));
+    }
+
+    [Fact]
+    public void Moving_onto_an_occupied_tile_throws()
+    {
+        // A blocked advance is not a failed move: it is a unit that decided to
+        // stay put, and it decided before the board was ever asked. Anything
+        // reaching Move with an occupied destination skipped that decision.
+        var field = new Battlefield();
+        BattleUnit mover = Unit(BattleSide.Player, 6, 2);
+        BattleUnit blocker = Unit(BattleSide.Player, 5, 2);
+        Assert.True(field.TryPlace(mover, out _));
+        Assert.True(field.TryPlace(blocker, out _));
+
+        Assert.Throws<InvalidOperationException>(() => field.Move(mover, new HexCoord(5, 2)));
+
+        Assert.Equal(new HexCoord(6, 2), mover.Position);
+    }
+
+    [Fact]
+    public void Moving_a_unit_the_board_does_not_hold_throws()
+    {
+        // Catches the board and its units drifting apart — a unit whose Position
+        // was written directly rather than through Move would otherwise leave a
+        // ghost on the tile it claims to have come from.
+        var field = new Battlefield();
+        BattleUnit unit = Unit(BattleSide.Player, 5, 2);
+
+        Assert.Throws<InvalidOperationException>(() => field.Move(unit, new HexCoord(4, 2)));
+    }
+
+    [Fact]
+    public void Moving_rejects_a_missing_unit()
+    {
+        var field = new Battlefield();
+
+        Assert.Throws<ArgumentNullException>(() => field.Move(null!, new HexCoord(4, 2)));
+    }
 }

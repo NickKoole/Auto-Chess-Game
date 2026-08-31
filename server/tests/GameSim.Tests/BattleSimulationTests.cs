@@ -50,8 +50,9 @@ public sealed class BattleSimulationTests
 
         BattleResult result = battle.Run();
 
-        // The correct outcome for this story: units have no behaviour yet, so
-        // neither army can ever be eliminated and the cap is the only exit.
+        // The correct outcome until story 1.5: units close on each other and
+        // then stand there, because nothing can deal damage yet, so neither army
+        // can ever be eliminated and the cap is the only exit.
         Assert.Equal(BattleOutcome.Draw, result.Outcome);
         Assert.Equal(BattleEndReason.TickCap, result.Reason);
         Assert.Equal(BattleOptions.DefaultMaxTicks, result.EndTick);
@@ -153,9 +154,10 @@ public sealed class BattleSimulationTests
     [Fact]
     public void Same_setup_and_seed_leave_identical_unit_state_and_rng_state()
     {
-        // The result alone is a weak assertion while units have no behaviour:
-        // every battle currently draws at the cap. Comparing the whole ending
-        // state is what will actually catch divergence as behaviour lands.
+        // The result alone is a weak assertion while nothing can die: every
+        // battle currently draws at the cap. Comparing the whole ending state is
+        // what actually catches divergence — where every unit stopped, what it
+        // was going after, and how much of its next step it had banked.
         var a = new BattleSimulation(Setup(), Seed);
         var b = new BattleSimulation(Setup(), Seed);
 
@@ -164,8 +166,12 @@ public sealed class BattleSimulationTests
 
         Assert.Equal(a.Rng.Snapshot(), b.Rng.Snapshot());
         Assert.Equal(
-            a.Setup.Units.Select(u => (u.Side, u.Definition.Id, u.Position, u.CurrentHp, u.AttackCooldownTicks)),
-            b.Setup.Units.Select(u => (u.Side, u.Definition.Id, u.Position, u.CurrentHp, u.AttackCooldownTicks)));
+            a.Setup.Units.Select(State),
+            b.Setup.Units.Select(State));
+
+        static (BattleSide, string, HexCoord, int, int, int, HexCoord?) State(BattleUnit u) =>
+            (u.Side, u.Definition.Id, u.Position, u.CurrentHp,
+             u.AttackCooldownTicks, u.MovementCooldownTicks, u.Target?.Position);
     }
 
     [Fact]
@@ -182,7 +188,9 @@ public sealed class BattleSimulationTests
         // Guards the rule rather than today's behaviour: the day the loop
         // shuffles its turn order, or reaches for a second generator to break a
         // tie, this fails. A battle's randomness must be spent by units acting,
-        // where the event log can account for it.
+        // where the event log can account for it — and it must be spent in the
+        // decide phase, so the sequence of draws is a function of the setup's
+        // order rather than of which units happened to move.
         var battle = new BattleSimulation(Setup(), Seed, new BattleOptions { MaxTicks = 200 });
 
         battle.Run();

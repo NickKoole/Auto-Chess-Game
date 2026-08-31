@@ -18,11 +18,11 @@ namespace GameSim;
 /// </summary>
 public sealed class BattleSimulation
 {
-    // The turns taken in the tick currently running, cleared at the top of each
-    // one. Only the latest tick is kept: this exists so the loop's turn order is
-    // observable while units have no behaviour to observe, and a battle-long
-    // history would be a thousand-entry event log built for a test — which is
-    // story 1.6's job, done properly.
+    // The units that decided in the tick currently running, cleared at the top
+    // of each one. Only the latest tick is kept: this exists so the loop's
+    // decide order is observable, and a battle-long history would be a
+    // thousand-entry event log built for a test — which is story 1.6's job,
+    // done properly.
     private readonly List<BattleUnit> _turnsThisTick = [];
 
     /// <summary>
@@ -72,14 +72,13 @@ public sealed class BattleSimulation
 
     /// <summary>
     /// The units that took a turn in the most recently completed tick, in the
-    /// order they took it. Empty until the first tick has run.
+    /// order they decided in. Empty until the first tick has run.
     ///
-    /// This is what makes "each tick, units act in the setup's order" a
-    /// property a test can fail on. Until story 1.4 gives a turn a visible
-    /// effect, a loop that iterated <see cref="BattleSetup.Units"/> directly —
-    /// dead units included — or iterated backwards would be indistinguishable
-    /// from a correct one, because nothing a turn does is recorded anywhere
-    /// else. Asserting on <see cref="LivingUnits"/> alone tests the helper that
+    /// This is what makes "each tick, units decide in the setup's order" a
+    /// property a test can fail on. It is the decide order specifically, and
+    /// that is the one that matters: it fixes the sequence of random draws, and
+    /// it settles which of two units reaching for the same tile gets it.
+    /// Asserting on <see cref="LivingUnits"/> alone tests the helper that
     /// produces the order, not the loop that consumes it.
     ///
     /// <para>
@@ -164,50 +163,312 @@ public sealed class BattleSimulation
     }
 
     /// <summary>
-    /// One tick: every living unit takes its turn, in order.
+    /// One tick, in two phases: every living unit decides what to do against
+    /// the board as it stood at the start of the tick, and only then is every
+    /// decision applied.
     ///
-    /// Sequential by construction. Nothing here may be parallelised, however
-    /// independent two units look — the moment two turns can interleave, which
-    /// one claims a contested tile stops being a property of the seed.
+    /// <para>
+    /// The two phases are the whole point, and they are binding for stories 1.5
+    /// and 1.6. Resolving unit by unit would let the second unit see the first
+    /// one's move, which makes turn order decide contested tiles and who lands a
+    /// killing blow — and turn order starts with <c>BattleSide.Player = 0</c>,
+    /// so that would be a permanent advantage to one army hidden in an enum's
+    /// numbering. Split in two, order survives only as a tie break for two units
+    /// reaching for the same tile, never as "who strikes first".
+    /// </para>
+    ///
+    /// <para>
+    /// Nothing here may be parallelised, however independent two units look. The
+    /// decide phase runs in <see cref="BattleSetup.Units"/> order because that
+    /// order is what fixes the sequence of random draws; the apply phase runs in
+    /// it because that is what settles contested tiles.
+    /// </para>
     ///
     /// <para>
     /// The acting set is fixed at the top of the tick, not re-checked as it
-    /// runs: <see cref="LivingUnits"/> is materialised once, so from story 1.5
-    /// a unit killed earlier in this same tick still takes its own turn. That
-    /// is a rule, not an oversight — it means a tick resolves as a
-    /// simultaneous exchange, so who struck first within it cannot decide who
-    /// gets to strike at all, and trading blows stays symmetrical. The
-    /// alternative (a liveness check inside the loop, letting the dead drop out
-    /// mid-tick) makes turn order far more decisive and is the kind of thing
-    /// that shows up as an unexplained balance bias. Whichever 1.5 settles on
-    /// needs a test that can tell the two apart; nothing can die yet, so no
-    /// test here distinguishes them.
+    /// runs: <see cref="LivingUnits"/> is materialised once, so from story 1.5 a
+    /// unit killed in this same tick still gets to decide and to act. A unit is
+    /// alive for the whole of the tick it dies in, and trading blows stays
+    /// symmetrical.
     /// </para>
     /// </summary>
     private void RunTick()
     {
         _turnsThisTick.Clear();
 
-        foreach (BattleUnit unit in LivingUnits())
+        IReadOnlyList<BattleUnit> acting = LivingUnits();
+
+        // The clock advances before anyone decides, so readiness is a property
+        // of the tick a unit is deciding in rather than of the one before it.
+        // Only an actual step resets a cooldown, down in the apply phase — which
+        // is what lets a blocked unit keep the readiness it has accumulated.
+        foreach (BattleUnit unit in acting)
+        {
+            if (unit.MovementCooldownTicks > 0)
+            {
+                unit.MovementCooldownTicks--;
+            }
+        }
+
+        var decisions = new List<UnitDecision>(acting.Count);
+
+        foreach (BattleUnit unit in acting)
         {
             _turnsThisTick.Add(unit);
-            Act(unit, Rng);
+            decisions.Add(Decide(unit, Rng));
+        }
+
+        Apply(Setup.Battlefield, decisions);
+    }
+
+    /// <summary>
+    /// One unit's choice for this tick, read off the board as it stood before
+    /// anything in this tick moved.
+    ///
+    /// This is the only phase that may draw from <paramref name="rng"/>, and the
+    /// explicit parameter is where those draws are meant to come from. Because it
+    /// runs in <see cref="BattleSetup.Units"/> order and <see cref="Apply"/>
+    /// genuinely cannot draw — it is static, so there is no <c>this.Rng</c> for it
+    /// to reach — the sequence of draws in a battle is a function of that order
+    /// alone, and not of which units happened to end up moving. Story 1.4 spends
+    /// nothing: targeting and stepping are both settled by documented tie breaks
+    /// rather than by rolls.
+    ///
+    /// <para>
+    /// The parameter is a signpost rather than a fence: this method is an
+    /// instance method, so <see cref="Rng"/> is in scope whatever its signature
+    /// says. What actually holds the rule is
+    /// <c>Targeting_and_movement_spend_no_randomness</c> and
+    /// <c>The_loop_itself_consumes_no_randomness</c>, which compare the
+    /// generator's state after a battle against a freshly seeded one.
+    /// </para>
+    ///
+    /// <para>
+    /// It does write one thing — <see cref="BattleUnit.Target"/>, on the unit
+    /// deciding. That is safe precisely because no unit ever reads another
+    /// unit's target, so it cannot leak one unit's decision into another's.
+    /// Position is the state that must not move mid-phase, and it does not.
+    /// </para>
+    /// </summary>
+    private UnitDecision Decide(BattleUnit unit, Rng rng)
+    {
+        ArgumentNullException.ThrowIfNull(unit);
+        ArgumentNullException.ThrowIfNull(rng);
+
+        // Sticky: re-acquired only when there is no target or it is dead, never
+        // because something nearer wandered past.
+        if (unit.Target is null || !unit.Target.IsAlive)
+        {
+            unit.Target = NearestEnemy(unit);
+        }
+
+        if (unit.Target is not BattleUnit target)
+        {
+            // Nothing left to fight. The battle is already decided; this is just
+            // the tick that has not noticed yet.
+            return new UnitDecision(unit, null);
+        }
+
+        // In range: hold position. Story 1.5 hangs the swing here.
+        if (unit.Position.DistanceTo(target.Position) <= unit.Definition.AttackRangeHexes)
+        {
+            return new UnitDecision(unit, null);
+        }
+
+        if (unit.MovementCooldownTicks > 0)
+        {
+            return new UnitDecision(unit, null);
+        }
+
+        return new UnitDecision(unit, StepToward(unit, target));
+    }
+
+    /// <summary>
+    /// Applies every decision, in the order they were decided.
+    ///
+    /// Static, and that is the point rather than a tidiness choice: a static
+    /// method has no <c>this</c>, so it cannot reach <see cref="Rng"/> however
+    /// much a future author would like it to. Applying a decision must never
+    /// draw — a draw here would make the sequence of random values depend on
+    /// which units happened to end up moving, rather than on
+    /// <see cref="BattleSetup.Units"/> order alone, and two replays of one seed
+    /// would diverge the first time a tile was contested. Hence the battlefield
+    /// arriving as a parameter: it is the only state applying needs.
+    ///
+    /// It is also the only place a movement cooldown is reset, so a unit that
+    /// decided to move and then lost the tile keeps its readiness and goes as
+    /// soon as the tile frees.
+    /// </summary>
+    private static void Apply(Battlefield field, IReadOnlyList<UnitDecision> decisions)
+    {
+        // The tiles taken this tick. A set for lookup only — it is never
+        // enumerated, so its order cannot reach an outcome.
+        var claimed = new HashSet<HexCoord>();
+
+        foreach (UnitDecision decision in decisions)
+        {
+            if (decision.MoveTo is not HexCoord destination)
+            {
+                continue;
+            }
+
+            // Two units wanted the same empty tile. The one earlier in
+            // BattleSetup.Units order has already taken it, and this one stays
+            // put for the tick rather than re-pathing — re-pathing can cascade
+            // into a second contested tile and turns a tick into constraint
+            // solving.
+            if (!claimed.Add(destination))
+            {
+                continue;
+            }
+
+            // Cannot throw: the destination was empty when this unit decided,
+            // nothing may move into a tile vacated during the tick, and the
+            // claim above rules out two units taking the same one.
+            field.Move(decision.Unit, destination);
+            decision.Unit.MovementCooldownTicks = decision.Unit.Definition.MovementTicksPerHex;
         }
     }
 
     /// <summary>
-    /// One unit's turn, and deliberately empty: targeting, movement and
-    /// attacking are later stories, and a battle that runs to the tick cap
-    /// because nobody can do anything is the correct outcome for this one.
+    /// The closest living enemy, or null once that side has been wiped out.
     ///
-    /// The signature is the point. A turn sees exactly one unit and the
-    /// battle's single generator, handed to it explicitly, so the behaviour
-    /// that lands here cannot quietly acquire a second source of randomness.
+    /// Ties break on the lowest row, then the lowest column — a documented total
+    /// order over distinct tiles, never a roll. Two units cannot share a tile, so
+    /// it always resolves, and it resolves the same way on every machine.
     /// </summary>
-    private static void Act(BattleUnit unit, Rng rng)
+    private BattleUnit? NearestEnemy(BattleUnit unit)
     {
-        ArgumentNullException.ThrowIfNull(unit);
-        ArgumentNullException.ThrowIfNull(rng);
+        BattleUnit? best = null;
+        int bestDistance = 0;
+
+        foreach (BattleUnit candidate in Setup.Units)
+        {
+            if (candidate.Side == unit.Side || !candidate.IsAlive)
+            {
+                continue;
+            }
+
+            int distance = unit.Position.DistanceTo(candidate.Position);
+
+            if (best is null || Beats(distance, candidate.Position, bestDistance, best.Position))
+            {
+                best = candidate;
+                bestDistance = distance;
+            }
+        }
+
+        return best;
+
+        static bool Beats(int distance, HexCoord at, int bestDistance, HexCoord bestAt)
+        {
+            if (distance != bestDistance)
+            {
+                return distance < bestDistance;
+            }
+
+            if (at.Row != bestAt.Row)
+            {
+                return at.Row < bestAt.Row;
+            }
+
+            return at.Col < bestAt.Col;
+        }
+    }
+
+    /// <summary>
+    /// The hex this unit should step onto to close on its target, or null if
+    /// every step that would help is blocked or off the board.
+    ///
+    /// Greedy and deliberately not a pathfinder: only neighbours strictly closer
+    /// to the target are considered at all. On an open 8x8 field with no terrain
+    /// that is sufficient, it is far easier to keep deterministic than A*, and it
+    /// removes the shuffling-on-the-spot failure mode without needing a guard for
+    /// it: a step is only ever taken when it closes the distance, so a unit can
+    /// never trade a tile for one no better than it. The cost is that a unit
+    /// stuck behind a wall of its own army simply waits; if that shows up in
+    /// playtesting it is a follow-up story, not a reason to build a pathfinder
+    /// now.
+    ///
+    /// <para>
+    /// Note the limit of that: the step is closer to where the target stood
+    /// <em>this tick</em>. Targets move, so a unit's distance to its own target
+    /// can still rise between ticks, and it can revisit a tile it has left —
+    /// two units converging from different directions is enough. Story 1.5 makes
+    /// that sharper, because death re-points a unit at a new enemy
+    /// discontinuously. So this is not an unconditional no-oscillation proof, and
+    /// nobody should read it as one when deciding whether 1.5 needs a guard.
+    /// </para>
+    ///
+    /// <para>
+    /// A pointy-top grid has no due-north neighbour, so a unit closing vertical
+    /// distance always has two equally good steps and always needs a tie break.
+    /// It is: the smaller column gap to the target, then the lowest row, then the
+    /// lowest column — a total order over distinct tiles, and no RNG. The column
+    /// gap leads because without it the lowest-column rule alone makes a unit
+    /// drift steadily west as it zigzags, sidestepping away from a target to its
+    /// east for the whole advance. Led by the gap, the zigzag stays centred on
+    /// the target's column, which is both what an advance should look like and
+    /// what the replay viewer will have to draw.
+    /// </para>
+    /// </summary>
+    private HexCoord? StepToward(BattleUnit unit, BattleUnit target)
+    {
+        HexCoord goal = target.Position;
+        int currentDistance = unit.Position.DistanceTo(goal);
+
+        HexCoord? best = null;
+        int bestDistance = 0;
+
+        foreach (HexCoord step in unit.Position.Neighbours())
+        {
+            // Passability covers bounds and occupancy together, and it is read
+            // here in the decide phase — so "empty" means empty at the start of
+            // the tick, not empty by the time anything moves. A unit may never
+            // follow another into a tile vacated during the same tick: allowing
+            // it means resolving chains of moves, which is sequential resolution
+            // wearing a disguise.
+            if (!Setup.Battlefield.IsPassable(step))
+            {
+                continue;
+            }
+
+            int distance = step.DistanceTo(goal);
+            if (distance >= currentDistance)
+            {
+                continue;
+            }
+
+            if (best is null || Beats(step, distance, best.Value, bestDistance, goal))
+            {
+                best = step;
+                bestDistance = distance;
+            }
+        }
+
+        return best;
+
+        static bool Beats(HexCoord step, int distance, HexCoord best, int bestDistance, HexCoord goal)
+        {
+            if (distance != bestDistance)
+            {
+                return distance < bestDistance;
+            }
+
+            int gap = Math.Abs(step.Col - goal.Col);
+            int bestGap = Math.Abs(best.Col - goal.Col);
+            if (gap != bestGap)
+            {
+                return gap < bestGap;
+            }
+
+            if (step.Row != best.Row)
+            {
+                return step.Row < best.Row;
+            }
+
+            return step.Col < best.Col;
+        }
     }
 
     /// <summary>

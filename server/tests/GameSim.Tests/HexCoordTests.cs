@@ -135,6 +135,62 @@ public sealed class HexCoordTests
     }
 
     [Fact]
+    public void Neighbours_are_the_six_hexes_one_step_away()
+    {
+        // Checked well outside the board as well as on it, because the mover
+        // asks for the neighbours of an edge tile and filters the answers — so
+        // the ones that fall off still have to be the right ones.
+        var wrong = new List<string>();
+
+        for (int row = -4; row < Battlefield.Rows + 4; row++)
+        {
+            for (int col = -4; col < Battlefield.Columns + 4; col++)
+            {
+                var centre = new HexCoord(row, col);
+                HexCoord[] neighbours = centre.Neighbours();
+
+                if (neighbours.Length != 6 || neighbours.Distinct().Count() != 6)
+                {
+                    wrong.Add($"{centre} returned {neighbours.Length} neighbours");
+                    continue;
+                }
+
+                foreach (HexCoord neighbour in neighbours)
+                {
+                    int distance = centre.DistanceTo(neighbour);
+                    if (distance != 1)
+                    {
+                        wrong.Add($"{centre} -> {neighbour} was {distance}");
+                    }
+                }
+            }
+        }
+
+        Assert.Empty(wrong);
+    }
+
+    [Theory]
+    // An odd row leans east: its diagonal neighbours are this column and the one
+    // to the east.
+    [InlineData(3, 3, new[] { 2, 3, 2, 4, 3, 2, 3, 4, 4, 3, 4, 4 })]
+    // An even row leans west.
+    [InlineData(4, 3, new[] { 3, 2, 3, 3, 4, 2, 4, 4, 5, 2, 5, 3 })]
+    public void Neighbours_follow_the_odd_r_lean(int row, int col, int[] expected)
+    {
+        // Stated as literal coordinates rather than recomputed from the lean, so
+        // a flipped parity fails here instead of being confirmed by the same
+        // mistake twice.
+        HexCoord[] want =
+        [
+            .. Enumerable.Range(0, expected.Length / 2)
+                .Select(i => new HexCoord(expected[i * 2], expected[(i * 2) + 1]))
+        ];
+
+        Assert.Equal(want.OrderBy(h => h.Row).ThenBy(h => h.Col),
+                     new HexCoord(row, col).Neighbours().OrderBy(h => h.Row).ThenBy(h => h.Col));
+    }
+
+    [Fact]
     public void Every_tile_has_exactly_six_neighbours_one_hex_away()
     {
         // The odd-r neighbour rule stated independently of the conversion: odd

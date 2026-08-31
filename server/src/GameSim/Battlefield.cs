@@ -12,13 +12,13 @@ namespace GameSim;
 /// may walk through. With pointy-top hexes in offset rows, a row is a clean
 /// horizontal band, so battle lines form along rows and close on each other.
 ///
-/// Occupancy lives here rather than beside the board, because from story 1.3
-/// onwards every tick moves units, and a mover that had to reach past the board
-/// to find out what is in its way would end up owning this array anyway. That
-/// mover will not be <see cref="TryPlace"/>: deployment and movement obey
+/// Occupancy lives here rather than beside the board, because every tick moves
+/// units, and a mover that had to reach past the board to find out what is in
+/// its way would end up owning this array anyway. That mover is
+/// <see cref="Move"/>, not <see cref="TryPlace"/>: deployment and movement obey
 /// different rules on the same tiles — crossing the neutral band is legal
-/// movement and illegal deployment — so movement needs its own entry point
-/// here, checking bounds and occupancy but not the bands.
+/// movement and illegal deployment — so movement has its own entry point here,
+/// checking bounds and occupancy but not the bands.
 /// </summary>
 public sealed class Battlefield
 {
@@ -151,6 +151,82 @@ public sealed class Battlefield
     }
 
     /// <summary>
+    /// Whether a unit could step onto a tile: on the board, and empty.
+    ///
+    /// The movement counterpart to <see cref="CheckTile"/>, and deliberately
+    /// blind to the deployment bands — a unit advancing from row 5 into the
+    /// neutral band is making a legal move onto a tile it could never have
+    /// deployed on. It answers about the board as it stands right now, so a
+    /// caller that needs "empty at the start of the tick" has to ask before
+    /// anything has moved, which is what the simulation's decide phase is for.
+    ///
+    /// <para>
+    /// Returns false off the board rather than throwing, unlike
+    /// <see cref="UnitAt"/>: a mover asking about all six neighbours of an edge
+    /// tile is asking a perfectly reasonable question, and making it pre-filter
+    /// for bounds would just move this check to every call site.
+    /// </para>
+    /// </summary>
+    public bool IsPassable(HexCoord coord) => IsInBounds(coord) && _tiles[Index(coord)] is null;
+
+    /// <summary>
+    /// Moves a unit to an adjacent-or-not destination, updating both the board
+    /// and the unit's own <see cref="BattleUnit.Position"/> together.
+    ///
+    /// Every failure here is a programmer error and throws, rather than coming
+    /// back as a reason the way <see cref="TryPlace"/>'s do. A blocked advance
+    /// is not a failed move: it is a unit that decided to stay put, decided
+    /// before this is ever called. Anything that reaches this method with a
+    /// destination off the board or already occupied has skipped that decision,
+    /// and continuing from it would tear the board and the units apart.
+    ///
+    /// <para>
+    /// Distance is not checked. The one-hex-per-step rule belongs to the mover,
+    /// not to the board — a later dash or blink would move further and would
+    /// have no business getting a second entry point here to do it.
+    /// </para>
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">The destination is off the board.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The destination is occupied, or the unit is not standing where the board
+    /// says it is.
+    /// </exception>
+    public void Move(BattleUnit unit, HexCoord destination)
+    {
+        ArgumentNullException.ThrowIfNull(unit);
+
+        if (!IsInBounds(destination))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(destination),
+                destination,
+                $"{destination} is off the board: rows are 0-{Rows - 1} and columns are 0-{Columns - 1}.");
+        }
+
+        int to = Index(destination);
+        if (_tiles[to] is BattleUnit occupant)
+        {
+            throw new InvalidOperationException(
+                $"Cannot move {unit.Side} {unit.Definition.Id} to {destination}: " +
+                $"it is occupied by {occupant.Side} {occupant.Definition.Id}.");
+        }
+
+        HexCoord origin = unit.Position;
+        if (!IsInBounds(origin) || !ReferenceEquals(_tiles[Index(origin)], unit))
+        {
+            throw new InvalidOperationException(
+                $"{unit.Side} {unit.Definition.Id} says it is at {origin}, but the board does not " +
+                "have it there. The board and its units have been allowed to drift apart.");
+        }
+
+        _tiles[Index(origin)] = null;
+        _tiles[to] = unit;
+        unit.Position = destination;
+    }
+
+    private static int Index(HexCoord coord) => (coord.Row * Columns) + coord.Col;
+
+    /// <summary>
     /// The unit standing on a tile, or null if it is empty.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">
@@ -169,7 +245,7 @@ public sealed class Battlefield
                 $"{coord} is off the board: rows are 0-{Rows - 1} and columns are 0-{Columns - 1}.");
         }
 
-        return _tiles[(coord.Row * Columns) + coord.Col];
+        return _tiles[Index(coord)];
     }
 
     /// <summary>Whether a unit is standing on a tile.</summary>
@@ -183,7 +259,8 @@ public sealed class Battlefield
     /// Deployment only. This applies the band rules, so it rejects the neutral
     /// band and the opposing half outright — which makes it the wrong method to
     /// move a unit with, since a unit advancing from row 5 to row 4 is making a
-    /// legal move onto a tile it could never have deployed on.
+    /// legal move onto a tile it could never have deployed on. Use
+    /// <see cref="Move"/> for that.
     /// </summary>
     public bool TryPlace(BattleUnit unit, [NotNullWhen(false)] out PlacementError? error)
     {
@@ -197,7 +274,7 @@ public sealed class Battlefield
             return false;
         }
 
-        int index = (coord.Row * Columns) + coord.Col;
+        int index = Index(coord);
         if (_tiles[index] is BattleUnit occupant)
         {
             error = new PlacementError(

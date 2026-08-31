@@ -39,6 +39,45 @@ public readonly record struct HexCoord(int Row, int Col)
         new(cube.Z, cube.X + ((cube.Z - (cube.Z & 1)) / 2));
 
     /// <summary>
+    /// The six hexes adjacent to this one, under the odd-r layout: odd rows
+    /// lean east, even rows lean west, so the two northern neighbours are
+    /// <c>(Row - 1, Col)</c> and <c>(Row - 1, Col + lean)</c> and the two
+    /// southern ones mirror them. East and west are always <c>Col ± 1</c>.
+    ///
+    /// <para>
+    /// The order they come back in is fixed but arbitrary — north-west pair,
+    /// west, east, south pair — and no caller may let it decide anything. A
+    /// mover choosing between two equally good steps has to break the tie on
+    /// the coordinates themselves, or the outcome would depend on the order
+    /// this method happens to build its array in, which is precisely the class
+    /// of hidden ordering dependency the determinism rules exist to prevent.
+    /// </para>
+    ///
+    /// <para>
+    /// Bounds are not this type's business: a hex on the edge of a board still
+    /// has six neighbours, some of which are off that particular board. Filter
+    /// with <see cref="Battlefield.IsInBounds"/>.
+    /// </para>
+    /// </summary>
+    public HexCoord[] Neighbours()
+    {
+        // Odd rows sit half a hex to the right, so their diagonal neighbours are
+        // the column they are in and the one east of it; even rows take the
+        // column they are in and the one west of it.
+        int lean = (Row & 1) == 1 ? 1 : -1;
+
+        return
+        [
+            new(Row - 1, Col),
+            new(Row - 1, Col + lean),
+            new(Row, Col - 1),
+            new(Row, Col + 1),
+            new(Row + 1, Col),
+            new(Row + 1, Col + lean),
+        ];
+    }
+
+    /// <summary>
     /// Hex distance to another coordinate: 1 for an adjacent hex, 0 for itself.
     /// </summary>
     public int DistanceTo(HexCoord other) => ToCube().DistanceTo(other.ToCube());
