@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Ship an approved ticket: push what is left, take the PR out of draft, wait
-// for CI, squash-merge, and clear away the worktree.
+// for CI, squash-merge, clear away the worktree, and fast-forward this checkout
+// onto the merge.
 //
 //   node automation/ship.mjs 3              ship ticket 3
 //   node automation/ship.mjs 3 --dry-run    check every precondition, change nothing
@@ -250,6 +251,53 @@ function cleanUp(n, session, worktreeLives) {
   return true;
 }
 
+/// Fast-forward the main checkout onto what was just merged.
+///
+/// Without this the checkout a human actually looks at never sees the work it
+/// just shipped. The whole ticket ran in a worktree that this script has just
+/// deleted, and the merge happened on GitHub, so `main` here sits one commit
+/// behind origin with none of the merged files on disk — which reads as "did it
+/// actually land?" every single time.
+///
+/// Strictly a fast-forward, and never fatal. The merge has already happened by
+/// the time this runs, so a checkout that cannot move is something to report
+/// and leave alone, not a reason to fail a ship that succeeded. Whether the move
+/// is safe is git's call, not this script's: attempt it and relay the refusal,
+/// rather than reimplementing git's own idea of what a dirty tree can survive.
+function syncBase(base) {
+  run("git", ["fetch", "origin", "--prune"], { cwd: ROOT });
+
+  const branch = run("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: ROOT }).stdout.trim();
+
+  if (branch !== base) {
+    console.log("\n! " + ROOT + " is on " + branch + ", not " + base + " — left where it is.");
+    console.log("  Catch it up when you are back on " + base + ":  git pull --ff-only");
+    return;
+  }
+
+  const behind = Number(
+    run("git", ["rev-list", "--count", "HEAD..origin/" + base], { cwd: ROOT }).stdout
+  ) || 0;
+
+  if (behind === 0) {
+    return;
+  }
+
+  const pulled = run("git", ["merge", "--ff-only", "origin/" + base], { cwd: ROOT });
+
+  if (pulled.code === 0) {
+    console.log("pulled " + base + ": " + behind + " commit" + (behind === 1 ? "" : "s") + " in.");
+    return;
+  }
+
+  // Almost always a local edit to a file the merge also touches. Naming the
+  // command is the whole value here — the state is recoverable, and guessing at
+  // it on the human's behalf is how a stash goes missing.
+  console.log("\n! merged, but could not fast-forward " + base + ":");
+  console.log("  " + (pulled.stderr || pulled.stdout).trim());
+  console.log("  " + ROOT + " is " + behind + " behind. Deal with the tree, then:  git pull --ff-only");
+}
+
 export async function ship(n, { dryRun = false, keep = false, timeoutMinutes = 20 } = {}) {
   assertGh();
 
@@ -268,11 +316,13 @@ export async function ship(n, { dryRun = false, keep = false, timeoutMinutes = 2
     console.log("\n--dry-run: every precondition passes.");
     if (pr.state === "MERGED") {
       console.log(keep
-        ? "Nothing to do: already merged, and --keep leaves the worktree alone."
-        : "Would clear away the worktree, its branch and its state file. Nothing to merge.");
+        ? "Already merged, and --keep leaves the worktree alone. Would fast-forward this checkout."
+        : "Would clear away the worktree, its branch and its state file, and fast-forward this " +
+          "checkout. Nothing to merge.");
     } else {
-      console.log("Would push, ready, wait for CI, squash-merge, and " +
-        (keep ? "keep the worktree." : "clean up the worktree."));
+      console.log("Would push, ready, wait for CI, squash-merge, " +
+        (keep ? "keep the worktree" : "clean up the worktree") +
+        ", and fast-forward this checkout.");
     }
     return 0;
   }
@@ -280,7 +330,9 @@ export async function ship(n, { dryRun = false, keep = false, timeoutMinutes = 2
   // Re-running after an interrupted run should finish the job, not refuse.
   if (pr.state === "MERGED") {
     console.log("\nalready merged — clearing away what is left.");
-    return keep || cleanUp(n, session, worktreeLives) ? 0 : 1;
+    const tidied = keep || cleanUp(n, session, worktreeLives);
+    syncBase(session.base ?? "main");
+    return tidied ? 0 : 1;
   }
 
   if (worktreeLives) {
@@ -314,6 +366,8 @@ export async function ship(n, { dryRun = false, keep = false, timeoutMinutes = 2
 
   const cleaned = keep ? true : cleanUp(n, session, worktreeLives);
   if (keep) console.log("--keep: " + session.dir + " left in place.");
+
+  syncBase(session.base ?? "main");
 
   console.log("\nstate:done arrives from the pr-closed workflow in a moment.");
   return cleaned ? 0 : 1;
