@@ -30,7 +30,7 @@ public static class BattleResponseFactory
                 Position = MapCoord(unit.Position),
             });
 
-            definitions.TryAdd(unit.Definition.Id, MapDefinition(unit.Definition));
+            definitions.TryAdd(unit.Definition.Id, MapUnitDefinition(unit.Definition));
         }
 
         return new SimulateBattleResponse
@@ -89,7 +89,7 @@ public static class BattleResponseFactory
             nameof(battleEvent), battleEvent, $"Unknown battle event type '{battleEvent.GetType()}'."),
     };
 
-    private static UnitDefinitionDto MapDefinition(UnitDefinition definition) => new()
+    private static UnitDefinitionDto MapUnitDefinition(UnitDefinition definition) => new()
     {
         Id = definition.Id,
         DisplayName = definition.DisplayName,
