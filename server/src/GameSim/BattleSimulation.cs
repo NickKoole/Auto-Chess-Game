@@ -25,6 +25,12 @@ public sealed class BattleSimulation
     // done properly.
     private readonly List<BattleUnit> _turnsThisTick = [];
 
+    // Append-only for the life of the battle, unlike _turnsThisTick above: an
+    // event once written describes something that already happened and is
+    // never revised, so — unlike TurnsTakenLastTick — Events hands out this
+    // same list rather than a defensive copy.
+    private readonly List<BattleEvent> _events = [];
+
     /// <summary>
     /// Prepares a battle. Nothing runs until <see cref="Run"/> is called.
     /// </summary>
@@ -93,6 +99,18 @@ public sealed class BattleSimulation
     public IReadOnlyList<BattleUnit> TurnsTakenLastTick => [.. _turnsThisTick];
 
     /// <summary>
+    /// Everything that has happened in this battle so far, in the order it
+    /// happened: every unit's starting state at tick 0, then each tick's moves,
+    /// attacks, damage and deaths. Empty until <see cref="Run"/> is called.
+    ///
+    /// This is the log story 1.6 exists to build: a client reconstructs a whole
+    /// battle from this list alone — plus a static catalog to turn a
+    /// <see cref="UnitSpawnedEvent.DefinitionId"/> back into stats — without ever
+    /// running the simulation itself.
+    /// </summary>
+    public IReadOnlyList<BattleEvent> Events => _events;
+
+    /// <summary>
     /// Every unit still alive, in the order they act.
     ///
     /// The order is <see cref="BattleSetup.Units"/>' order — side, then
@@ -138,6 +156,21 @@ public sealed class BattleSimulation
             throw new InvalidOperationException(
                 $"This battle has already been run: it ended at tick {finished.EndTick}. " +
                 "Build a fresh BattleSetup and BattleSimulation to run it again.");
+        }
+
+        // Tick 0: the setup itself, before anything has decided or moved. Every
+        // unit that starts the battle gets one of these, in Setup.Units order —
+        // the same total order everything else in this class is keyed to.
+        foreach (BattleUnit unit in Setup.Units)
+        {
+            _events.Add(new UnitSpawnedEvent
+            {
+                Tick = 0,
+                UnitId = unit.Id,
+                Side = unit.Side,
+                DefinitionId = unit.Definition.Id,
+                Position = unit.Position,
+            });
         }
 
         while (true)
@@ -233,13 +266,20 @@ public sealed class BattleSimulation
             decisions.Add(Decide(unit, Rng));
         }
 
-        Apply(Setup.Battlefield, decisions);
+        _events.AddRange(Apply(Setup.Battlefield, decisions, Tick));
 
+        // A separate pass, deliberately after every decision has applied: two
+        // attackers can jointly kill a target that either hit alone would not,
+        // so whether a unit died this tick is only knowable once all of the
+        // tick's damage has landed — not while Apply is still working through
+        // decisions one at a time.
         foreach (BattleUnit unit in acting)
         {
             if (!unit.IsAlive)
             {
+                HexCoord diedAt = unit.Position;
                 Setup.Battlefield.Remove(unit);
+                _events.Add(new UnitDiedEvent { Tick = Tick, UnitId = unit.Id, Position = diedAt });
             }
         }
     }
@@ -384,9 +424,20 @@ public sealed class BattleSimulation
     /// the same total. That is what lets two units kill a shared target — or
     /// kill each other — on the same tick.
     /// </para>
+    ///
+    /// <para>
+    /// Returns the events this tick's moves and attacks produced, in the order
+    /// <paramref name="decisions"/> is walked — <see cref="BattleSetup.Units"/>
+    /// order, the same order the events within a tick are contracted to follow.
+    /// A return value rather than a field this method appends to: <see cref="Apply"/>
+    /// stays static and stateless, which is what keeps it provably free of any
+    /// access to <see cref="Rng"/>.
+    /// </para>
     /// </summary>
-    private static void Apply(Battlefield field, IReadOnlyList<UnitDecision> decisions)
+    private static List<BattleEvent> Apply(Battlefield field, IReadOnlyList<UnitDecision> decisions, int tick)
     {
+        var events = new List<BattleEvent>();
+
         // The tiles taken this tick. A set for lookup only — it is never
         // enumerated, so its order cannot reach an outcome.
         var claimed = new HashSet<HexCoord>();
@@ -402,21 +453,48 @@ public sealed class BattleSimulation
                 // constraint solving.
                 if (claimed.Add(destination))
                 {
+                    HexCoord origin = decision.Unit.Position;
+
                     // Cannot throw: the destination was empty when this unit
                     // decided, nothing may move into a tile vacated during the
                     // tick, and the claim above rules out two units taking the
                     // same one.
                     field.Move(decision.Unit, destination);
                     decision.Unit.MovementCooldownTicks = decision.Unit.Definition.MovementTicksPerHex;
+
+                    events.Add(new UnitMovedEvent
+                    {
+                        Tick = tick,
+                        UnitId = decision.Unit.Id,
+                        From = origin,
+                        To = destination,
+                    });
                 }
             }
 
             if (decision.Attack is AttackDecision attack)
             {
+                events.Add(new UnitAttackedEvent
+                {
+                    Tick = tick,
+                    AttackerId = decision.Unit.Id,
+                    TargetId = attack.Target.Id,
+                });
+
                 attack.Target.CurrentHp -= attack.Damage;
                 decision.Unit.AttackCooldownTicks = decision.Unit.Definition.AttackIntervalTicks;
+
+                events.Add(new DamageDealtEvent
+                {
+                    Tick = tick,
+                    TargetId = attack.Target.Id,
+                    Amount = attack.Damage,
+                    ResultingHp = attack.Target.CurrentHp,
+                });
             }
         }
+
+        return events;
     }
 
     /// <summary>
