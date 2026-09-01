@@ -39,5 +39,5 @@ Do not change any labels, and do not offer to. This command only reads.
 Promoting a ticket to `state:ready` is a decision, and `ticket-guard` rejects
 one whose acceptance criteria are not checkable — that gate is the point.
 
-Close by offering `/ticket <n>` for whichever ticket is the obvious next move,
+Close by offering `/build <n>` for whichever ticket is the obvious next move,
 if there is one.
