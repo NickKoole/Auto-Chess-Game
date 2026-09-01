@@ -20,13 +20,194 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/battles/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SimulateBattle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Exactly how a finished battle ended. See BattleEnding. */
+        BattleEndingDto: number;
+        /**
+         * @description One thing that happened in a battle, as exposed over the wire. Mirrors
+         *     BattleEvent's shape and discriminator so a client gets
+         *     the same replay information, without the sim's own type crossing the API
+         *     boundary.
+         */
+        BattleEventDto: components["schemas"]["BattleEventDtoUnitSpawnedEventDto"] | components["schemas"]["BattleEventDtoUnitMovedEventDto"] | components["schemas"]["BattleEventDtoUnitAttackedEventDto"] | components["schemas"]["BattleEventDtoDamageDealtEventDto"] | components["schemas"]["BattleEventDtoUnitDiedEventDto"];
+        /** @description A unit's hit points changed from a landed hit. See DamageDealtEvent. */
+        BattleEventDtoDamageDealtEventDto: {
+            /** @enum {string} */
+            type?: "damageDealt";
+            /** Format: int32 */
+            attackerId: number | string;
+            /** Format: int32 */
+            targetId: number | string;
+            /** Format: int32 */
+            amount: number | string;
+            /** Format: int32 */
+            resultingHp: number | string;
+            /** Format: int32 */
+            tick: number | string;
+        };
+        /** @description A unit landed a hit on another. See UnitAttackedEvent. */
+        BattleEventDtoUnitAttackedEventDto: {
+            /** @enum {string} */
+            type?: "unitAttacked";
+            /** Format: int32 */
+            attackerId: number | string;
+            /** Format: int32 */
+            targetId: number | string;
+            /** Format: int32 */
+            tick: number | string;
+        };
+        /** @description A unit was removed from the battle. See UnitDiedEvent. */
+        BattleEventDtoUnitDiedEventDto: {
+            /** @enum {string} */
+            type?: "unitDied";
+            /** Format: int32 */
+            unitId: number | string;
+            position: components["schemas"]["HexCoordDto"];
+            /** Format: int32 */
+            tick: number | string;
+        };
+        /** @description A unit stepped from one hex to an adjacent one. See UnitMovedEvent. */
+        BattleEventDtoUnitMovedEventDto: {
+            /** @enum {string} */
+            type?: "unitMoved";
+            /** Format: int32 */
+            unitId: number | string;
+            from: components["schemas"]["HexCoordDto"];
+            to: components["schemas"]["HexCoordDto"];
+            /** Format: int32 */
+            tick: number | string;
+        };
+        /** @description A unit's starting state. See UnitSpawnedEvent. */
+        BattleEventDtoUnitSpawnedEventDto: {
+            /** @enum {string} */
+            type?: "unitSpawned";
+            /** Format: int32 */
+            unitId: number | string;
+            side: components["schemas"]["SideDto"];
+            definitionId: string;
+            position: components["schemas"]["HexCoordDto"];
+            /** Format: int32 */
+            tick: number | string;
+        };
+        /** @description How a finished battle came to: who won, when, and exactly how. */
+        BattleOutcomeDto: {
+            winner: components["schemas"]["MatchWinnerDto"];
+            /**
+             * Format: int32
+             * @description The tick the battle ended on. See int BattleResult.EndTick.
+             */
+            terminatingTick: number | string;
+            terminationReason: components["schemas"]["BattleEndingDto"];
+        };
+        /** @description A typed failure at the API boundary. See CLAUDE.md: errors here are results, not exceptions. */
+        ErrorResponse: {
+            message: string;
+        };
         /** @description Liveness payload. */
         HealthResponse: {
             status: string;
+        };
+        /** @description A hex on the battlefield, as exposed over the wire. See HexCoord. */
+        HexCoordDto: {
+            /** Format: int32 */
+            row: number | string;
+            /** Format: int32 */
+            col: number | string;
+        };
+        /** @description Who won a battle, from the player's point of view. See BattleOutcome. */
+        MatchWinnerDto: number;
+        /**
+         * @description Which army a unit belongs to, as exposed over the wire.
+         *
+         *     A copy of BattleSide rather than the sim's own enum:
+         *     the API's response is composed entirely of DTOs it owns, so the sim's type
+         *     never appears in the OpenAPI contract or the JSON it describes.
+         */
+        SideDto: number;
+        /** @description A request to run a hardcoded matchup once. */
+        SimulateBattleRequest: {
+            /** @description Which hardcoded matchup to run. See MatchupCatalog. */
+            matchupId: string;
+            /**
+             * @description The seed to run the battle with, as a base-10 string — see
+             *     string SimulateBattleResponse.Seed for why it is a string rather
+             *     than a JSON number. Null to have the server generate one.
+             */
+            seed?: null | string;
+        };
+        /**
+         * @description Everything a client needs to replay one battle: the seed it ran with, the
+         *     position it started from, the full log of what happened, the unit stats
+         *     the log refers to, and how it ended.
+         */
+        SimulateBattleResponse: {
+            /**
+             * @description The seed this battle ran with, formatted as a base-10 string rather than
+             *     a JSON number: it is a full-range `ulong`, and a JSON
+             *     number silently loses precision above 2^53 in a JS/TS client — which
+             *     would corrupt roughly half of all server-generated seeds and break exact
+             *     re-requesting for them.
+             */
+            seed: string;
+            /** @description Every unit's state at tick 0, in the order IReadOnlyList&lt;BattleUnit&gt; BattleSetup.Units holds them. */
+            initialSetup: components["schemas"]["StartingUnitDto"][];
+            /** @description The stats for every unit kind referenced by IReadOnlyList&lt;StartingUnitDto&gt; SimulateBattleResponse.InitialSetup or IReadOnlyList&lt;BattleEventDto&gt; SimulateBattleResponse.Events. */
+            unitDefinitions: components["schemas"]["UnitDefinitionDto"][];
+            /** @description Everything that happened, in order. See IReadOnlyList&lt;BattleEvent&gt; BattleSimulation.Events. */
+            events: components["schemas"]["BattleEventDto"][];
+            outcome: components["schemas"]["BattleOutcomeDto"];
+        };
+        /** @description One unit's state at tick 0, before anything in the battle has happened. */
+        StartingUnitDto: {
+            /**
+             * Format: int32
+             * @description This unit's id, unique within the battle. See int BattleUnit.Id.
+             */
+            unitId: number | string;
+            side: components["schemas"]["SideDto"];
+            /** @description The catalog id of the kind of unit this is. Look it up in the response's unit definitions. */
+            definitionId: string;
+            position: components["schemas"]["HexCoordDto"];
+        };
+        /**
+         * @description A kind of unit's stats, as exposed over the wire — enough for a client to
+         *     display names and stats without its own copy of the catalog. See
+         *     UnitDefinition.
+         */
+        UnitDefinitionDto: {
+            id: string;
+            displayName: string;
+            /** Format: int32 */
+            maxHp: number | string;
+            /** Format: int32 */
+            attackDamage: number | string;
+            /** Format: int32 */
+            attackIntervalTicks: number | string;
+            /** Format: int32 */
+            movementTicksPerHex: number | string;
+            /** Format: int32 */
+            attackRangeHexes: number | string;
+            /** Format: double */
+            damageVariance: number | string;
         };
     };
     responses: never;
@@ -53,6 +234,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    SimulateBattle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimulateBattleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulateBattleResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

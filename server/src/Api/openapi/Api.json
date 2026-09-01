@@ -24,10 +24,341 @@
           }
         }
       }
+    },
+    "/battles/simulate": {
+      "post": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "SimulateBattle",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateBattleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulateBattleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "BattleEndingDto": {
+        "type": "integer",
+        "description": "Exactly how a finished battle ended. See BattleEnding."
+      },
+      "BattleEventDto": {
+        "required": [
+          "type"
+        ],
+        "type": "object",
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/BattleEventDtoUnitSpawnedEventDto"
+          },
+          {
+            "$ref": "#/components/schemas/BattleEventDtoUnitMovedEventDto"
+          },
+          {
+            "$ref": "#/components/schemas/BattleEventDtoUnitAttackedEventDto"
+          },
+          {
+            "$ref": "#/components/schemas/BattleEventDtoDamageDealtEventDto"
+          },
+          {
+            "$ref": "#/components/schemas/BattleEventDtoUnitDiedEventDto"
+          }
+        ],
+        "description": "One thing that happened in a battle, as exposed over the wire. Mirrors\r\nBattleEvent's shape and discriminator so a client gets\r\nthe same replay information, without the sim's own type crossing the API\r\nboundary.",
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "unitSpawned": "#/components/schemas/BattleEventDtoUnitSpawnedEventDto",
+            "unitMoved": "#/components/schemas/BattleEventDtoUnitMovedEventDto",
+            "unitAttacked": "#/components/schemas/BattleEventDtoUnitAttackedEventDto",
+            "damageDealt": "#/components/schemas/BattleEventDtoDamageDealtEventDto",
+            "unitDied": "#/components/schemas/BattleEventDtoUnitDiedEventDto"
+          }
+        }
+      },
+      "BattleEventDtoDamageDealtEventDto": {
+        "required": [
+          "attackerId",
+          "targetId",
+          "amount",
+          "resultingHp",
+          "tick"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "damageDealt"
+            ],
+            "type": "string"
+          },
+          "attackerId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "targetId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "resultingHp": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "tick": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "A unit's hit points changed from a landed hit. See DamageDealtEvent."
+      },
+      "BattleEventDtoUnitAttackedEventDto": {
+        "required": [
+          "attackerId",
+          "targetId",
+          "tick"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "unitAttacked"
+            ],
+            "type": "string"
+          },
+          "attackerId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "targetId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "tick": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "A unit landed a hit on another. See UnitAttackedEvent."
+      },
+      "BattleEventDtoUnitDiedEventDto": {
+        "required": [
+          "unitId",
+          "position",
+          "tick"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "unitDied"
+            ],
+            "type": "string"
+          },
+          "unitId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "position": {
+            "$ref": "#/components/schemas/HexCoordDto"
+          },
+          "tick": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "A unit was removed from the battle. See UnitDiedEvent."
+      },
+      "BattleEventDtoUnitMovedEventDto": {
+        "required": [
+          "unitId",
+          "from",
+          "to",
+          "tick"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "unitMoved"
+            ],
+            "type": "string"
+          },
+          "unitId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "from": {
+            "$ref": "#/components/schemas/HexCoordDto"
+          },
+          "to": {
+            "$ref": "#/components/schemas/HexCoordDto"
+          },
+          "tick": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "A unit stepped from one hex to an adjacent one. See UnitMovedEvent."
+      },
+      "BattleEventDtoUnitSpawnedEventDto": {
+        "required": [
+          "unitId",
+          "side",
+          "definitionId",
+          "position",
+          "tick"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "unitSpawned"
+            ],
+            "type": "string"
+          },
+          "unitId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "side": {
+            "$ref": "#/components/schemas/SideDto"
+          },
+          "definitionId": {
+            "type": "string"
+          },
+          "position": {
+            "$ref": "#/components/schemas/HexCoordDto"
+          },
+          "tick": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "A unit's starting state. See UnitSpawnedEvent."
+      },
+      "BattleOutcomeDto": {
+        "required": [
+          "winner",
+          "terminatingTick",
+          "terminationReason"
+        ],
+        "type": "object",
+        "properties": {
+          "winner": {
+            "$ref": "#/components/schemas/MatchWinnerDto"
+          },
+          "terminatingTick": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The tick the battle ended on. See int BattleResult.EndTick.",
+            "format": "int32"
+          },
+          "terminationReason": {
+            "$ref": "#/components/schemas/BattleEndingDto"
+          }
+        },
+        "description": "How a finished battle came to: who won, when, and exactly how."
+      },
+      "ErrorResponse": {
+        "required": [
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "description": "A typed failure at the API boundary. See CLAUDE.md: errors here are results, not exceptions."
+      },
       "HealthResponse": {
         "required": [
           "status"
@@ -39,6 +370,202 @@
           }
         },
         "description": "Liveness payload."
+      },
+      "HexCoordDto": {
+        "required": [
+          "row",
+          "col"
+        ],
+        "type": "object",
+        "properties": {
+          "row": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "col": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "A hex on the battlefield, as exposed over the wire. See HexCoord."
+      },
+      "MatchWinnerDto": {
+        "type": "integer",
+        "description": "Who won a battle, from the player's point of view. See BattleOutcome."
+      },
+      "SideDto": {
+        "type": "integer",
+        "description": "Which army a unit belongs to, as exposed over the wire.\r\n\r\nA copy of BattleSide rather than the sim's own enum:\r\nthe API's response is composed entirely of DTOs it owns, so the sim's type\r\nnever appears in the OpenAPI contract or the JSON it describes."
+      },
+      "SimulateBattleRequest": {
+        "required": [
+          "matchupId"
+        ],
+        "type": "object",
+        "properties": {
+          "matchupId": {
+            "type": "string",
+            "description": "Which hardcoded matchup to run. See MatchupCatalog."
+          },
+          "seed": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The seed to run the battle with, as a base-10 string — see\r\nstring SimulateBattleResponse.Seed for why it is a string rather\r\nthan a JSON number. Null to have the server generate one."
+          }
+        },
+        "description": "A request to run a hardcoded matchup once."
+      },
+      "SimulateBattleResponse": {
+        "required": [
+          "seed",
+          "initialSetup",
+          "unitDefinitions",
+          "events",
+          "outcome"
+        ],
+        "type": "object",
+        "properties": {
+          "seed": {
+            "type": "string",
+            "description": "The seed this battle ran with, formatted as a base-10 string rather than\r\na JSON number: it is a full-range `ulong`, and a JSON\r\nnumber silently loses precision above 2^53 in a JS/TS client — which\r\nwould corrupt roughly half of all server-generated seeds and break exact\r\nre-requesting for them."
+          },
+          "initialSetup": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StartingUnitDto"
+            },
+            "description": "Every unit's state at tick 0, in the order IReadOnlyList&lt;BattleUnit&gt; BattleSetup.Units holds them."
+          },
+          "unitDefinitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnitDefinitionDto"
+            },
+            "description": "The stats for every unit kind referenced by IReadOnlyList&lt;StartingUnitDto&gt; SimulateBattleResponse.InitialSetup or IReadOnlyList&lt;BattleEventDto&gt; SimulateBattleResponse.Events."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BattleEventDto"
+            },
+            "description": "Everything that happened, in order. See IReadOnlyList&lt;BattleEvent&gt; BattleSimulation.Events."
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/BattleOutcomeDto"
+          }
+        },
+        "description": "Everything a client needs to replay one battle: the seed it ran with, the\r\nposition it started from, the full log of what happened, the unit stats\r\nthe log refers to, and how it ended."
+      },
+      "StartingUnitDto": {
+        "required": [
+          "unitId",
+          "side",
+          "definitionId",
+          "position"
+        ],
+        "type": "object",
+        "properties": {
+          "unitId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "This unit's id, unique within the battle. See int BattleUnit.Id.",
+            "format": "int32"
+          },
+          "side": {
+            "$ref": "#/components/schemas/SideDto"
+          },
+          "definitionId": {
+            "type": "string",
+            "description": "The catalog id of the kind of unit this is. Look it up in the response's unit definitions."
+          },
+          "position": {
+            "$ref": "#/components/schemas/HexCoordDto"
+          }
+        },
+        "description": "One unit's state at tick 0, before anything in the battle has happened."
+      },
+      "UnitDefinitionDto": {
+        "required": [
+          "id",
+          "displayName",
+          "maxHp",
+          "attackDamage",
+          "attackIntervalTicks",
+          "movementTicksPerHex",
+          "attackRangeHexes",
+          "damageVariance"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "maxHp": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "attackDamage": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "attackIntervalTicks": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "movementTicksPerHex": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "attackRangeHexes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "damageVariance": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        },
+        "description": "A kind of unit's stats, as exposed over the wire — enough for a client to\r\ndisplay names and stats without its own copy of the catalog. See\r\nUnitDefinition."
       }
     }
   },
