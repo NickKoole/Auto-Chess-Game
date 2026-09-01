@@ -1,4 +1,4 @@
-namespace Api.Battles;
+namespace Api.Battles.Dtos;
 
 /// <summary>One unit's state at tick 0, before anything in the battle has happened.</summary>
 public sealed record StartingUnitDto

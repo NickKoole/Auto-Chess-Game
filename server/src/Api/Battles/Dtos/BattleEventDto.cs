@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Api.Battles;
+namespace Api.Battles.Dtos;
 
 /// <summary>
 /// One thing that happened in a battle, as exposed over the wire. Mirrors

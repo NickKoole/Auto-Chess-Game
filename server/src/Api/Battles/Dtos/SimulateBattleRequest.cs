@@ -1,4 +1,4 @@
-namespace Api.Battles;
+namespace Api.Battles.Dtos;
 
 /// <summary>
 /// A request to run a hardcoded matchup once.

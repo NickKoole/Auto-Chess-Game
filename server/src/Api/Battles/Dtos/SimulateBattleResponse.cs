@@ -1,4 +1,4 @@
-namespace Api.Battles;
+namespace Api.Battles.Dtos;
 
 /// <summary>
 /// Everything a client needs to replay one battle: the seed it ran with, the

@@ -1,4 +1,4 @@
-namespace Api.Battles;
+namespace Api.Battles.Dtos;
 
 /// <summary>
 /// Which army a unit belongs to, as exposed over the wire.

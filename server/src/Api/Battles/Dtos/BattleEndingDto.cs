@@ -1,4 +1,4 @@
-namespace Api.Battles;
+namespace Api.Battles.Dtos;
 
 /// <summary>Exactly how a finished battle ended. See <see cref="GameSim.BattleEnding"/>.</summary>
 public enum BattleEndingDto

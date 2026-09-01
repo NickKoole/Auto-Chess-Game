@@ -1,4 +1,4 @@
-namespace Api.Battles;
+namespace Api.Battles.Dtos;
 
 /// <summary>
 /// A kind of unit's stats, as exposed over the wire — enough for a client to

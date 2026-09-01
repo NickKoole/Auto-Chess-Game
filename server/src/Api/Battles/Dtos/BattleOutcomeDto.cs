@@ -1,4 +1,4 @@
-namespace Api.Battles;
+namespace Api.Battles.Dtos;
 
 /// <summary>How a finished battle came to: who won, when, and exactly how.</summary>
 public sealed record BattleOutcomeDto

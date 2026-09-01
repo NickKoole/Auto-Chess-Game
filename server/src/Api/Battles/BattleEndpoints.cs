@@ -1,4 +1,5 @@
 using System.Globalization;
+using Api.Battles.Dtos;
 using GameSim;
 using Microsoft.AspNetCore.Http.HttpResults;
 

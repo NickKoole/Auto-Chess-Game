@@ -1,4 +1,4 @@
-namespace Api.Battles;
+namespace Api.Battles.Dtos;
 
 /// <summary>Who won a battle, from the player's point of view. See <see cref="GameSim.BattleOutcome"/>.</summary>
 public enum MatchWinnerDto

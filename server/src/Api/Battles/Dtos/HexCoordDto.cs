@@ -1,4 +1,4 @@
-namespace Api.Battles;
+namespace Api.Battles.Dtos;
 
 /// <summary>A hex on the battlefield, as exposed over the wire. See <see cref="GameSim.HexCoord"/>.</summary>
 public sealed record HexCoordDto

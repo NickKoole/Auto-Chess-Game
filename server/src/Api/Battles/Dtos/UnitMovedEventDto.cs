@@ -1,4 +1,4 @@
-namespace Api.Battles;
+namespace Api.Battles.Dtos;
 
 /// <summary>A unit stepped from one hex to an adjacent one. See <see cref="GameSim.UnitMovedEvent"/>.</summary>
 public sealed record UnitMovedEventDto : BattleEventDto

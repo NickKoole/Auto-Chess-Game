@@ -1,4 +1,4 @@
-namespace Api.Battles;
+namespace Api.Battles.Dtos;
 
 /// <summary>A unit was removed from the battle. See <see cref="GameSim.UnitDiedEvent"/>.</summary>
 public sealed record UnitDiedEventDto : BattleEventDto

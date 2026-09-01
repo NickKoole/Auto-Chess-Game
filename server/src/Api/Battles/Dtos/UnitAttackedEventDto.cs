@@ -1,4 +1,4 @@
-namespace Api.Battles;
+namespace Api.Battles.Dtos;
 
 /// <summary>A unit landed a hit on another. See <see cref="GameSim.UnitAttackedEvent"/>.</summary>
 public sealed record UnitAttackedEventDto : BattleEventDto
