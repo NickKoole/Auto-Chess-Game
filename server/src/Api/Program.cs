@@ -1,4 +1,6 @@
+using Api.Battles;
 using Api.Persistence;
+using GameSim;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,6 +11,9 @@ builder.Services.AddDbContext<GameDbContext>(options =>
     options.UseSqlite(
         builder.Configuration.GetConnectionString("GameDb")
         ?? "Data Source=autochess.db"));
+
+builder.Services.AddSingleton<IUnitCatalog, StaticUnitCatalog>();
+builder.Services.AddSingleton<MatchupCatalog>();
 
 var app = builder.Build();
 
@@ -21,6 +26,8 @@ app.MapOpenApi();
 // its types from. Results.Ok erases it and yields an untyped contract.
 app.MapGet("/health", () => TypedResults.Ok(new HealthResponse("ok")))
    .WithName("GetHealth");
+
+app.MapBattleEndpoints();
 
 app.Run();
 

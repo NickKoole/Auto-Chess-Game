@@ -1,0 +1,48 @@
+using System.Diagnostics.CodeAnalysis;
+using GameSim;
+
+namespace Api.Battles;
+
+/// <summary>
+/// The small set of named matchups a battle can be requested for.
+///
+/// Each deploys the player in rows 5-7 and the opponent in rows 0-2 of the 8x8
+/// board — <see cref="Battlefield.DeploymentBand"/> for each side — with the
+/// fighting line closest to the neutral band, so the armies close quickly.
+/// </summary>
+public sealed class MatchupCatalog
+{
+    private readonly Dictionary<string, Matchup> _byId;
+
+    public MatchupCatalog(IUnitCatalog units)
+    {
+        ArgumentNullException.ThrowIfNull(units);
+
+        _byId = new Dictionary<string, Matchup>(StringComparer.Ordinal);
+
+        foreach (Matchup matchup in BuiltIn(units))
+        {
+            _byId.Add(matchup.Id, matchup);
+        }
+    }
+
+    /// <summary>The matchup with this id, or false if none exists.</summary>
+    public bool TryGet(string id, [NotNullWhen(true)] out Matchup? matchup) =>
+        _byId.TryGetValue(id, out matchup);
+
+    private static IEnumerable<Matchup> BuiltIn(IUnitCatalog units)
+    {
+        yield return new Matchup(
+            "melee-mirror",
+            PlayerPlacements: FrontLine(units.Get("knight"), row: 5, cols: [2, 3, 4]),
+            OpponentPlacements: FrontLine(units.Get("knight"), row: 2, cols: [2, 3, 4]));
+
+        yield return new Matchup(
+            "archers-vs-melee",
+            PlayerPlacements: FrontLine(units.Get("archer"), row: 5, cols: [2, 3, 4]),
+            OpponentPlacements: FrontLine(units.Get("militia"), row: 2, cols: [2, 3, 4]));
+    }
+
+    private static IReadOnlyList<UnitPlacement> FrontLine(UnitDefinition definition, int row, int[] cols) =>
+        [.. cols.Select(col => new UnitPlacement(definition, new HexCoord(row, col)))];
+}
