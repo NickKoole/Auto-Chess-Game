@@ -150,6 +150,14 @@ public sealed class BattleSetup
 
         var battlefield = new Battlefield();
 
+        // The index in this final, sorted order is unique and never ties, for
+        // exactly the reasons the comment on `ordered` above already gives — so
+        // it is a battle-unique id with no further bookkeeping needed.
+        for (int i = 0; i < ordered.Length; i++)
+        {
+            ordered[i].Id = i;
+        }
+
         foreach (BattleUnit unit in ordered)
         {
             if (!battlefield.TryPlace(unit, out PlacementError? error))

@@ -32,6 +32,21 @@ public sealed class BattleUnit
         MovementCooldownTicks = 0;
     }
 
+    /// <summary>
+    /// This unit's id, unique within the battle it belongs to — never across
+    /// battles, and never stable for "the same kind of unit" the way
+    /// <see cref="Definition"/>'s id is. Ties an event in the battle log back to
+    /// a specific instance rather than to a kind of unit.
+    ///
+    /// Assigned by <see cref="BattleSetup"/> once the final, sorted
+    /// <see cref="BattleSetup.Units"/> order is known — as that order's index,
+    /// which is already a deterministic total order with no ties. Internal
+    /// rather than a constructor parameter: nothing about one unit's identity
+    /// can be decided until every unit in the battle has been placed and sorted,
+    /// so there is no meaningful value to hand the constructor.
+    /// </summary>
+    public int Id { get; internal set; }
+
     /// <summary>The immutable template this unit was built from.</summary>
     public UnitDefinition Definition { get; }
 
