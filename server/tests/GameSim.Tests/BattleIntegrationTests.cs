@@ -1,0 +1,139 @@
+namespace GameSim.Tests;
+
+/// <summary>
+/// Story 1.7: the one test that wires the catalog, a realistic setup and the
+/// simulation together and checks that a full battle behaves like a battle —
+/// not merely that each piece it is built from compiles.
+///
+/// The roster here is deliberately lopsided rather than a mirror match. A
+/// mirrored full roster was tried first and empirically resolves cleanly most
+/// of the time, but mutual-elimination draws still turned up in roughly 3% of
+/// 200 sampled seeds — exactly the kind of flakiness this test cannot afford,
+/// since "the losing side has no survivors, the winning side has at least one"
+/// is a hard acceptance criterion, not a usual case. A one-sided army built
+/// from the same catalog gives a decisive winner with no observed exceptions
+/// and stays well inside CLAUDE.md's "balance tuning is out of scope" line:
+/// nothing here asserts anything about which composition is stronger, only
+/// that combat converges and the log matches what happened.
+/// </summary>
+public sealed class BattleIntegrationTests
+{
+    // Enough seeds to make "this always resolves decisively" a real claim
+    // rather than one lucky roll, while staying fast: a full 6v6 to
+    // completion runs in low single-digit milliseconds.
+    private static readonly ulong[] Seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 42, 1337, 90210, 271828, 314159];
+
+    private static UnitPlacement At(UnitDefinition definition, int row, int col) =>
+        new(definition, new HexCoord(row, col));
+
+    /// <summary>
+    /// A fresh 6v6, legally deployed: player in rows 5-7, opponent in rows 0-2.
+    /// Built anew per call, since a battle consumes the setup it runs on.
+    /// </summary>
+    private static BattleSetup Setup()
+    {
+        var catalog = new StaticUnitCatalog();
+        UnitDefinition militia = catalog.Get("militia");
+        UnitDefinition knight = catalog.Get("knight");
+        UnitDefinition berserker = catalog.Get("berserker");
+        UnitDefinition archer = catalog.Get("archer");
+        UnitDefinition mage = catalog.Get("mage");
+
+        Assert.True(BattleSetup.TryCreate(
+            [
+                At(knight, 5, 1), At(knight, 5, 3),
+                At(archer, 6, 1), At(archer, 6, 3),
+                At(mage, 6, 5), At(berserker, 5, 5),
+            ],
+            [
+                At(militia, 2, 1), At(militia, 2, 3), At(militia, 2, 5),
+                At(militia, 1, 1), At(militia, 1, 3), At(militia, 1, 5),
+            ],
+            out BattleSetup? setup,
+            out IReadOnlyList<PlacementError> errors));
+
+        Assert.Empty(errors);
+        return setup!;
+    }
+
+    /// <summary>
+    /// Rebuilds each side's final survivor count from the event log alone —
+    /// every unit's side from its <see cref="UnitSpawnedEvent"/>, then removing
+    /// whichever ones have a <see cref="UnitDiedEvent"/> — with no access to
+    /// <see cref="BattleSetup"/> or <see cref="BattleUnit"/> state.
+    /// </summary>
+    private static (int PlayerAlive, int OpponentAlive) ReconstructSurvivors(IReadOnlyList<BattleEvent> events)
+    {
+        var side = new Dictionary<int, BattleSide>();
+        var dead = new HashSet<int>();
+
+        foreach (BattleEvent e in events)
+        {
+            switch (e)
+            {
+                case UnitSpawnedEvent spawned:
+                    side[spawned.UnitId] = spawned.Side;
+                    break;
+                case UnitDiedEvent died:
+                    dead.Add(died.UnitId);
+                    break;
+            }
+        }
+
+        int playerAlive = side.Count(kv => kv.Value == BattleSide.Player && !dead.Contains(kv.Key));
+        int opponentAlive = side.Count(kv => kv.Value == BattleSide.Opponent && !dead.Contains(kv.Key));
+        return (playerAlive, opponentAlive);
+    }
+
+    [Fact]
+    public void A_full_battle_resolves_decisively_with_plausible_casualties_and_a_log_that_matches()
+    {
+        foreach (ulong seed in Seeds)
+        {
+            var battle = new BattleSimulation(Setup(), seed);
+            BattleResult result = battle.Run();
+
+            // --- terminates with a winner, not the tick cap -----------------
+            Assert.NotEqual(BattleEnding.TickCapDraw, result.Ending);
+            Assert.NotEqual(BattleOutcome.Draw, result.Outcome);
+            Assert.True(
+                result.EndTick < BattleOptions.DefaultMaxTicks,
+                $"Seed {seed}: expected the battle to resolve well before the tick cap, " +
+                $"but it ran the full {result.EndTick} ticks.");
+
+            // --- casualties are plausible ------------------------------------
+            int playerAlive = battle.Setup.Units.Count(u => u.Side == BattleSide.Player && u.IsAlive);
+            int opponentAlive = battle.Setup.Units.Count(u => u.Side == BattleSide.Opponent && u.IsAlive);
+
+            (int winnerAlive, int loserAlive) = result.Outcome == BattleOutcome.PlayerWin
+                ? (playerAlive, opponentAlive)
+                : (opponentAlive, playerAlive);
+
+            Assert.True(winnerAlive >= 1, $"Seed {seed}: the winning side has no survivors.");
+            Assert.Equal(0, loserAlive);
+
+            // --- the event log is non-empty and reconstructs the result -----
+            Assert.NotEmpty(battle.Events);
+
+            (int reconstructedPlayerAlive, int reconstructedOpponentAlive) = ReconstructSurvivors(battle.Events);
+            Assert.Equal(playerAlive, reconstructedPlayerAlive);
+            Assert.Equal(opponentAlive, reconstructedOpponentAlive);
+        }
+    }
+
+    [Fact]
+    public void The_same_seed_produces_an_identical_result_and_log_on_a_second_run()
+    {
+        foreach (ulong seed in Seeds)
+        {
+            var a = new BattleSimulation(Setup(), seed);
+            var b = new BattleSimulation(Setup(), seed);
+
+            BattleResult resultA = a.Run();
+            BattleResult resultB = b.Run();
+
+            Assert.Equal(resultA, resultB);
+            Assert.Equal(a.Events, b.Events);
+        }
+    }
+}
