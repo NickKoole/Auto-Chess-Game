@@ -487,6 +487,7 @@ public sealed class BattleSimulation
                 events.Add(new DamageDealtEvent
                 {
                     Tick = tick,
+                    AttackerId = decision.Unit.Id,
                     TargetId = attack.Target.Id,
                     Amount = attack.Damage,
                     ResultingHp = attack.Target.CurrentHp,

@@ -153,6 +153,7 @@ public sealed class BattleEventLogTests
         Assert.Equal(opponent.Id, playerAttacks.TargetId);
 
         var opponentTakesDamage = (DamageDealtEvent)tick1[1];
+        Assert.Equal(player.Id, opponentTakesDamage.AttackerId);
         Assert.Equal(opponent.Id, opponentTakesDamage.TargetId);
         Assert.Equal(GlassCannon.AttackDamage, opponentTakesDamage.Amount);
         Assert.Equal(GlassCannon.MaxHp - GlassCannon.AttackDamage, opponentTakesDamage.ResultingHp);
@@ -160,6 +161,10 @@ public sealed class BattleEventLogTests
         var opponentAttacks = (UnitAttackedEvent)tick1[2];
         Assert.Equal(opponent.Id, opponentAttacks.AttackerId);
         Assert.Equal(player.Id, opponentAttacks.TargetId);
+
+        var playerTakesDamage = (DamageDealtEvent)tick1[3];
+        Assert.Equal(opponent.Id, playerTakesDamage.AttackerId);
+        Assert.Equal(player.Id, playerTakesDamage.TargetId);
 
         Assert.Equal(
             [player.Id, opponent.Id],
