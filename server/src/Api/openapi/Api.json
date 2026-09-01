@@ -94,7 +94,7 @@
             "$ref": "#/components/schemas/BattleEventDtoUnitDiedEventDto"
           }
         ],
-        "description": "One thing that happened in a battle, as exposed over the wire. Mirrors\r\nBattleEvent's shape and discriminator so a client gets\r\nthe same replay information, without the sim's own type crossing the API\r\nboundary.",
+        "description": "One thing that happened in a battle, as exposed over the wire. Mirrors\nBattleEvent's shape and discriminator so a client gets\nthe same replay information, without the sim's own type crossing the API\nboundary.",
         "discriminator": {
           "propertyName": "type",
           "mapping": {
@@ -403,7 +403,7 @@
       },
       "SideDto": {
         "type": "integer",
-        "description": "Which army a unit belongs to, as exposed over the wire.\r\n\r\nA copy of BattleSide rather than the sim's own enum:\r\nthe API's response is composed entirely of DTOs it owns, so the sim's type\r\nnever appears in the OpenAPI contract or the JSON it describes."
+        "description": "Which army a unit belongs to, as exposed over the wire.\n\nA copy of BattleSide rather than the sim's own enum:\nthe API's response is composed entirely of DTOs it owns, so the sim's type\nnever appears in the OpenAPI contract or the JSON it describes."
       },
       "SimulateBattleRequest": {
         "required": [
@@ -420,7 +420,7 @@
               "null",
               "string"
             ],
-            "description": "The seed to run the battle with, as a base-10 string — see\r\nstring SimulateBattleResponse.Seed for why it is a string rather\r\nthan a JSON number. Null to have the server generate one."
+            "description": "The seed to run the battle with, as a base-10 string — see\nstring SimulateBattleResponse.Seed for why it is a string rather\nthan a JSON number. Null to have the server generate one."
           }
         },
         "description": "A request to run a hardcoded matchup once."
@@ -437,7 +437,7 @@
         "properties": {
           "seed": {
             "type": "string",
-            "description": "The seed this battle ran with, formatted as a base-10 string rather than\r\na JSON number: it is a full-range `ulong`, and a JSON\r\nnumber silently loses precision above 2^53 in a JS/TS client — which\r\nwould corrupt roughly half of all server-generated seeds and break exact\r\nre-requesting for them."
+            "description": "The seed this battle ran with, formatted as a base-10 string rather than\na JSON number: it is a full-range `ulong`, and a JSON\nnumber silently loses precision above 2^53 in a JS/TS client — which\nwould corrupt roughly half of all server-generated seeds and break exact\nre-requesting for them."
           },
           "initialSetup": {
             "type": "array",
@@ -464,7 +464,7 @@
             "$ref": "#/components/schemas/BattleOutcomeDto"
           }
         },
-        "description": "Everything a client needs to replay one battle: the seed it ran with, the\r\nposition it started from, the full log of what happened, the unit stats\r\nthe log refers to, and how it ended."
+        "description": "Everything a client needs to replay one battle: the seed it ran with, the\nposition it started from, the full log of what happened, the unit stats\nthe log refers to, and how it ended."
       },
       "StartingUnitDto": {
         "required": [
@@ -565,7 +565,7 @@
             "format": "double"
           }
         },
-        "description": "A kind of unit's stats, as exposed over the wire — enough for a client to\r\ndisplay names and stats without its own copy of the catalog. See\r\nUnitDefinition."
+        "description": "A kind of unit's stats, as exposed over the wire — enough for a client to\ndisplay names and stats without its own copy of the catalog. See\nUnitDefinition."
       }
     }
   },

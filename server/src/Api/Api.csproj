@@ -33,4 +33,56 @@
     <OpenApiGenerateDocumentsOnBuild>true</OpenApiGenerateDocumentsOnBuild>
   </PropertyGroup>
 
+  <!-- The OpenAPI generator joins a multi-line XML doc comment into one
+       "description" string using the host OS's newline: \r\n on a Windows dev
+       machine, \n on the Linux CI runner. The .cs sources are already LF-only
+       (.gitattributes normalises that), but this join happens after the
+       comment is read, so it is not something a source file's own line
+       endings can fix. Left alone, the committed Api.json would flip between
+       \r\n and \n depending on which OS last regenerated it, and CI's "is the
+       committed contract still fresh" diff check would fail on that flip
+       alone, with no code change involved. RoslynCodeTaskFactory rather than
+       an Exec-based script: this must also run unmodified on the Linux
+       runner. -->
+  <UsingTask
+      TaskName="NormalizeOpenApiLineEndings"
+      TaskFactory="RoslynCodeTaskFactory"
+      AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+        // The file has no raw CR bytes - JSON forbids literal control
+        // characters in a string, so a doc comment's line break survives only
+        // as the two-character JSON escape sequence \r\n (four literal ASCII
+        // characters: backslash, r, backslash, n). That is text content, not
+        // a control byte, so this replaces the literal four-character escape
+        // sequence with the two-character \n escape - not
+        // original.Replace("\r\n", "\n"), which searches for real CR/LF bytes
+        // that are never present here and would silently do nothing.
+        foreach (var file in Files)
+        {
+            string path = file.ItemSpec;
+            string original = File.ReadAllText(path);
+            string normalized = original.Replace("\\r\\n", "\\n");
+            if (normalized != original)
+            {
+                File.WriteAllText(path, normalized);
+            }
+        }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="NormalizeOpenApiDocumentLineEndings" AfterTargets="GenerateOpenApiDocuments">
+    <ItemGroup>
+      <GeneratedOpenApiDocument Include="$(OpenApiDocumentsDirectory)/*.json" />
+    </ItemGroup>
+    <NormalizeOpenApiLineEndings Files="@(GeneratedOpenApiDocument)" />
+  </Target>
+
 </Project>
