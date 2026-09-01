@@ -3,6 +3,7 @@
 ```bash
 node automation/dev.mjs 42     # build ticket 42 with Claude, then review it automatically
 node automation/review.mjs 42  # re-review by hand
+node automation/approve.mjs 42 # set state:approved from here, after reading the findings
 node automation/ship.mjs 42    # merge it once you have approved it, then clean up
 ```
 
@@ -42,6 +43,7 @@ Full workflow: [../docs/PIPELINE.md](../docs/PIPELINE.md).
 | `claim.mjs` | Ticket → worktree → branch → `.agent/task.md` → push guard. Stops before the agent. |
 | `finish.mjs` | Commit sweep → push → draft PR → spawns the reviewer. The only thing that may publish. |
 | `review.mjs` | Fresh read-only audit of the PR diff → severity-ranked findings → one PR comment. |
+| `approve.mjs` | Prints the PR and the reviewer's findings, then sets `state:approved`. Only ever runs when you type it. |
 | `ship.mjs` | Push what is left → ready → wait for CI → squash-merge → remove the worktree. Refuses without `state:approved`. |
 | `lib/core.mjs` | gh CLI, git worktrees, both Claude spawns, session store, push guard. |
 | `prompts/dev-system.md` | Standing rules for the dev agent: scope, when to ask, plan-first method, the report. |
@@ -72,11 +74,15 @@ memory of writing the code, and it's read-only. Both properties are enforced by
 the permission layer rather than by asking politely, because an approval only
 means something if the reviewer couldn't have quietly fixed things first.
 
-**Nothing merges without you.** `state:approved` is written by no script in this
-directory — not `claim.mjs`, not `finish.mjs`, not `review.mjs` — and `ship.mjs`
-refuses to run without it. That label is the one point in the pipeline where a
-human says yes, so a command that could set it *and* merge would hand the machine
-its own approval. `state:done` is the mirror image: only `pr-closed.yml` writes
+**Nothing merges without you.** `state:approved` is written by no *unattended*
+script in this directory — not `claim.mjs`, not `finish.mjs`, not `review.mjs`,
+all of which run without you watching — and `ship.mjs` refuses to run without
+it. `approve.mjs` sets the label, but only ever when you type the command
+yourself, same as clicking the button on GitHub; it never runs as part of a
+pipeline step, and no script here chains it into a merge. That label is the one
+point in the pipeline where a human says yes, so nothing here sets it *and*
+merges in one breath — `ship.mjs` still requires the label to already be there
+when it starts. `state:done` is the mirror image: only `pr-closed.yml` writes
 it, from the `Closes #N` trailer, so nothing here can mark work finished that
 GitHub does not agree is merged.
 
@@ -142,7 +148,8 @@ hand from there, `AGENT_PUSH_OK=1 git push` is the deliberate override.
 
 **`#42 is state:needs-you, not state:approved`** — `ship.mjs` will not merge a
 ticket you have not approved. Read the PR and the reviewer's findings, then set
-the label. This is deliberate and there is no flag for it.
+the label — `node automation/approve.mjs 42` does that from here, or use the
+GitHub UI. There is no flag on `ship.mjs` itself to skip this.
 
 **`CI is not green on PR #N`** — the merge did not happen and nothing was
 deleted. Fix the branch, re-run `dev.mjs 42` to push the fix, then `ship.mjs 42`
