@@ -1,8 +1,6 @@
-using System.Globalization;
 using Api.Battles;
 using Api.Persistence;
 using GameSim;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,38 +27,7 @@ app.MapOpenApi();
 app.MapGet("/health", () => TypedResults.Ok(new HealthResponse("ok")))
    .WithName("GetHealth");
 
-app.MapPost("/battles/simulate", Results<Ok<SimulateBattleResponse>, BadRequest<ErrorResponse>> (
-    SimulateBattleRequest request, MatchupCatalog matchups) =>
-{
-    if (!matchups.TryGet(request.MatchupId, out Matchup? matchup))
-    {
-        return TypedResults.BadRequest(new ErrorResponse($"Unknown matchup id '{request.MatchupId}'."));
-    }
-
-    ulong seed;
-    if (request.Seed is null)
-    {
-        seed = SeedGenerator.NewSeed();
-    }
-    else if (!ulong.TryParse(request.Seed, NumberStyles.None, CultureInfo.InvariantCulture, out seed))
-    {
-        return TypedResults.BadRequest(new ErrorResponse(
-            $"Seed '{request.Seed}' is not a valid unsigned 64-bit integer."));
-    }
-
-    if (!BattleSetup.TryCreate(matchup.PlayerPlacements, matchup.OpponentPlacements, out BattleSetup? setup, out _))
-    {
-        // Unreachable: every hardcoded matchup is built from legal placements.
-        throw new InvalidOperationException(
-            $"Matchup '{matchup.Id}' failed setup validation. Hardcoded matchups must always be legal.");
-    }
-
-    var simulation = new BattleSimulation(setup, seed);
-    BattleResult result = simulation.Run();
-
-    return TypedResults.Ok(BattleResponseFactory.Create(seed, setup, simulation.Events, result));
-})
-.WithName("SimulateBattle");
+app.MapBattleEndpoints();
 
 app.Run();
 
