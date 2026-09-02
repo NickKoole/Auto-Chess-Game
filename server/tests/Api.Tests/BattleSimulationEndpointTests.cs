@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Api.Battles;
 using Api.Battles.Dtos;
+using GameSim;
 
 namespace Api.Tests;
 
@@ -36,6 +38,55 @@ public sealed class BattleSimulationEndpointTests(ApiFactory factory) : IClassFi
         var knownDefinitionIds = body.UnitDefinitions.Select(d => d.Id).ToHashSet();
         Assert.All(body.InitialSetup, unit => Assert.Contains(unit.DefinitionId, knownDefinitionIds));
     }
+
+    // The seeds are the ticket's repro (#47) for melee-mirror, and an
+    // already-exercised seed for the asymmetric matchup — which is the one that
+    // can catch a side or definition id being attached to the wrong unit, since
+    // melee-mirror fields the same definition on both sides.
+    [Theory]
+    [InlineData("melee-mirror", "12345")]
+    [InlineData("archers-vs-melee", "987654321")]
+    public async Task InitialSetup_reports_the_matchups_tick_0_placements_not_where_units_ended_up(
+        string matchupId, string seed)
+    {
+        HttpClient client = factory.CreateClient();
+
+        HttpResponseMessage response = await client.PostAsJsonAsync("/battles/simulate", new SimulateBattleRequest
+        {
+            MatchupId = matchupId,
+            Seed = seed,
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        SimulateBattleResponse? body = await response.Content.ReadFromJsonAsync<SimulateBattleResponse>();
+        Assert.NotNull(body);
+
+        // Load-bearing: on a battle where nothing ever moved, the assertion
+        // below would hold even with the bug present, and prove nothing.
+        Assert.Contains(body.Events, e => e is UnitMovedEventDto);
+
+        var catalog = new MatchupCatalog(new StaticUnitCatalog());
+        Assert.True(catalog.TryGet(matchupId, out Matchup? matchup));
+
+        // Side and DefinitionId ride along in the tuple deliberately: they are
+        // not affected by this bug, and comparing them here is what keeps them
+        // covered while the position assertion is what fails on a regression.
+        var expected = Placements(matchup).OrderBy(p => p).ToList();
+        var actual = body.InitialSetup
+            .Select(u => (u.Side, u.DefinitionId, u.Position.Row, u.Position.Col))
+            .OrderBy(p => p)
+            .ToList();
+
+        Assert.Equal(expected, actual);
+        Assert.Equal(body.InitialSetup.Count, body.InitialSetup.Select(u => u.UnitId).Distinct().Count());
+    }
+
+    private static IEnumerable<(SideDto Side, string DefinitionId, int Row, int Col)> Placements(Matchup matchup) =>
+        matchup.PlayerPlacements
+            .Select(p => (SideDto.Player, p.Definition.Id, p.Coord.Row, p.Coord.Col))
+            .Concat(matchup.OpponentPlacements
+                .Select(p => (SideDto.Opponent, p.Definition.Id, p.Coord.Row, p.Coord.Col)));
 
     [Fact]
     public async Task Simulating_the_same_matchup_and_seed_twice_produces_identical_responses()

@@ -21,16 +21,44 @@ public static class BattleResponseFactory
         var initialSetup = new List<StartingUnitDto>(setup.Units.Count);
         var definitions = new Dictionary<string, UnitDefinitionDto>(StringComparer.Ordinal);
 
-        foreach (BattleUnit unit in setup.Units)
+        // Tick 0 is read off the log, not off setup.Units, because
+        // BattleUnit.Position is mutable and the simulation moves those same
+        // instances in place — by the time this runs, a unit's Position is where
+        // it finished, not where it started. UnitSpawnedEvent captured the real
+        // starting coordinate before the first tick, and HexCoord is a value
+        // type, so the log's copy cannot be moved out from under it.
+        foreach (BattleEvent battleEvent in events)
         {
+            if (battleEvent is not UnitSpawnedEvent spawned)
+            {
+                continue;
+            }
+
             initialSetup.Add(new StartingUnitDto
             {
-                UnitId = unit.Id,
-                Side = MapSide(unit.Side),
-                DefinitionId = unit.Definition.Id,
-                Position = MapCoord(unit.Position),
+                UnitId = spawned.UnitId,
+                Side = MapSide(spawned.Side),
+                DefinitionId = spawned.DefinitionId,
+                Position = MapCoord(spawned.Position),
             });
+        }
 
+        // Reading tick 0 from the log means an unrun simulation yields an empty
+        // initialSetup rather than a wrong one, which is quieter and therefore
+        // worse. The simulation emits exactly one spawn per unit, so anything
+        // else here is a caller that built the response before running the
+        // battle.
+        if (initialSetup.Count != setup.Units.Count)
+        {
+            throw new InvalidOperationException(
+                $"Expected one spawn event per unit, got {initialSetup.Count} for {setup.Units.Count} units. " +
+                "Build the response from a simulation that has been run.");
+        }
+
+        // Definitions still come from the setup: BattleUnit.Definition is the
+        // shared, immutable template, and nothing in the simulation writes to it.
+        foreach (BattleUnit unit in setup.Units)
+        {
             definitions.TryAdd(unit.Definition.Id, MapUnitDefinition(unit.Definition));
         }
 
