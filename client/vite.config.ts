@@ -15,4 +15,16 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    proxy: {
+      // The ASP.NET backend mounts its routes at the root, not under /api, so
+      // the prefix is stripped on the way through. Client code only ever sees
+      // the relative /api path — no base URL that differs between dev and prod.
+      '/api': {
+        target: 'http://localhost:5152',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
 })
