@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { simulateBattle, type SimulateBattleResponse } from '@/api/battles'
+import { createBattleState } from '@/battle/battleState'
+import BattleBoard from '@/components/BattleBoard.vue'
 
 const MATCHUP_ID = 'melee-mirror'
 
@@ -12,6 +14,8 @@ const WINNER_LABELS: Record<number, string> = {
 
 const outcome = ref<SimulateBattleResponse | null>(null)
 const error = ref<string | null>(null)
+
+const battleState = computed(() => (outcome.value ? createBattleState(outcome.value) : null))
 
 function winnerLabel(winner: number): string {
   return WINNER_LABELS[winner] ?? `Unknown (${winner})`
@@ -38,5 +42,7 @@ onMounted(async () => {
       {{ outcome.events.length }}
     </p>
     <p v-else>Running battle&hellip;</p>
+
+    <BattleBoard v-if="battleState" :state="battleState" />
   </main>
 </template>
