@@ -121,6 +121,104 @@ public sealed class BattleIntegrationTests
         }
     }
 
+    /// <summary>
+    /// The API's <c>melee-mirror</c> matchup: three knights a side, player on
+    /// row 5 and opponent on row 2, columns 2-4. Rebuilt from the same roster
+    /// rather than referenced, because <c>GameSim</c> cannot see <c>Api</c> —
+    /// the reference direction only runs the other way.
+    /// </summary>
+    private static BattleSetup MeleeMirror()
+    {
+        UnitDefinition knight = new StaticUnitCatalog().Get("knight");
+
+        Assert.True(BattleSetup.TryCreate(
+            [At(knight, 5, 2), At(knight, 5, 3), At(knight, 5, 4)],
+            [At(knight, 2, 2), At(knight, 2, 3), At(knight, 2, 4)],
+            out BattleSetup? setup,
+            out _));
+
+        return setup!;
+    }
+
+    [Fact]
+    public void No_unit_stands_in_reach_of_a_living_enemy_without_swinging()
+    {
+        // Reported as #49: a knight stood adjacent to a live enemy for 211
+        // consecutive ticks without attacking, because its target was fixed on
+        // someone two hexes away and walled off, and attack range is tested
+        // against the target alone.
+        //
+        // A unit continuously in reach swings every AttackIntervalTicks, so the
+        // longest legitimate run of in-reach-but-idle ticks is one interval less
+        // one. Allowing a full interval leaves a tick of slack and still fails by
+        // an order of magnitude on the reported behaviour.
+        UnitDefinition knight = new StaticUnitCatalog().Get("knight");
+
+        foreach (ulong seed in new ulong[] { 12345, 1, 777 })
+        {
+            var battle = new BattleSimulation(MeleeMirror(), seed);
+            BattleResult result = battle.Run();
+
+            Dictionary<int, List<BattleEvent>> byTick = battle.Events
+                .GroupBy(e => e.Tick)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var position = new Dictionary<int, HexCoord>();
+            var side = new Dictionary<int, BattleSide>();
+            var alive = new HashSet<int>();
+
+            foreach (UnitSpawnedEvent spawned in battle.Events.OfType<UnitSpawnedEvent>())
+            {
+                position[spawned.UnitId] = spawned.Position;
+                side[spawned.UnitId] = spawned.Side;
+                alive.Add(spawned.UnitId);
+            }
+
+            // A sorted list, never the dictionary's own enumeration order: which
+            // unit a failure names would otherwise be a runtime detail.
+            int[] ids = [.. position.Keys.Order()];
+            var idleRun = ids.ToDictionary(id => id, _ => 0);
+
+            for (int tick = 1; tick <= result.EndTick; tick++)
+            {
+                List<BattleEvent> events = byTick.TryGetValue(tick, out List<BattleEvent>? found) ? found : [];
+
+                foreach (BattleEvent e in events)
+                {
+                    if (e is UnitMovedEvent moved)
+                    {
+                        position[moved.UnitId] = moved.To;
+                    }
+                }
+
+                var swung = events.OfType<UnitAttackedEvent>().Select(a => a.AttackerId).ToHashSet();
+
+                foreach (BattleEvent e in events)
+                {
+                    if (e is UnitDiedEvent died)
+                    {
+                        alive.Remove(died.UnitId);
+                    }
+                }
+
+                foreach (int id in ids)
+                {
+                    bool inReach = alive.Contains(id) && alive.Any(other =>
+                        side[other] != side[id]
+                        && position[id].DistanceTo(position[other]) <= knight.AttackRangeHexes);
+
+                    idleRun[id] = inReach && !swung.Contains(id) ? idleRun[id] + 1 : 0;
+
+                    Assert.True(
+                        idleRun[id] <= knight.AttackIntervalTicks,
+                        $"Seed {seed}: unit {id} spent {idleRun[id]} consecutive ticks within reach of a "
+                        + $"living enemy without attacking, ending at tick {tick} on {position[id]}. "
+                        + $"A knight swings every {knight.AttackIntervalTicks} ticks.");
+                }
+            }
+        }
+    }
+
     [Fact]
     public void The_same_seed_produces_an_identical_result_and_log_on_a_second_run()
     {

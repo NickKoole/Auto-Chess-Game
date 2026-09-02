@@ -209,10 +209,12 @@ public sealed class BattleTargetingAndMovementTests
     }
 
     [Fact]
-    public void Keeps_a_living_target_even_when_a_nearer_enemy_is_available()
+    public void Switches_to_an_enemy_that_is_strictly_nearer_than_the_target_it_holds()
     {
-        // Targets are sticky. A unit that re-chose every tick would jitter
-        // between two equidistant enemies and never close on either.
+        // Targets are re-chosen every tick. Sentinels throughout, so nothing
+        // moves and the distances the choice was made on stay on the board: the
+        // hunter is handed a target 9 hexes away while a living enemy stands at
+        // 3, and must come off it.
         BattleSetup setup = Setup(
             [At(Sentinel, 5, 0)],
             [At(Sentinel, 2, 0), At(Sentinel, 0, 7)]);
@@ -221,12 +223,78 @@ public sealed class BattleTargetingAndMovementTests
         BattleUnit near = From(setup, 2, 0);
         BattleUnit far = From(setup, 0, 7);
 
+        Assert.Equal(3, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 0)));
+        Assert.Equal(9, new HexCoord(5, 0).DistanceTo(new HexCoord(0, 7)));
+
         hunter.Target = far;
 
         Run(setup, 20);
 
-        Assert.Same(far, hunter.Target);
-        Assert.NotSame(near, hunter.Target);
+        Assert.Same(near, hunter.Target);
+    }
+
+    [Fact]
+    public void Keeps_its_target_when_another_enemy_is_exactly_as_close()
+    {
+        // The property that makes re-choosing every tick safe: only a strictly
+        // nearer enemy displaces the incumbent. Both enemies sit 3 hexes out, and
+        // (2, 0) is the one the acquisition tie break would pick on its own — so
+        // handing the hunter the *other* one is what makes this fail if the
+        // comparison is ever loosened to "no further than". Twenty ticks, so a
+        // unit that alternated would be caught whichever parity it landed on.
+        BattleSetup setup = Setup(
+            [At(Sentinel, 5, 0)],
+            [At(Sentinel, 2, 0), At(Sentinel, 2, 1)]);
+
+        BattleUnit hunter = From(setup, 5, 0);
+        BattleUnit wouldWinTheTieBreak = From(setup, 2, 0);
+        BattleUnit held = From(setup, 2, 1);
+
+        Assert.Equal(3, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 0)));
+        Assert.Equal(3, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 1)));
+
+        hunter.Target = held;
+
+        Run(setup, 20);
+
+        Assert.Same(held, hunter.Target);
+        Assert.NotSame(wouldWinTheTieBreak, hunter.Target);
+    }
+
+    [Fact]
+    public void Comes_off_a_distant_target_and_actually_attacks_the_nearer_enemy()
+    {
+        // The shape of the reported bug (#49): a unit fixated on something far
+        // away while a much closer enemy is there to be fought. The two armies
+        // deploy either side of the neutral band and so cannot start in contact,
+        // which is why this closes the last hexes by walking rather than by
+        // being placed adjacent.
+        //
+        // Asserting the swing and not just the target is the point: the bug was
+        // never that a unit held the wrong reference, it was that the unit stood
+        // there doing nothing. Both enemies are Sentinels, which never move, so
+        // the distances the choice turns on stay put.
+        BattleSetup setup = Setup(
+            [At(Runner, 5, 0)],
+            [At(Sentinel, 2, 0), At(Sentinel, 0, 7)]);
+
+        BattleUnit hunter = From(setup, 5, 0);
+        BattleUnit near = From(setup, 2, 0);
+        BattleUnit far = From(setup, 0, 7);
+
+        Assert.Equal(3, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 0)));
+        Assert.Equal(9, new HexCoord(5, 0).DistanceTo(new HexCoord(0, 7)));
+
+        hunter.Target = far;
+
+        // One attack interval, so "eventually" is not what is being claimed.
+        var battle = new BattleSimulation(setup, Seed, new BattleOptions { MaxTicks = Runner.AttackIntervalTicks });
+        battle.Run();
+
+        Assert.Same(near, hunter.Target);
+        Assert.Contains(
+            battle.Events,
+            e => e is UnitAttackedEvent a && a.AttackerId == hunter.Id && a.TargetId == near.Id);
     }
 
     // --- closing the distance ------------------------------------------------
