@@ -1,4 +1,5 @@
 import type { components } from '@/api/schema.d.ts'
+import { toNumber } from '@/api/numeric'
 
 type SimulateBattleResponse = components['schemas']['SimulateBattleResponse']
 type UnitDefinitionDto = components['schemas']['UnitDefinitionDto']
@@ -30,11 +31,6 @@ export interface BattleUnitState {
 export interface BattleState {
   units: BattleUnitState[]
   unitDefinitions: Record<string, UnitDefinitionDto>
-}
-
-/** DTO int32 fields are typed `number | string`; the server sends plain numbers. */
-function toNumber(value: number | string): number {
-  return typeof value === 'number' ? value : Number(value)
 }
 
 /** Builds the tick-0 battle state from a battle's simulate response. */
