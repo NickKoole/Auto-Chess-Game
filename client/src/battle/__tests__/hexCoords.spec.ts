@@ -1,15 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { gridDimensions, hexPolygonPoints, hexToPixel, hexRowSpacing, hexWidth } from '../hexCoords'
+import { gridDimensions, hexPolygonPoints, hexToPixel } from '../hexCoords'
 
 describe('hexToPixel', () => {
   it('places an even row with no horizontal offset', () => {
     expect(hexToPixel(0, 0, 10)).toEqual({ x: 0, y: 0 })
-    expect(hexToPixel(0, 3, 10)).toEqual({ x: 3 * hexWidth(10), y: 0 })
+
+    const { x, y } = hexToPixel(0, 3, 10)
+    expect(x).toBeCloseTo(51.9615) // 3 hexes across at sqrt(3) * 10 apart, no row shift
+    expect(y).toBe(0)
   })
 
   it('shifts an odd row right by half a hex width', () => {
-    expect(hexToPixel(1, 0, 10)).toEqual({ x: hexWidth(10) / 2, y: hexRowSpacing(10) })
-    expect(hexToPixel(3, 2, 10)).toEqual({ x: 2 * hexWidth(10) + hexWidth(10) / 2, y: 3 * hexRowSpacing(10) })
+    const first = hexToPixel(1, 0, 10)
+    expect(first.x).toBeCloseTo(8.6603) // half of sqrt(3) * 10
+    expect(first.y).toBeCloseTo(15)
+
+    const second = hexToPixel(3, 2, 10)
+    expect(second.x).toBeCloseTo(43.3013) // 2 hexes across, plus the odd-row half-width shift
+    expect(second.y).toBeCloseTo(45)
   })
 
   it('stacks rows 1.5x the hex size apart vertically, regardless of column', () => {
@@ -21,8 +29,8 @@ describe('hexToPixel', () => {
 describe('gridDimensions', () => {
   it('sizes an 8x8 board with room for every hex edge', () => {
     const dims = gridDimensions(8, 8, 10)
-    expect(dims.width).toBeCloseTo(8 * hexWidth(10) + hexWidth(10) / 2)
-    expect(dims.height).toBeCloseTo(7 * hexRowSpacing(10) + 20)
+    expect(dims.width).toBeCloseTo(147.2243) // 8.5 hex-widths, for the widest odd-row shift
+    expect(dims.height).toBeCloseTo(125) // 7 row-spacings plus a full hex height top and bottom
 
     // No hex center, once shifted by the origin, should ever go negative.
     for (let row = 0; row < 8; row++) {
