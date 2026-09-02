@@ -2,6 +2,24 @@
 
 This template should help get you started developing with Vue 3 in Vite.
 
+## Running with the backend
+
+The client talks to the ASP.NET backend over relative `/api/...` paths. In
+dev, Vite proxies `/api` to `http://localhost:5152` (see `vite.config.ts`), so
+the two are started independently:
+
+```sh
+# terminal 1 — backend
+cd server && dotnet run --project src/Api/Api.csproj
+
+# terminal 2 — frontend
+cd client && npm run dev
+```
+
+Then open the frontend's dev URL (printed by Vite, typically
+`http://localhost:5173`). If the backend's OpenAPI contract changes,
+regenerate the client's types with `npm run generate:api`.
+
 ## Recommended IDE Setup
 
 [VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
