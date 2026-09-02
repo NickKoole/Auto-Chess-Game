@@ -470,77 +470,78 @@ public sealed class BattleTargetingAndMovementTests
     }
 
     /// <summary>
-    /// Two units each wanting the tile the other is standing on, with every
-    /// other useful step walled off by stationary Sentinels.
+    /// Two units sealed into a corner pocket with only each other's tiles
+    /// between them and the rest of the board, plus a switch to unseal it.
     ///
-    /// A battle never produces this on its own: both armies advance in the same
-    /// direction, and nearest-enemy targeting means two units that are next to
-    /// each other are heading the same way. So the southern unit's target is set
-    /// by hand to a friendly unit behind it, purely to make it want to walk
-    /// backwards into its neighbour.
+    /// (7, 0) and (6, 0) each have three on-board neighbours; walling (5, 0),
+    /// (6, 1) and (7, 1) leaves each of them with no free neighbour at all
+    /// except the tile the other is standing on.
     /// </summary>
-    private static BattleSetup FacingOff(bool turnItAround)
-    {
-        BattleSetup setup = Setup(
-            [
-                At(Runner, 5, 3),    // wants (6, 3) once turned around
-                At(Runner, 6, 3),    // wants (5, 3)
-                At(Sentinel, 6, 4),  // walls off the northern unit's other step
-                At(Sentinel, 5, 2),  // walls off the southern unit's other step
-                At(Runner, 7, 3),    // the lure
-            ],
-            [At(Sentinel, 0, 3)]);
-
-        if (turnItAround)
-        {
-            From(setup, 5, 3).Target = From(setup, 7, 3);
-        }
-
-        return setup;
-    }
+    private static BattleSetup Pocket(bool sealIt) => Setup(
+        sealIt
+            ? [At(Runner, 7, 0), At(Runner, 6, 0), At(Sentinel, 5, 0), At(Sentinel, 6, 1), At(Sentinel, 7, 1)]
+            : [At(Runner, 7, 0), At(Runner, 6, 0), At(Sentinel, 5, 0), At(Sentinel, 7, 1)],
+        [At(Sentinel, 0, 3)]);
 
     [Fact]
     public void Two_adjacent_units_cannot_swap_tiles()
     {
-        BattleSetup setup = FacingOff(turnItAround: true);
-        BattleUnit north = From(setup, 5, 3);
-        BattleUnit south = From(setup, 6, 3);
+        // Each unit's only free neighbour is the tile the other stands on, and
+        // an occupied tile is a wall — to the route search as much as to the
+        // step itself. So neither unit has a route to the enemy and neither
+        // moves, and in particular neither ends up where the other was.
+        //
+        // Since pathing landed this is structural rather than a rule applied at
+        // the last moment: a unit cannot even propose an occupied tile, because
+        // the search never traces a route through one. The old fixture here made
+        // two units reach for each other's tiles and relied on the claim check to
+        // refuse them; that situation can no longer be built, which is why this
+        // now asserts the invariant instead of staging the collision.
+        BattleSetup setup = Pocket(sealIt: true);
+        BattleUnit north = From(setup, 6, 0);
+        BattleUnit south = From(setup, 7, 0);
 
         Run(setup, 1);
 
-        // Both tiles were occupied at the start of the tick, so neither is a
-        // legal destination — no special case needed, and none written.
-        Assert.Equal(new HexCoord(5, 3), north.Position);
-        Assert.Equal(new HexCoord(6, 3), south.Position);
+        Assert.Equal(new HexCoord(6, 0), north.Position);
+        Assert.Equal(new HexCoord(7, 0), south.Position);
 
+        // Having nowhere to go is not an attempt either gets charged for.
         Assert.Equal(0, north.MovementCooldownTicks);
         Assert.Equal(0, south.MovementCooldownTicks);
     }
 
     [Fact]
-    public void The_units_that_cannot_swap_are_otherwise_willing_to_move()
+    public void The_sealed_in_units_are_otherwise_willing_to_move()
     {
-        // The control for the test above: same board, same walls, but the
-        // northern unit keeps its natural target to the north. If it moves here,
-        // then staying put there was the swap rule and not a frozen fixture.
-        BattleSetup setup = FacingOff(turnItAround: false);
-        BattleUnit north = From(setup, 5, 3);
+        // The control for the test above: the same pocket with (6, 1) left open.
+        // If the northern unit walks out here, then staying put there was the
+        // sealed board and not a frozen fixture.
+        BattleSetup setup = Pocket(sealIt: false);
+        BattleUnit north = From(setup, 6, 0);
 
         Run(setup, 1);
 
-        Assert.NotEqual(new HexCoord(5, 3), north.Position);
+        Assert.NotEqual(new HexCoord(6, 0), north.Position);
     }
 
     [Fact]
     public void A_blocked_unit_keeps_its_readiness_and_goes_the_tick_the_tile_frees()
     {
-        // (7, 3) wants (6, 3), which is occupied. Its only other closing step,
-        // (6, 4), is walled off by a Sentinel — so it is blocked outright. The
-        // unit on (6, 3) walks away this tick, and both are Militia, which cross
-        // a hex in 6 ticks: a unit charged for its blocked attempt would sit
-        // still until tick 7.
+        // (7, 3) wants (6, 3), which is occupied. Sentinels hold every other
+        // neighbour it has — (6, 4), (7, 2) and (7, 4), the rest being off the
+        // board — so there is no way round and it is blocked outright. Walling
+        // all three is what makes this a test about being blocked rather than
+        // about pathing: leave one open and the unit simply routes around it.
+        //
+        // The unit on (6, 3) walks away this tick, and both are Militia, which
+        // cross a hex in 6 ticks: a unit charged for its blocked attempt would
+        // sit still until tick 7.
         static BattleSetup Build() => Setup(
-            [At(Militia, 7, 3), At(Militia, 6, 3), At(Sentinel, 6, 4)],
+            [
+                At(Militia, 7, 3), At(Militia, 6, 3),
+                At(Sentinel, 6, 4), At(Sentinel, 7, 2), At(Sentinel, 7, 4),
+            ],
             [At(Sentinel, 0, 3)]);
 
         BattleSetup afterOne = Build();
@@ -564,13 +565,21 @@ public sealed class BattleTargetingAndMovementTests
     [Fact]
     public void A_unit_may_not_follow_another_into_a_tile_it_vacated_this_tick()
     {
-        // The same board as above, one tick. Both units are ready and the one in
-        // front does move — but the tile it leaves was occupied at the start of
-        // the tick, so the one behind may not step into it until the next one.
-        // Chasing the vacancy within a tick is sequential resolution in
-        // disguise: it resolves as a chain, and the chain has an order.
+        // The same walled board as above, one tick. Both units are ready and the
+        // one in front does move — but the tile it leaves was occupied at the
+        // start of the tick, so the one behind may not step into it until the
+        // next one. Chasing the vacancy within a tick is sequential resolution
+        // in disguise: it resolves as a chain, and the chain has an order.
+        //
+        // (6, 3) is the only neighbour the rear unit has that is not held by a
+        // Sentinel, so following it is the one move available — which is what
+        // makes staying put evidence of the rule rather than of a lack of
+        // options.
         BattleSetup setup = Setup(
-            [At(Runner, 7, 3), At(Runner, 6, 3), At(Sentinel, 6, 4)],
+            [
+                At(Runner, 7, 3), At(Runner, 6, 3),
+                At(Sentinel, 6, 4), At(Sentinel, 7, 2), At(Sentinel, 7, 4),
+            ],
             [At(Sentinel, 0, 3)]);
 
         BattleUnit front = From(setup, 6, 3);
@@ -585,11 +594,16 @@ public sealed class BattleTargetingAndMovementTests
     [Fact]
     public void A_unit_with_no_free_step_stays_put_without_erroring()
     {
-        // Walled in on both of its closing steps for the whole battle: the
-        // Sentinels never move, so the block never lifts. It must sit there for
-        // a thousand ticks rather than throwing, looping, or wandering.
+        // Sealed in: Sentinels hold all four of its on-board neighbours and never
+        // move, so no route to the enemy exists at all and none ever opens. It
+        // must sit there for a thousand ticks rather than throwing, looping, or
+        // wandering — the pathfinder finding no route is the case this pins, and
+        // it needs every neighbour held, not merely the closing ones.
         BattleSetup setup = Setup(
-            [At(Militia, 7, 3), At(Sentinel, 6, 3), At(Sentinel, 6, 4)],
+            [
+                At(Militia, 7, 3),
+                At(Sentinel, 6, 3), At(Sentinel, 6, 4), At(Sentinel, 7, 2), At(Sentinel, 7, 4),
+            ],
             [At(Sentinel, 0, 3)]);
 
         BattleUnit stuck = From(setup, 7, 3);
@@ -601,13 +615,19 @@ public sealed class BattleTargetingAndMovementTests
     [Fact]
     public void Every_unit_decides_against_the_board_as_it_was_at_the_start_of_the_tick()
     {
-        // A column of four, all ready every tick. Under sequential resolution
-        // the whole column shuffles forward together each tick, because each
-        // unit sees the vacancy the one ahead just made. Two-phase, only the
-        // front unit moves on any given tick and the rest follow one tick apart,
-        // so after one tick exactly one of them has moved.
+        // A column of two in a walled lane, both ready every tick. Under
+        // sequential resolution both move: the rear unit sees the vacancy the
+        // front one just made and follows it within the tick. Two-phase, only
+        // the front unit moves, so after one tick exactly one of them has.
+        //
+        // The Sentinels hold every neighbour of the rear unit except (6, 3), so
+        // following the vacancy is its only possible move and the count is a
+        // clean read on the two-phase rule.
         BattleSetup setup = Setup(
-            [At(Runner, 7, 3), At(Runner, 6, 3), At(Sentinel, 6, 4), At(Sentinel, 7, 4)],
+            [
+                At(Runner, 7, 3), At(Runner, 6, 3),
+                At(Sentinel, 6, 4), At(Sentinel, 7, 2), At(Sentinel, 7, 4),
+            ],
             [At(Sentinel, 0, 3)]);
 
         HexCoord[] before = [.. setup.Units.Select(u => u.Position)];
@@ -617,6 +637,88 @@ public sealed class BattleTargetingAndMovementTests
         HexCoord[] after = [.. setup.Units.Select(u => u.Position)];
 
         Assert.Equal(1, before.Zip(after).Count(pair => pair.First != pair.Second));
+    }
+
+    // --- routing around an obstruction ---------------------------------------
+
+    [Fact]
+    public void Walks_around_its_own_front_rank_instead_of_waiting_for_it_to_die()
+    {
+        // The reported stall (#51). The mover at (7, 3) has its direct approach
+        // held by allied Sentinels on (6, 3) and (6, 4) — the two steps that
+        // close the distance — but (7, 2) is open and leads north around them.
+        // The Sentinels never move and never die, so a unit that only ever steps
+        // strictly closer waits here forever.
+        BattleSetup setup = Setup(
+            [At(Runner, 7, 3), At(Sentinel, 6, 3), At(Sentinel, 6, 4)],
+            [At(Sentinel, 0, 3)]);
+
+        BattleUnit mover = From(setup, 7, 3);
+
+        Assert.Equal(1, mover.Position.DistanceTo(new HexCoord(6, 3)));
+
+        Run(setup, 40);
+
+        // Reached contact with the enemy without any ally dying to clear a lane.
+        Assert.Equal(1, mover.Position.DistanceTo(new HexCoord(0, 3)));
+        Assert.All(setup.Units, u => Assert.True(u.IsAlive));
+    }
+
+    [Fact]
+    public void The_first_step_of_a_detour_is_the_one_the_tie_break_names()
+    {
+        // Two routes around the wall are the same length — west through (7, 2)
+        // and east through (7, 4) — so length alone does not pick one, and the
+        // choice falls to the documented tie break: smaller column gap to the
+        // target first, then lowest row, then lowest column.
+        //
+        // The target sits on column 3 and both openings are one column off it,
+        // so the gap ties at 1, the rows tie at 7, and the column decides: west.
+        // A pathfinder that let the order HexCoord.Neighbours() happens to return
+        // settle this would be free to pick either, which is exactly what
+        // HexCoord.Neighbours' own documentation forbids.
+        BattleSetup setup = Setup(
+            [At(Runner, 7, 3), At(Sentinel, 6, 3), At(Sentinel, 6, 4)],
+            [At(Sentinel, 0, 3)]);
+
+        BattleUnit mover = From(setup, 7, 3);
+
+        Run(setup, 1);
+
+        Assert.Equal(new HexCoord(7, 2), mover.Position);
+    }
+
+    [Fact]
+    public void Does_not_backtrack_while_its_target_stays_put()
+    {
+        // Routing around means a unit sometimes steps without shortening the
+        // straight-line distance, which is what the old greedy rule forbade
+        // outright. What replaces that guarantee is the route length falling on
+        // every step, so a unit still cannot revisit a tile while the board it
+        // pathed against is unchanged. Sentinels never move or die, so it is.
+        var visited = new List<HexCoord> { new(7, 3) };
+
+        for (int tick = 1; tick <= 40; tick++)
+        {
+            BattleSetup step = Setup(
+                [At(Runner, 7, 3), At(Sentinel, 6, 3), At(Sentinel, 6, 4)],
+                [At(Sentinel, 0, 3)]);
+
+            // Captured before the run: From identifies a unit by where it is
+            // standing, and after a battle that is no longer where it deployed.
+            BattleUnit mover = From(step, 7, 3);
+
+            Run(step, tick);
+
+            if (mover.Position != visited[^1])
+            {
+                Assert.DoesNotContain(mover.Position, visited);
+                visited.Add(mover.Position);
+            }
+        }
+
+        // It genuinely travelled, rather than passing by never moving at all.
+        Assert.True(visited.Count > 3, $"Expected a real journey, got {visited.Count} distinct tiles.");
     }
 
     // --- determinism ---------------------------------------------------------
