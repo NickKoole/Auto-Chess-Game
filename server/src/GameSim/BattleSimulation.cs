@@ -318,12 +318,7 @@ public sealed class BattleSimulation
         ArgumentNullException.ThrowIfNull(unit);
         ArgumentNullException.ThrowIfNull(rng);
 
-        // Sticky: re-acquired only when there is no target or it is dead, never
-        // because something nearer wandered past.
-        if (unit.Target is null || !unit.Target.IsAlive)
-        {
-            unit.Target = NearestEnemy(unit);
-        }
+        unit.Target = ChooseTarget(unit);
 
         if (unit.Target is not BattleUnit target)
         {
@@ -499,11 +494,50 @@ public sealed class BattleSimulation
     }
 
     /// <summary>
+    /// The enemy this unit fights this tick: the nearest living one, unless the
+    /// target it already holds is just as close.
+    ///
+    /// Re-evaluated every tick rather than held until it dies. A target held
+    /// until death lets a unit stand beside a living enemy indefinitely, waiting
+    /// on someone it cannot reach — the unit is in range of something it refuses
+    /// to swing at, because range is tested against its target alone.
+    ///
+    /// <para>
+    /// The comparison is strictly closer, never merely as close, and that is the
+    /// whole of what keeps re-evaluation safe. Two equidistant enemies leave the
+    /// incumbent in place, so a unit cannot alternate between them, and it goes
+    /// on concentrating its damage on one rather than spreading it along a line.
+    /// A unit only ever switches when the board has genuinely put something
+    /// nearer in front of it.
+    /// </para>
+    /// </summary>
+    private BattleUnit? ChooseTarget(BattleUnit unit)
+    {
+        BattleUnit? nearest = NearestEnemy(unit);
+
+        if (unit.Target is not BattleUnit current || !current.IsAlive)
+        {
+            return nearest;
+        }
+
+        if (nearest is null)
+        {
+            return current;
+        }
+
+        return unit.Position.DistanceTo(nearest.Position) < unit.Position.DistanceTo(current.Position)
+            ? nearest
+            : current;
+    }
+
+    /// <summary>
     /// The closest living enemy, or null once that side has been wiped out.
     ///
     /// Ties break on the lowest row, then the lowest column — a documented total
     /// order over distinct tiles, never a roll. Two units cannot share a tile, so
-    /// it always resolves, and it resolves the same way on every machine.
+    /// it always resolves, and it resolves the same way on every machine. That
+    /// makes it a nearest-first search: walking outwards ring by ring would pick
+    /// the same unit, and this needs no bound on how far to look.
     /// </summary>
     private BattleUnit? NearestEnemy(BattleUnit unit)
     {

@@ -77,11 +77,18 @@ public sealed class BattleUnit
     /// The enemy this unit is currently going after, or null before it has
     /// picked one.
     ///
-    /// Sticky: it is re-acquired only when it is null or the unit it names is
-    /// dead, never merely because something nearer wandered past. A unit that
-    /// re-chose the nearest enemy every tick would jitter between two equidistant
-    /// foes and never close on either, and — once story 1.5 lands attacks — would
-    /// spread its damage across a line instead of killing anything.
+    /// Re-chosen every tick, but only ever in favour of an enemy that is
+    /// strictly closer than the one already held. Two equidistant foes therefore
+    /// leave it alone: a unit cannot alternate between them, and it goes on
+    /// concentrating its damage on one rather than spreading it along a line.
+    ///
+    /// <para>
+    /// It is deliberately not held until death. A target kept through anything
+    /// short of dying lets a unit stand beside a living enemy for the whole
+    /// battle waiting on someone walled off behind it, because attack range is
+    /// tested against the target alone — so the unit is in reach of something it
+    /// will not swing at.
+    /// </para>
     ///
     /// A reference to the other unit rather than a coordinate or an id: the
     /// target moves, and a coordinate would go stale within a tick. Nothing here
