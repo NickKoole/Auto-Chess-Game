@@ -665,18 +665,48 @@ public sealed class BattleTargetingAndMovementTests
     }
 
     [Fact]
-    public void The_first_step_of_a_detour_is_the_one_the_tie_break_names()
+    public void A_tie_is_settled_by_the_coordinate_rule_and_not_by_neighbour_order()
     {
-        // Two routes around the wall are the same length — west through (7, 2)
-        // and east through (7, 4) — so length alone does not pick one, and the
-        // choice falls to the documented tie break: smaller column gap to the
-        // target first, then lowest row, then lowest column.
+        // The tie that discriminates, and the only kind that can.
         //
-        // The target sits on column 3 and both openings are one column off it,
-        // so the gap ties at 1, the rows tie at 7, and the column decides: west.
-        // A pathfinder that let the order HexCoord.Neighbours() happens to return
-        // settle this would be free to pick either, which is exactly what
-        // HexCoord.Neighbours' own documentation forbids.
+        // HexCoord.Neighbours() returns a fixed array: (Row-1, Col) and
+        // (Row-1, Col+lean) first, then (Row, Col-1) before (Row, Col+1). That
+        // west-before-east order holds for every row, and the coordinate rule's
+        // last resort is also the lowest column — so on any same-row tie the two
+        // agree, and a test built on one cannot tell them apart.
+        //
+        // The northern diagonal pair can disagree. From (7, 3) the two north
+        // steps are (6, 3), listed first, and (6, 4), listed second; against a
+        // target on column 4 they are both 6 hexes out, so the route lengths tie
+        // and the column gap decides — 0 for (6, 4) against 1 for (6, 3). An
+        // implementation that took whichever tied neighbour the array happened to
+        // list first would answer (6, 3), which is what makes this test worth
+        // having.
+        BattleSetup setup = Setup([At(Runner, 7, 3)], [At(Sentinel, 0, 4)]);
+
+        BattleUnit mover = From(setup, 7, 3);
+
+        Assert.Equal(6, new HexCoord(6, 3).DistanceTo(new HexCoord(0, 4)));
+        Assert.Equal(6, new HexCoord(6, 4).DistanceTo(new HexCoord(0, 4)));
+        Assert.Equal(new HexCoord(6, 3), mover.Position.Neighbours()[0]);
+        Assert.Equal(new HexCoord(6, 4), mover.Position.Neighbours()[1]);
+
+        Run(setup, 1);
+
+        Assert.Equal(new HexCoord(6, 4), mover.Position);
+    }
+
+    [Fact]
+    public void Equal_length_detours_are_settled_by_the_same_rule()
+    {
+        // Both ways around the wall are the same length — west through (7, 2),
+        // east through (7, 4) — so length alone does not pick one and the
+        // coordinate rule decides. The gap ties at 1 and the rows tie at 7, so
+        // the lowest column wins.
+        //
+        // This one cannot distinguish the rule from neighbour order, for the
+        // reason the test above exists; it is here to pin the detour's first step
+        // rather than to prove which mechanism chose it.
         BattleSetup setup = Setup(
             [At(Runner, 7, 3), At(Sentinel, 6, 3), At(Sentinel, 6, 4)],
             [At(Sentinel, 0, 3)]);
