@@ -2,9 +2,14 @@ import type { components } from './schema.d.ts'
 
 export type SimulateBattleRequest = components['schemas']['SimulateBattleRequest']
 export type SimulateBattleResponse = components['schemas']['SimulateBattleResponse']
+export type MatchupDto = components['schemas']['MatchupDto']
 
 export type SimulateBattleResult =
   | { ok: true; data: SimulateBattleResponse }
+  | { ok: false; error: string }
+
+export type ListMatchupsResult =
+  | { ok: true; data: MatchupDto[] }
   | { ok: false; error: string }
 
 /** Runs one hardcoded matchup on the server and returns its outcome. */
@@ -25,6 +30,22 @@ export async function simulateBattle(request: SimulateBattleRequest): Promise<Si
   }
 
   return { ok: true, data: (await response.json()) as SimulateBattleResponse }
+}
+
+/** The matchups a battle can be requested for - the picker's data source. */
+export async function listMatchups(): Promise<ListMatchupsResult> {
+  let response: Response
+  try {
+    response = await fetch('/api/battles/matchups')
+  } catch {
+    return { ok: false, error: 'Could not reach the server.' }
+  }
+
+  if (!response.ok) {
+    return { ok: false, error: await describeError(response) }
+  }
+
+  return { ok: true, data: (await response.json()) as MatchupDto[] }
 }
 
 async function describeError(response: Response): Promise<string> {
