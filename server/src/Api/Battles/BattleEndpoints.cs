@@ -14,6 +14,13 @@ public static class BattleEndpoints
 {
     public static IEndpointRouteBuilder MapBattleEndpoints(this IEndpointRouteBuilder app)
     {
+        // The matchup list a picker renders: identifier and display name only,
+        // so the client never holds a second hardcoded copy of MatchupCatalog.
+        app.MapGet("/battles/matchups", Ok<IReadOnlyList<MatchupDto>> (MatchupCatalog matchups) =>
+            TypedResults.Ok<IReadOnlyList<MatchupDto>>(
+                [.. matchups.All.Select(m => new MatchupDto { Id = m.Id, DisplayName = m.DisplayName })]))
+        .WithName("ListMatchups");
+
         // TypedResults, not Results: the generic result type is what lets the
         // OpenAPI document carry a real response schema, which is what the
         // client generates its types from. Results.Ok erases it and yields an
