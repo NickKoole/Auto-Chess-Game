@@ -220,6 +220,134 @@ public sealed class BattleIntegrationTests
     }
 
     [Fact]
+    public void No_unit_is_stranded_out_of_reach_while_a_route_to_an_enemy_exists()
+    {
+        // Reported as #51: a unit whose direct approach was held by its own front
+        // rank stood still until an ally died and freed the lane. In melee-mirror
+        // two of the six spent 81 and 95 consecutive ticks out of reach that way.
+        //
+        // A knight crosses a hex in 8 ticks, so crossing the board's 8 rows takes
+        // well under 100; 40 consecutive ticks out of reach with a route available
+        // is far beyond ordinary travel and far below the reported stall.
+        const int Stranded = 40;
+
+        UnitDefinition knight = new StaticUnitCatalog().Get("knight");
+
+        foreach (ulong seed in new ulong[] { 12345, 1, 777 })
+        {
+            var battle = new BattleSimulation(MeleeMirror(), seed);
+            BattleResult result = battle.Run();
+
+            Dictionary<int, List<BattleEvent>> byTick = battle.Events
+                .GroupBy(e => e.Tick)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var position = new Dictionary<int, HexCoord>();
+            var side = new Dictionary<int, BattleSide>();
+            var alive = new HashSet<int>();
+
+            foreach (UnitSpawnedEvent spawned in battle.Events.OfType<UnitSpawnedEvent>())
+            {
+                position[spawned.UnitId] = spawned.Position;
+                side[spawned.UnitId] = spawned.Side;
+                alive.Add(spawned.UnitId);
+            }
+
+            int[] ids = [.. position.Keys.Order()];
+            var strandedFor = ids.ToDictionary(id => id, _ => 0);
+
+            for (int tick = 1; tick <= result.EndTick; tick++)
+            {
+                List<BattleEvent> events = byTick.TryGetValue(tick, out List<BattleEvent>? found) ? found : [];
+
+                foreach (BattleEvent e in events)
+                {
+                    if (e is UnitMovedEvent moved)
+                    {
+                        position[moved.UnitId] = moved.To;
+                    }
+                }
+
+                foreach (BattleEvent e in events)
+                {
+                    if (e is UnitDiedEvent died)
+                    {
+                        alive.Remove(died.UnitId);
+                    }
+                }
+
+                foreach (int id in ids)
+                {
+                    bool anyEnemyLeft = alive.Any(other => side[other] != side[id]);
+                    bool inReach = alive.Any(other =>
+                        side[other] != side[id]
+                        && position[id].DistanceTo(position[other]) <= knight.AttackRangeHexes);
+
+                    bool stranded = alive.Contains(id) && anyEnemyLeft && !inReach;
+                    strandedFor[id] = stranded ? strandedFor[id] + 1 : 0;
+
+                    Assert.True(
+                        strandedFor[id] <= Stranded,
+                        $"Seed {seed}: unit {id} spent {strandedFor[id]} consecutive ticks out of reach of "
+                        + $"every enemy, ending at tick {tick} on {position[id]}. The board is 8 rows deep "
+                        + "and a knight crosses a hex in 8 ticks, so it is not travelling — it is stuck.");
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void No_unit_ever_steps_onto_a_tile_that_was_occupied_when_the_tick_began()
+    {
+        // Occupied tiles are walls, to the route search as much as to the step
+        // itself — so a unit can neither trade places with a neighbour nor follow
+        // one into the tile it is vacating this very tick. Chasing a vacancy
+        // within a tick resolves as a chain, and a chain has an order, which is
+        // what the two-phase tick exists to keep out of the outcome.
+        //
+        // Checked over whole battles rather than a staged collision: pathing means
+        // a unit never proposes an occupied tile in the first place, so the
+        // collision can no longer be built by hand, and the property is what is
+        // left to verify.
+        foreach (ulong seed in Seeds)
+        {
+            var battle = new BattleSimulation(Setup(), seed);
+            BattleResult result = battle.Run();
+
+            var position = new Dictionary<int, HexCoord>();
+            foreach (UnitSpawnedEvent spawned in battle.Events.OfType<UnitSpawnedEvent>())
+            {
+                position[spawned.UnitId] = spawned.Position;
+            }
+
+            foreach (IGrouping<int, BattleEvent> tick in battle.Events.Where(e => e.Tick > 0).GroupBy(e => e.Tick))
+            {
+                var occupiedAtTickStart = position
+                    .Where(kv => kv.Key != -1)
+                    .ToDictionary(kv => kv.Value, kv => kv.Key);
+
+                foreach (UnitMovedEvent moved in tick.OfType<UnitMovedEvent>())
+                {
+                    Assert.False(
+                        occupiedAtTickStart.TryGetValue(moved.To, out int occupant) && occupant != moved.UnitId,
+                        $"Seed {seed}: unit {moved.UnitId} moved onto {moved.To} at tick {tick.Key}, "
+                        + $"which unit {occupant} occupied when the tick began.");
+
+                    Assert.Equal(position[moved.UnitId], moved.From);
+                    position[moved.UnitId] = moved.To;
+                }
+
+                foreach (UnitDiedEvent died in tick.OfType<UnitDiedEvent>())
+                {
+                    position.Remove(died.UnitId);
+                }
+            }
+
+            Assert.NotEqual(BattleEnding.TickCapDraw, result.Ending);
+        }
+    }
+
+    [Fact]
     public void The_same_seed_produces_an_identical_result_and_log_on_a_second_run()
     {
         foreach (ulong seed in Seeds)

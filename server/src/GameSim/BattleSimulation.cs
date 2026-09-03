@@ -18,6 +18,11 @@ namespace GameSim;
 /// </summary>
 public sealed class BattleSimulation
 {
+    // No route to anywhere this unit could attack from. Distinct from a large
+    // step count rather than a sentinel that arithmetic could stumble into: the
+    // board is 64 tiles, so a real count never approaches it.
+    private const int Unreachable = int.MaxValue;
+
     // The units that decided in the tick currently running, cleared at the top
     // of each one. Only the latest tick is kept: this exists so the loop's
     // decide order is observable, and a battle-long history would be a
@@ -579,27 +584,33 @@ public sealed class BattleSimulation
     }
 
     /// <summary>
-    /// The hex this unit should step onto to close on its target, or null if
-    /// every step that would help is blocked or off the board.
+    /// The hex this unit should step onto to close on its target, or null when
+    /// nothing it can reach shortens the route.
     ///
-    /// Greedy and deliberately not a pathfinder: only neighbours strictly closer
-    /// to the target are considered at all. On an open 8x8 field with no terrain
-    /// that is sufficient, it is far easier to keep deterministic than A*, and it
-    /// removes the shuffling-on-the-spot failure mode without needing a guard for
-    /// it: a step is only ever taken when it closes the distance, so a unit can
-    /// never trade a tile for one no better than it. The cost is that a unit
-    /// stuck behind a wall of its own army simply waits; if that shows up in
-    /// playtesting it is a follow-up story, not a reason to build a pathfinder
-    /// now.
+    /// The unit walks the shortest route to somewhere it could stand and attack
+    /// from, going around whatever is in the way. Occupied tiles are walls —
+    /// allies as much as enemies — so a unit whose direct approach is blocked by
+    /// its own front rank goes round the flank instead of waiting for the rank to
+    /// die, which is what it did while this was greedy.
     ///
     /// <para>
-    /// Note the limit of that: the step is closer to where the target stood
-    /// <em>this tick</em>. Targets move, so a unit's distance to its own target
-    /// can still rise between ticks, and it can revisit a tile it has left —
-    /// two units converging from different directions is enough. Story 1.5 makes
-    /// that sharper, because death re-points a unit at a new enemy
-    /// discontinuously. So this is not an unconditional no-oscillation proof, and
-    /// nobody should read it as one when deciding whether 1.5 needs a guard.
+    /// The rule is unchanged in shape: step to the best neighbour, and only to
+    /// one strictly better than where you stand. Only the measure of "better" has
+    /// moved, from straight-line distance to remaining steps along a real route.
+    /// That matters twice over. On an open lane the two agree — remaining steps
+    /// is just distance less the unit's reach — so an unobstructed advance looks
+    /// exactly as it did. And "strictly fewer steps remaining" carries the same
+    /// weight the old "strictly closer" did: within a tick the board is fixed and
+    /// the count is a non-negative integer that must fall on every step, so a unit
+    /// cannot trade tiles in a circle.
+    /// </para>
+    ///
+    /// <para>
+    /// Note the limit of that, unchanged from when this was greedy: the route is
+    /// to where the target stood <em>this tick</em>. Targets move and units die,
+    /// so a unit's remaining count can rise between ticks and it can revisit a
+    /// tile it left. This is not an unconditional no-oscillation proof and nobody
+    /// should read it as one.
     /// </para>
     ///
     /// <para>
@@ -616,11 +627,20 @@ public sealed class BattleSimulation
     /// </summary>
     private HexCoord? StepToward(BattleUnit unit, BattleUnit target)
     {
+        int[] remaining = StepsToAttackPosition(unit, target);
+
+        int here = remaining[Tile(unit.Position)];
+        if (here == Unreachable)
+        {
+            // Walled in with no route at all. Standing still is the answer, and
+            // the unit keeps its readiness for the tick a route opens.
+            return null;
+        }
+
         HexCoord goal = target.Position;
-        int currentDistance = unit.Position.DistanceTo(goal);
 
         HexCoord? best = null;
-        int bestDistance = 0;
+        int bestSteps = 0;
 
         foreach (HexCoord step in unit.Position.Neighbours())
         {
@@ -635,26 +655,26 @@ public sealed class BattleSimulation
                 continue;
             }
 
-            int distance = step.DistanceTo(goal);
-            if (distance >= currentDistance)
+            int steps = remaining[Tile(step)];
+            if (steps == Unreachable || steps >= here)
             {
                 continue;
             }
 
-            if (best is null || Beats(step, distance, best.Value, bestDistance, goal))
+            if (best is null || Beats(step, steps, best.Value, bestSteps, goal))
             {
                 best = step;
-                bestDistance = distance;
+                bestSteps = steps;
             }
         }
 
         return best;
 
-        static bool Beats(HexCoord step, int distance, HexCoord best, int bestDistance, HexCoord goal)
+        static bool Beats(HexCoord step, int steps, HexCoord best, int bestSteps, HexCoord goal)
         {
-            if (distance != bestDistance)
+            if (steps != bestSteps)
             {
-                return distance < bestDistance;
+                return steps < bestSteps;
             }
 
             int gap = Math.Abs(step.Col - goal.Col);
@@ -672,6 +692,87 @@ public sealed class BattleSimulation
             return step.Col < best.Col;
         }
     }
+
+    /// <summary>
+    /// For every tile on the board, how many steps this unit needs to reach
+    /// somewhere it could stand and attack <paramref name="target"/> from, or
+    /// <see cref="Unreachable"/> where no route exists.
+    ///
+    /// A breadth-first sweep outwards from the tiles that are already in range,
+    /// rather than a search forwards from the unit. Backwards costs one sweep and
+    /// answers for the whole board at once, so the caller compares neighbours by
+    /// reading an array instead of pathing from each of them — and there is no
+    /// route to reconstruct, which is the part of a forward search that would
+    /// need a tie break of its own.
+    ///
+    /// <para>
+    /// Nothing here may depend on the order <see cref="HexCoord.Neighbours"/>
+    /// returns, and nothing does: breadth-first distances are the same whatever
+    /// order a tile's neighbours are visited in, and where two neighbours tie the
+    /// caller settles it on the coordinates. That is deliberate —
+    /// <see cref="HexCoord.Neighbours"/> documents that its order is arbitrary and
+    /// that no caller may let it decide anything.
+    /// </para>
+    ///
+    /// <para>
+    /// Occupied tiles are walls, and the seeds are only tiles a unit could
+    /// actually stand on — so a route is never traced through an ally, and the
+    /// target's own tile seeds nothing. The one exception is the unit's own tile,
+    /// which is occupied by the unit itself and which it is plainly able to leave.
+    /// </para>
+    /// </summary>
+    private int[] StepsToAttackPosition(BattleUnit unit, BattleUnit target)
+    {
+        var remaining = new int[Battlefield.Rows * Battlefield.Columns];
+        Array.Fill(remaining, Unreachable);
+
+        var frontier = new Queue<HexCoord>();
+
+        for (int row = 0; row < Battlefield.Rows; row++)
+        {
+            for (int col = 0; col < Battlefield.Columns; col++)
+            {
+                var hex = new HexCoord(row, col);
+
+                if (hex.DistanceTo(target.Position) > unit.Definition.AttackRangeHexes
+                    || !CanStandOn(hex, unit))
+                {
+                    continue;
+                }
+
+                remaining[Tile(hex)] = 0;
+                frontier.Enqueue(hex);
+            }
+        }
+
+        while (frontier.Count > 0)
+        {
+            HexCoord from = frontier.Dequeue();
+            int next = remaining[Tile(from)] + 1;
+
+            foreach (HexCoord neighbour in from.Neighbours())
+            {
+                if (!CanStandOn(neighbour, unit) || remaining[Tile(neighbour)] <= next)
+                {
+                    continue;
+                }
+
+                remaining[Tile(neighbour)] = next;
+                frontier.Enqueue(neighbour);
+            }
+        }
+
+        return remaining;
+    }
+
+    /// <summary>
+    /// Whether this unit could occupy a tile: empty, or the one it is already
+    /// standing on.
+    /// </summary>
+    private bool CanStandOn(HexCoord hex, BattleUnit unit) =>
+        Setup.Battlefield.IsPassable(hex) || hex == unit.Position;
+
+    private static int Tile(HexCoord hex) => (hex.Row * Battlefield.Columns) + hex.Col;
 
     /// <summary>
     /// The result if one side has been wiped out, or null while both are still
