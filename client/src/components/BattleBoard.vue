@@ -86,22 +86,22 @@ const targetMarkers = computed<TargetMarker[]>(() =>
       :key="marker.attackerId"
       :cx="marker.x"
       :cy="marker.y"
-      :r="HEX_SIZE * 0.7"
+      :r="HEX_SIZE * 0.78"
       class="target-marker"
     />
 
     <g v-for="unit in props.state.units" :key="unit.id" :data-unit-id="unit.id" class="unit-group">
-      <circle :cx="unitCenter(unit).x" :cy="unitCenter(unit).y" :r="HEX_SIZE * 0.55" :class="sideClass(unit.side)" />
-      <text :x="unitCenter(unit).x" :y="unitCenter(unit).y - 4" text-anchor="middle" class="unit-label">
+      <circle :cx="unitCenter(unit).x" :cy="unitCenter(unit).y" :r="HEX_SIZE * 0.62" :class="sideClass(unit.side)" />
+      <text :x="unitCenter(unit).x" :y="unitCenter(unit).y - 9" text-anchor="middle" class="unit-label">
         {{ label(unit) }}
       </text>
-      <text :x="unitCenter(unit).x" :y="unitCenter(unit).y + 14" text-anchor="middle" class="unit-hp">
+      <text :x="unitCenter(unit).x" :y="unitCenter(unit).y + 3" text-anchor="middle" class="unit-hp">
         {{ unit.hp }}
       </text>
       <text
         v-if="targetLabel(unit)"
         :x="unitCenter(unit).x"
-        :y="unitCenter(unit).y + 25"
+        :y="unitCenter(unit).y + 14"
         text-anchor="middle"
         class="unit-target-label"
       >
@@ -158,15 +158,15 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 
 .unit-label,
 .unit-hp {
-  font-size: 10px;
+  font-size: 8px;
   fill: #fff;
   pointer-events: none;
   user-select: none;
 }
 
 .unit-target-label {
-  font-size: 8px;
-  fill: #f9a825;
+  font-size: 7px;
+  fill: #4fc3f7;
   pointer-events: none;
   user-select: none;
 }
