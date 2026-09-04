@@ -89,6 +89,15 @@ public sealed class MatchupCatalog
         [.. cols.Select(col => new UnitPlacement(definition, new HexCoord(row, col)))];
 
     /// <summary>One definition per column, paired in order - unlike <see cref="FrontLine"/>, a mixed row rather than one unit repeated.</summary>
-    private static IReadOnlyList<UnitPlacement> Row(int row, int[] cols, params UnitDefinition[] definitions) =>
-        [.. cols.Zip(definitions, (col, definition) => new UnitPlacement(definition, new HexCoord(row, col)))];
+    private static IReadOnlyList<UnitPlacement> Row(int row, int[] cols, params UnitDefinition[] definitions)
+    {
+        if (cols.Length != definitions.Length)
+        {
+            throw new ArgumentException(
+                $"Row for row {row}: {cols.Length} columns but {definitions.Length} definitions - Zip would silently drop one.",
+                nameof(definitions));
+        }
+
+        return [.. cols.Zip(definitions, (col, definition) => new UnitPlacement(definition, new HexCoord(row, col)))];
+    }
 }
