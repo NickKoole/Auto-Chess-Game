@@ -22,9 +22,7 @@ public sealed class Rng
     /// <summary>The same seed always yields the same sequence.</summary>
     public Rng(ulong seed)
     {
-        // splitmix64 expands the seed into four well-distributed words -
-        // seeding xoshiro directly from a small integer produces a poor first
-        // few outputs, which matters when a battle is short.
+        // splitmix64 expands the seed - seeding xoshiro directly gives a poor first few outputs.
         _s0 = SplitMix64(ref seed);
         _s1 = SplitMix64(ref seed);
         _s2 = SplitMix64(ref seed);
