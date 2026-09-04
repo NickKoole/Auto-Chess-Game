@@ -1,27 +1,16 @@
 namespace GameSim;
 
-/// <summary>
-/// The built-in unit roster, written in code.
-///
-/// Stats are tuned for a small board — 8 rows deep with a 2-row neutral gap —
-/// so armies close within a handful of ticks. Read the movement costs and
-/// ranges against that, not against a large field.
-/// </summary>
+/// <summary>Stats are tuned for an 8-row board with a 2-row neutral gap, so armies close within a handful of ticks - read movement costs and ranges against that.</summary>
 public sealed class StaticUnitCatalog : IUnitCatalog
 {
     private readonly Dictionary<string, UnitDefinition> _byId;
 
-    /// <summary>Creates a catalog holding the built-in roster.</summary>
     public StaticUnitCatalog()
         : this(BuiltIn())
     {
     }
 
-    /// <summary>
-    /// Creates a catalog from an explicit set of definitions, rejecting
-    /// duplicate ids. A duplicate is a mistake in the roster, and silently
-    /// keeping the last one would hide it until a battle used the wrong stats.
-    /// </summary>
+    /// <summary>Rejects duplicate ids - silently keeping the last one would hide a roster mistake until a battle used the wrong stats.</summary>
     public StaticUnitCatalog(IReadOnlyList<UnitDefinition> definitions)
     {
         ArgumentNullException.ThrowIfNull(definitions);

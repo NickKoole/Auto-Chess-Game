@@ -1,31 +1,11 @@
 namespace GameSim;
 
-/// <summary>
-/// The simulation's vocabulary of units: every <see cref="UnitDefinition"/> the
-/// game knows about, looked up by id.
-///
-/// Definitions are hardcoded today. Loading them from a data file is a second
-/// implementation of this interface, which is why the rest of the simulation
-/// depends on the interface and never on the static catalog directly.
-/// </summary>
+/// <summary>Every <see cref="UnitDefinition"/> the game knows, looked up by id. The rest of the simulation depends on this interface, never on <see cref="StaticUnitCatalog"/> directly.</summary>
 public interface IUnitCatalog
 {
-    /// <summary>
-    /// Every definition, in a fixed order.
-    ///
-    /// Deliberately a list rather than an <see cref="IEnumerable{T}"/> over a
-    /// dictionary: .NET guarantees no iteration order for a dictionary and has
-    /// changed it between runtimes, so anything that reaches an outcome has to
-    /// come from an ordered collection.
-    /// </summary>
+    /// <summary>A list, deliberately: .NET guarantees no iteration order for a dictionary, and anything reaching an outcome needs one.</summary>
     IReadOnlyList<UnitDefinition> All { get; }
 
-    /// <summary>
-    /// The definition with this id.
-    /// </summary>
-    /// <exception cref="KeyNotFoundException">
-    /// No definition has this id. Asking for a unit that does not exist is a
-    /// programmer error, so it throws rather than returning null.
-    /// </exception>
+    /// <exception cref="KeyNotFoundException">Asking for an id that doesn't exist is a programmer error.</exception>
     UnitDefinition Get(string id);
 }
