@@ -14,6 +14,7 @@ builder.Services.AddDbContext<GameDbContext>(options =>
 
 builder.Services.AddSingleton<IUnitCatalog, StaticUnitCatalog>();
 builder.Services.AddSingleton<MatchupCatalog>();
+builder.Services.AddSingleton<EnemySetupCatalog>();
 
 var app = builder.Build();
 

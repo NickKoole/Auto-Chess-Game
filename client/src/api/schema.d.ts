@@ -36,6 +36,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/battles/units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListUnits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/battles/enemy-setups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListEnemySetups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/battles/simulate": {
         parameters: {
             query?: never;
@@ -124,6 +156,11 @@ export interface components {
             /** Format: int32 */
             terminatingTick: number | string;
             terminationReason: components["schemas"]["BattleEndingDto"];
+        };
+        EnemySetupDto: {
+            /** @description Stable identifier for this enemy setup, unique within the list. */
+            id: string;
+            displayName: string;
         };
         ErrorResponse: {
             message: string;
@@ -251,6 +288,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchupDto"][];
+                };
+            };
+        };
+    };
+    ListUnits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnitDefinitionDto"][];
+                };
+            };
+        };
+    };
+    ListEnemySetups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnemySetupDto"][];
                 };
             };
         };
