@@ -56,10 +56,9 @@ public static class BattleEndpoints
                         new ErrorResponse($"Unknown enemy setup id '{request.EnemySetupId}'."));
                 }
 
-                if (request.PlayerPlacements is null || request.PlayerPlacements.Count == 0)
+                if (request.PlayerPlacements is null)
                 {
-                    return TypedResults.BadRequest(
-                        new ErrorResponse("playerPlacements must include at least one unit."));
+                    return TypedResults.BadRequest(new ErrorResponse("playerPlacements is required."));
                 }
 
                 if (!TryResolvePlacements(

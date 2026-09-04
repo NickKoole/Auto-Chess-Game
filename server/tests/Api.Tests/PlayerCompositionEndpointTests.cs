@@ -53,7 +53,7 @@ public sealed class PlayerCompositionEndpointTests(ApiFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task Rejects_an_empty_placement_list()
+    public async Task Rejects_an_empty_placement_list_reusing_BattleSetups_no_units_message()
     {
         HttpClient client = factory.CreateClient();
 
@@ -64,6 +64,10 @@ public sealed class PlayerCompositionEndpointTests(ApiFactory factory) : IClassF
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        ErrorResponse? body = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.NotNull(body);
+        Assert.Contains("brought no units", body.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
