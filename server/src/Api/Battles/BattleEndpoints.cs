@@ -14,6 +14,16 @@ public static class BattleEndpoints
                 [.. matchups.All.Select(m => new MatchupDto { Id = m.Id, DisplayName = m.DisplayName })]))
         .WithName("ListMatchups");
 
+        app.MapGet("/battles/units", Ok<IReadOnlyList<UnitDefinitionDto>> (IUnitCatalog units) =>
+            TypedResults.Ok<IReadOnlyList<UnitDefinitionDto>>(
+                [.. units.All.Select(BattleResponseFactory.MapUnitDefinition)]))
+        .WithName("ListUnits");
+
+        app.MapGet("/battles/enemy-setups", Ok<IReadOnlyList<EnemySetupDto>> (EnemySetupCatalog enemySetups) =>
+            TypedResults.Ok<IReadOnlyList<EnemySetupDto>>(
+                [.. enemySetups.All.Select(s => new EnemySetupDto { Id = s.Id, DisplayName = s.DisplayName })]))
+        .WithName("ListEnemySetups");
+
         // TypedResults, not Results: Results.Ok erases the response type, and
         // the OpenAPI generator needs it present to emit a real schema.
         app.MapPost("/battles/simulate", Results<Ok<SimulateBattleResponse>, BadRequest<ErrorResponse>> (

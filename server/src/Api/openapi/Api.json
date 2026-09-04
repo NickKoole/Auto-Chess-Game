@@ -48,6 +48,52 @@
         }
       }
     },
+    "/battles/units": {
+      "get": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "ListUnits",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UnitDefinitionDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/battles/enemy-setups": {
+      "get": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "ListEnemySetups",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnemySetupDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/battles/simulate": {
       "post": {
         "tags": [
@@ -365,6 +411,22 @@
           },
           "terminationReason": {
             "$ref": "#/components/schemas/BattleEndingDto"
+          }
+        }
+      },
+      "EnemySetupDto": {
+        "required": [
+          "id",
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier for this enemy setup, unique within the list."
+          },
+          "displayName": {
+            "type": "string"
           }
         }
       },

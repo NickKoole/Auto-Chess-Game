@@ -107,7 +107,7 @@ public static class BattleResponseFactory
             nameof(battleEvent), battleEvent, $"Unknown battle event type '{battleEvent.GetType()}'."),
     };
 
-    private static UnitDefinitionDto MapUnitDefinition(UnitDefinition definition) => new()
+    public static UnitDefinitionDto MapUnitDefinition(UnitDefinition definition) => new()
     {
         Id = definition.Id,
         DisplayName = definition.DisplayName,
