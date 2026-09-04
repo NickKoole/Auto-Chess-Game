@@ -104,8 +104,11 @@ wall-clock delta. This is the whole reason the backend exists.
 - Write a comment only when a reader genuinely can't get the fact from the
   code itself — e.g. a workaround for an external bug, a non-obvious ordering
   constraint, a regex, a value picked to satisfy an external system. Never a
-  comment restating the code. Even then: one `//` (or `///` for C#) line at
-  the statement, and never to justify a design choice.
+  comment restating the code, and never to justify a design choice. Default
+  to one `//` (or `///` for C#) line at the statement; go past one line only
+  when the fact genuinely doesn't fit in one — that's an exception for a
+  single fact that needs the room, not a general allowance to spread out, and
+  never a second paragraph.
 - Never reference a ticket in code — no issue numbers in comments, test
   names, or identifiers. The ID belongs in the commit message, the branch and
   the PR; in a file it's a dead reference for the next reader.
