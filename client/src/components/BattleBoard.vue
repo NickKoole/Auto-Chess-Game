@@ -165,8 +165,8 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 }
 
 .unit-target-label {
-  font-size: 7px;
-  fill: #ff4081;
+  font-size: 8px;
+  fill: #ffff00;
   pointer-events: none;
   user-select: none;
 }
