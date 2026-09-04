@@ -10,6 +10,7 @@ const TERMINATING_TICK = 8
 
 const EVENTS: BattleEvent[] = [
   { type: 'unitMoved', unitId: 0, from: { row: 5, col: 2 }, to: { row: 4, col: 2 }, tick: 2 },
+  { type: 'unitAttacked', attackerId: 1, targetId: 0, tick: 4 },
   { type: 'damageDealt', attackerId: 1, targetId: 0, amount: 10, resultingHp: 20, tick: 4 },
   { type: 'unitMoved', unitId: 1, from: { row: 2, col: 2 }, to: { row: 3, col: 2 }, tick: 6 },
   { type: 'damageDealt', attackerId: 0, targetId: 1, amount: 30, resultingHp: 0, tick: 8 },
@@ -119,5 +120,14 @@ describe('seekTo', () => {
     for (const n of [0, 1, 2, 4, 5, 6, 7, TERMINATING_TICK]) {
       expect(seekTo(res, n).state).toEqual(stepTo(res, n))
     }
+  })
+
+  it('reconstructs currentTargetId when scrubbed to a tick after a unitAttacked event', () => {
+    const res = response()
+    const result = seekTo(res, 4)
+
+    const attacker = result.state.units.find((unit) => unit.id === 1)
+    expect(attacker?.currentTargetId).toBe(0)
+    expect(result.state).toEqual(stepTo(res, 4))
   })
 })
