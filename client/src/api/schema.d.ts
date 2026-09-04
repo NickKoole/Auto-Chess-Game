@@ -178,9 +178,14 @@ export interface components {
         /** @description Mirrors BattleOutcome, from the player's point of view. */
         MatchWinnerDto: number;
         MatchupDto: {
-            /** @description Stable identifier. Pass this back as string SimulateBattleRequest.MatchupId. */
+            /** @description Stable identifier. Pass this back as string? SimulateBattleRequest.MatchupId. */
             id: string;
             displayName: string;
+        };
+        PlayerPlacementDto: {
+            /** @description An id from `GET /battles/units`. */
+            unitId: string;
+            position: components["schemas"]["HexCoordDto"];
         };
         /**
          * @description Which army a unit belongs to, as exposed over the wire - a deliberate copy
@@ -188,9 +193,18 @@ export interface components {
          *     appears in the OpenAPI contract.
          */
         SideDto: number;
+        /**
+         * @description The player's side comes from exactly one of two shapes: string? SimulateBattleRequest.MatchupId
+         *     alone (both sides hardcoded), or string? SimulateBattleRequest.EnemySetupId paired with
+         *     IReadOnlyList&lt;PlayerPlacementDto&gt;? SimulateBattleRequest.PlayerPlacements (a hardcoded opponent, a player-built army).
+         */
         SimulateBattleRequest: {
             /** @description Valid ids are listed in MatchupCatalog. */
-            matchupId: string;
+            matchupId?: null | string;
+            /** @description Valid ids are listed in EnemySetupCatalog. */
+            enemySetupId?: null | string;
+            /** @description Required alongside string? SimulateBattleRequest.EnemySetupId; ignored alongside string? SimulateBattleRequest.MatchupId. */
+            playerPlacements?: null | components["schemas"]["PlayerPlacementDto"][];
             /**
              * @description The seed to run the battle with, as a base-10 string — see
              *     string SimulateBattleResponse.Seed for why it is a string rather

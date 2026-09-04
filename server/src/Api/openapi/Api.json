@@ -491,10 +491,26 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "Stable identifier. Pass this back as string SimulateBattleRequest.MatchupId."
+            "description": "Stable identifier. Pass this back as string? SimulateBattleRequest.MatchupId."
           },
           "displayName": {
             "type": "string"
+          }
+        }
+      },
+      "PlayerPlacementDto": {
+        "required": [
+          "unitId",
+          "position"
+        ],
+        "type": "object",
+        "properties": {
+          "unitId": {
+            "type": "string",
+            "description": "An id from `GET /battles/units`."
+          },
+          "position": {
+            "$ref": "#/components/schemas/HexCoordDto"
           }
         }
       },
@@ -503,14 +519,31 @@
         "description": "Which army a unit belongs to, as exposed over the wire - a deliberate copy\nof BattleSide, kept separate so the sim's type never\nappears in the OpenAPI contract."
       },
       "SimulateBattleRequest": {
-        "required": [
-          "matchupId"
-        ],
         "type": "object",
         "properties": {
           "matchupId": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "description": "Valid ids are listed in MatchupCatalog."
+          },
+          "enemySetupId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Valid ids are listed in EnemySetupCatalog."
+          },
+          "playerPlacements": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PlayerPlacementDto"
+            },
+            "description": "Required alongside string? SimulateBattleRequest.EnemySetupId; ignored alongside string? SimulateBattleRequest.MatchupId."
           },
           "seed": {
             "type": [
@@ -519,7 +552,8 @@
             ],
             "description": "The seed to run the battle with, as a base-10 string — see\nstring SimulateBattleResponse.Seed for why it is a string rather\nthan a JSON number. Null to have the server generate one."
           }
-        }
+        },
+        "description": "The player's side comes from exactly one of two shapes: string? SimulateBattleRequest.MatchupId\nalone (both sides hardcoded), or string? SimulateBattleRequest.EnemySetupId paired with\nIReadOnlyList&lt;PlayerPlacementDto&gt;? SimulateBattleRequest.PlayerPlacements (a hardcoded opponent, a player-built army)."
       },
       "SimulateBattleResponse": {
         "required": [
