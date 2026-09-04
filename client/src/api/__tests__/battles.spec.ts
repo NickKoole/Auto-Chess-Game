@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { simulateBattle, type SimulateBattleResponse } from '../battles'
+import { listMatchups, simulateBattle, type MatchupDto, type SimulateBattleResponse } from '../battles'
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
@@ -62,6 +62,46 @@ describe('simulateBattle', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const result = await simulateBattle({ matchupId: 'melee-mirror' })
+
+    expect(result).toEqual({ ok: false, error: 'Could not reach the server.' })
+  })
+})
+
+describe('listMatchups', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('fetches the matchup list and returns it parsed', async () => {
+    const responseBody: MatchupDto[] = [
+      { id: 'melee-mirror', displayName: 'Melee Mirror' },
+      { id: 'archers-vs-melee', displayName: 'Archers vs Melee' },
+    ]
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(responseBody))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await listMatchups()
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/battles/matchups')
+    expect(result).toEqual({ ok: true, data: responseBody })
+  })
+
+  it('returns the server-provided message when the API responds with an error', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse({ message: 'Something went wrong.' }, { status: 500 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await listMatchups()
+
+    expect(result).toEqual({ ok: false, error: 'Something went wrong.' })
+  })
+
+  it('returns an error when the network request itself fails', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('Failed to fetch'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await listMatchups()
 
     expect(result).toEqual({ ok: false, error: 'Could not reach the server.' })
   })

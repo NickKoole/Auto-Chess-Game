@@ -20,6 +20,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/battles/matchups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListMatchups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/battles/simulate": {
         parameters: {
             query?: never;
@@ -136,6 +152,15 @@ export interface components {
         /** @description Who won a battle, from the player's point of view. See BattleOutcome. */
         MatchWinnerDto: number;
         /**
+         * @description One matchup a battle can be requested for, as exposed over the wire: enough
+         *     for a picker to list it and a client to request it back by id.
+         */
+        MatchupDto: {
+            /** @description Stable identifier. Pass this back as string SimulateBattleRequest.MatchupId. */
+            id: string;
+            displayName: string;
+        };
+        /**
          * @description Which army a unit belongs to, as exposed over the wire.
          *
          *     A copy of BattleSide rather than the sim's own enum:
@@ -234,6 +259,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    ListMatchups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchupDto"][];
                 };
             };
         };

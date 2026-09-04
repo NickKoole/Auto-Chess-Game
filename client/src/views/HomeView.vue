@@ -1,24 +1,29 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
-import { simulateBattle, type SimulateBattleResponse } from '@/api/battles'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { listMatchups, simulateBattle, type MatchupDto, type SimulateBattleResponse } from '@/api/battles'
 import { applyTick, type BattleEvent } from '@/battle/applyTick'
 import { createBattleState, type BattleState } from '@/battle/battleState'
+import { endingLabel, survivorsBySide } from '@/battle/outcome'
 import { seekTo, terminatingTickOf } from '@/battle/playback'
 import BattleBoard from '@/components/BattleBoard.vue'
 
-const MATCHUP_ID = 'melee-mirror'
-
-// The two hardcoded matchups run 150-350 ticks; at 30ms/tick that's a
-// 5-10 second playback - watchable, not instant, not a slog.
+// A 150-350 tick battle at 30ms/tick is a 5-10 second playback - watchable,
+// not instant, not a slog.
 const TICK_INTERVAL_MS = 30
 
-const WINNER_LABELS: Record<number, string> = {
-  0: 'Draw',
-  1: 'Player',
-  2: 'Opponent',
+const SIDE_LABELS: Record<number, string> = {
+  0: 'Player',
+  1: 'Opponent',
 }
 
+const matchups = ref<MatchupDto[]>([])
+const matchupsError = ref<string | null>(null)
+const selectedMatchupId = ref('')
+const seedInput = ref('')
+const isRequesting = ref(false)
+
 const outcome = ref<SimulateBattleResponse | null>(null)
+const finalState = ref<BattleState | null>(null)
 const error = ref<string | null>(null)
 const battleState = ref<BattleState | null>(null)
 const currentTick = ref(0)
@@ -28,9 +33,11 @@ const hasFinished = ref(false)
 
 let timer: ReturnType<typeof setInterval> | undefined
 
-function winnerLabel(winner: number): string {
-  return WINNER_LABELS[winner] ?? `Unknown (${winner})`
+function sideLabel(side: number): string {
+  return SIDE_LABELS[side] ?? `Unknown (${side})`
 }
+
+const survivorGroups = computed(() => (finalState.value ? survivorsBySide(finalState.value) : []))
 
 function stopPlayback(): void {
   if (timer !== undefined) {
@@ -112,26 +119,58 @@ function pause(): void {
   stopPlayback()
 }
 
-async function loadBattle(): Promise<void> {
+/** Requests a battle for the selected matchup and seed, then plays it back from tick 0. */
+async function runBattle(): Promise<void> {
+  if (!selectedMatchupId.value || isRequesting.value) {
+    return
+  }
+
+  // Cleanly cancel whatever is currently playing before anything else, so a
+  // stray interval can never go on applying the old log once this starts.
+  // isRequesting stays true for the rest of this call, disabling the button
+  // that is this function's only entry point — so no second call can start
+  // until this one finishes, and a stale response can never land.
   stopPlayback()
+
+  isRequesting.value = true
   outcome.value = null
+  finalState.value = null
   error.value = null
   battleState.value = null
   currentTick.value = 0
   terminatingTick.value = 0
   hasFinished.value = false
 
-  const result = await simulateBattle({ matchupId: MATCHUP_ID })
+  const trimmedSeed = seedInput.value.trim()
+  const result = await simulateBattle({
+    matchupId: selectedMatchupId.value,
+    seed: trimmedSeed === '' ? undefined : trimmedSeed,
+  })
+
+  isRequesting.value = false
+
   if (result.ok) {
     outcome.value = result.data
     battleState.value = createBattleState(result.data)
     terminatingTick.value = terminatingTickOf(result.data)
+    finalState.value = seekTo(result.data, terminatingTick.value).state
+    play()
   } else {
     error.value = result.error
   }
 }
 
-onMounted(loadBattle)
+async function loadMatchups(): Promise<void> {
+  const result = await listMatchups()
+  if (result.ok) {
+    matchups.value = result.data
+    selectedMatchupId.value = result.data[0]?.id ?? ''
+  } else {
+    matchupsError.value = result.error
+  }
+}
+
+onMounted(loadMatchups)
 
 onUnmounted(() => {
   stopPlayback()
@@ -141,41 +180,83 @@ onUnmounted(() => {
 <template>
   <main>
     <h1>Battle playback</h1>
-    <p>Matchup: {{ MATCHUP_ID }}</p>
 
-    <p v-if="error" role="alert">Could not run the battle: {{ error }}</p>
+    <p v-if="matchupsError" role="alert">Could not load matchups: {{ matchupsError }}</p>
 
-    <template v-else-if="outcome && battleState">
+    <template v-else>
       <p>
-        <button type="button" :disabled="isPlaying" @click="play">
-          {{ hasFinished ? 'Play again' : currentTick > 0 ? 'Resume' : 'Play' }}
+        <label>
+          Matchup:
+          <select v-model="selectedMatchupId" :disabled="isRequesting">
+            <option v-for="matchup in matchups" :key="matchup.id" :value="matchup.id">
+              {{ matchup.displayName }}
+            </option>
+          </select>
+        </label>
+        <label>
+          Seed:
+          <input
+            v-model="seedInput"
+            type="text"
+            placeholder="random"
+            aria-label="Seed (blank for random)"
+            :disabled="isRequesting"
+          />
+        </label>
+        <button type="button" :disabled="!selectedMatchupId || isRequesting" @click="runBattle">
+          {{ isRequesting ? 'Running…' : 'Run battle' }}
         </button>
-        <button type="button" :disabled="!isPlaying" @click="pause">Pause</button>
-        <button type="button" :disabled="currentTick <= 0" @click="jumpToStart">|&lt; Start</button>
-        <button type="button" :disabled="currentTick <= 0" @click="stepBack">&lt; Step</button>
-        <button type="button" :disabled="currentTick >= terminatingTick" @click="stepForward">Step &gt;</button>
-        <button type="button" :disabled="currentTick >= terminatingTick" @click="jumpToEnd">End &gt;|</button>
       </p>
 
-      <p>
-        <input
-          type="range"
-          min="0"
-          :max="terminatingTick"
-          :value="currentTick"
-          aria-label="Seek to tick"
-          @input="onScrub"
-        />
-        · Tick: {{ currentTick }} / {{ terminatingTick }}
-      </p>
+      <p v-if="error" role="alert">Could not run the battle: {{ error }}</p>
 
-      <BattleBoard :state="battleState" />
+      <template v-if="outcome && battleState">
+        <p>Seed: {{ outcome.seed }}</p>
 
-      <p v-if="hasFinished" role="status">
-        Winner: {{ winnerLabel(outcome.outcome.winner) }} · Ended on tick {{ outcome.outcome.terminatingTick }}
-      </p>
+        <p>
+          <button type="button" :disabled="isPlaying" @click="play">
+            {{ hasFinished ? 'Play again' : currentTick > 0 ? 'Resume' : 'Play' }}
+          </button>
+          <button type="button" :disabled="!isPlaying" @click="pause">Pause</button>
+          <button type="button" :disabled="currentTick <= 0" @click="jumpToStart">|&lt; Start</button>
+          <button type="button" :disabled="currentTick <= 0" @click="stepBack">&lt; Step</button>
+          <button type="button" :disabled="currentTick >= terminatingTick" @click="stepForward">Step &gt;</button>
+          <button type="button" :disabled="currentTick >= terminatingTick" @click="jumpToEnd">End &gt;|</button>
+        </p>
+
+        <p>
+          <input
+            type="range"
+            min="0"
+            :max="terminatingTick"
+            :value="currentTick"
+            aria-label="Seek to tick"
+            @input="onScrub"
+          />
+          · Tick: {{ currentTick }} / {{ terminatingTick }}
+        </p>
+
+        <BattleBoard :state="battleState" />
+
+        <section v-if="hasFinished" aria-label="Outcome">
+          <p role="status">
+            {{ endingLabel(outcome.outcome.terminationReason) }} · Ended on tick {{ outcome.outcome.terminatingTick }}
+          </p>
+
+          <div v-for="group in survivorGroups" :key="group.side">
+            <h3>{{ sideLabel(group.side) }}</h3>
+            <p v-if="group.units.length === 0">No survivors</p>
+            <ul v-else>
+              <li v-for="unit in group.units" :key="unit.id">
+                {{ battleState.unitDefinitions[unit.definitionId]?.displayName ?? unit.definitionId }}:
+                {{ unit.hp }}/{{ unit.maxHp }} hp
+              </li>
+            </ul>
+          </div>
+        </section>
+      </template>
+
+      <p v-else-if="!error">Pick a matchup and press Run battle.</p>
     </template>
-
-    <p v-else>Running battle&hellip;</p>
   </main>
 </template>

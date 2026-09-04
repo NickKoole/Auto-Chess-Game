@@ -20,25 +20,42 @@ public sealed class MatchupCatalog
 
         _byId = new Dictionary<string, Matchup>(StringComparer.Ordinal);
 
+        // Source order, captured once, mirroring StaticUnitCatalog.All: the
+        // dictionary above is only ever used for lookup, never enumeration.
+        var all = new List<Matchup>();
+
         foreach (Matchup matchup in BuiltIn(units))
         {
             _byId.Add(matchup.Id, matchup);
+            all.Add(matchup);
         }
+
+        All = all;
     }
 
     /// <summary>The matchup with this id, or false if none exists.</summary>
     public bool TryGet(string id, [NotNullWhen(true)] out Matchup? matchup) =>
         _byId.TryGetValue(id, out matchup);
 
+    /// <summary>
+    /// Every matchup this catalog knows, in the order <see cref="BuiltIn"/>
+    /// declares them - the same deterministic order a client's picker renders
+    /// them in, and never a <see cref="Dictionary{TKey, TValue}"/>'s enumeration
+    /// order, which .NET does not guarantee.
+    /// </summary>
+    public IReadOnlyList<Matchup> All { get; }
+
     private static IEnumerable<Matchup> BuiltIn(IUnitCatalog units)
     {
         yield return new Matchup(
             "melee-mirror",
+            DisplayName: "Melee Mirror",
             PlayerPlacements: FrontLine(units.Get("knight"), row: 5, cols: [2, 3, 4]),
             OpponentPlacements: FrontLine(units.Get("knight"), row: 2, cols: [2, 3, 4]));
 
         yield return new Matchup(
             "archers-vs-melee",
+            DisplayName: "Archers vs Melee",
             PlayerPlacements: FrontLine(units.Get("archer"), row: 5, cols: [2, 3, 4]),
             OpponentPlacements: FrontLine(units.Get("militia"), row: 2, cols: [2, 3, 4]));
     }

@@ -25,6 +25,29 @@
         }
       }
     },
+    "/battles/matchups": {
+      "get": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "ListMatchups",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MatchupDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/battles/simulate": {
       "post": {
         "tags": [
@@ -400,6 +423,23 @@
       "MatchWinnerDto": {
         "type": "integer",
         "description": "Who won a battle, from the player's point of view. See BattleOutcome."
+      },
+      "MatchupDto": {
+        "required": [
+          "id",
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier. Pass this back as string SimulateBattleRequest.MatchupId."
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "description": "One matchup a battle can be requested for, as exposed over the wire: enough\nfor a picker to list it and a client to request it back by id."
       },
       "SideDto": {
         "type": "integer",
