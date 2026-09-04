@@ -1,20 +1,14 @@
 namespace GameSim;
 
 /// <summary>
-/// A hex in cube coordinates, where the three axes sum to zero.
-///
-/// Offset coordinates are the storage format — they index a rectangular array
-/// and read like a grid. Cube is the arithmetic format: distance, neighbours and
-/// line-drawing are all trivial here and all fiddly in offset space. Convert,
-/// compute, convert back.
+/// A hex in cube coordinates, where the three axes sum to zero. Offset
+/// coordinates are the storage format - <see cref="HexCoord"/> indexes a
+/// rectangular array and reads like a grid. Cube is the arithmetic format:
+/// distance and neighbours are trivial here and fiddly in offset space.
 /// </summary>
 public readonly record struct CubeCoord
 {
-    /// <summary>
-    /// Creates a cube coordinate, rejecting any triple that is not on the hex
-    /// plane. A cube coordinate whose axes do not sum to zero is not a hex, so
-    /// this is a programmer error rather than a value to carry around.
-    /// </summary>
+    /// <summary>Throws when the axes don't sum to zero - not a hex, so a programmer error rather than a value to carry around.</summary>
     public CubeCoord(int x, int y, int z)
     {
         if (x + y + z != 0)
@@ -29,21 +23,18 @@ public readonly record struct CubeCoord
         Z = z;
     }
 
-    /// <summary>The x axis. Increases to the east.</summary>
+    /// <summary>Increases to the east.</summary>
     public int X { get; }
 
-    /// <summary>The y axis. Implied by the other two, since all three sum to zero.</summary>
+    /// <summary>Implied by the other two - all three sum to zero.</summary>
     public int Y { get; }
 
-    /// <summary>The z axis. Increases to the south, so it is the offset row.</summary>
+    /// <summary>Increases to the south; this is the offset row.</summary>
     public int Z { get; }
 
     /// <summary>
-    /// Hex distance: the number of steps between two hexes.
-    ///
-    /// Half the sum of the axis deltas, in pure integer maths. The sum is always
-    /// even — the axes sum to zero, so the deltas do too — which means the
-    /// division is exact and never truncates.
+    /// Half the sum of the axis deltas. Always exact: the axes sum to zero, so
+    /// the deltas do too, and the sum is always even.
     /// </summary>
     public int DistanceTo(CubeCoord other) =>
         (Math.Abs(X - other.X) + Math.Abs(Y - other.Y) + Math.Abs(Z - other.Z)) / 2;
