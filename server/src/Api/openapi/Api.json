@@ -93,7 +93,7 @@
     "schemas": {
       "BattleEndingDto": {
         "type": "integer",
-        "description": "Exactly how a finished battle ended. See BattleEnding."
+        "description": "Mirrors BattleEnding."
       },
       "BattleEventDto": {
         "required": [
@@ -117,7 +117,7 @@
             "$ref": "#/components/schemas/BattleEventDtoUnitDiedEventDto"
           }
         ],
-        "description": "One thing that happened in a battle, as exposed over the wire. Mirrors\nBattleEvent's shape and discriminator so a client gets\nthe same replay information, without the sim's own type crossing the API\nboundary.",
+        "description": "Mirrors BattleEvent's shape and discriminator.",
         "discriminator": {
           "propertyName": "type",
           "mapping": {
@@ -185,7 +185,7 @@
             "format": "int32"
           }
         },
-        "description": "A unit's hit points changed from a landed hit. See DamageDealtEvent."
+        "description": "Mirrors DamageDealtEvent."
       },
       "BattleEventDtoUnitAttackedEventDto": {
         "required": [
@@ -225,7 +225,7 @@
             "format": "int32"
           }
         },
-        "description": "A unit landed a hit on another. See UnitAttackedEvent."
+        "description": "Mirrors UnitAttackedEvent."
       },
       "BattleEventDtoUnitDiedEventDto": {
         "required": [
@@ -260,7 +260,7 @@
             "format": "int32"
           }
         },
-        "description": "A unit was removed from the battle. See UnitDiedEvent."
+        "description": "Mirrors UnitDiedEvent."
       },
       "BattleEventDtoUnitMovedEventDto": {
         "required": [
@@ -299,7 +299,7 @@
             "format": "int32"
           }
         },
-        "description": "A unit stepped from one hex to an adjacent one. See UnitMovedEvent."
+        "description": "Mirrors UnitMovedEvent."
       },
       "BattleEventDtoUnitSpawnedEventDto": {
         "required": [
@@ -342,7 +342,7 @@
             "format": "int32"
           }
         },
-        "description": "A unit's starting state. See UnitSpawnedEvent."
+        "description": "Mirrors UnitSpawnedEvent."
       },
       "BattleOutcomeDto": {
         "required": [
@@ -361,14 +361,12 @@
               "integer",
               "string"
             ],
-            "description": "The tick the battle ended on. See int BattleResult.EndTick.",
             "format": "int32"
           },
           "terminationReason": {
             "$ref": "#/components/schemas/BattleEndingDto"
           }
-        },
-        "description": "How a finished battle came to: who won, when, and exactly how."
+        }
       },
       "ErrorResponse": {
         "required": [
@@ -379,8 +377,7 @@
           "message": {
             "type": "string"
           }
-        },
-        "description": "A typed failure at the API boundary. See CLAUDE.md: errors here are results, not exceptions."
+        }
       },
       "HealthResponse": {
         "required": [
@@ -391,8 +388,7 @@
           "status": {
             "type": "string"
           }
-        },
-        "description": "Liveness payload."
+        }
       },
       "HexCoordDto": {
         "required": [
@@ -418,11 +414,11 @@
             "format": "int32"
           }
         },
-        "description": "A hex on the battlefield, as exposed over the wire. See HexCoord."
+        "description": "Mirrors HexCoord."
       },
       "MatchWinnerDto": {
         "type": "integer",
-        "description": "Who won a battle, from the player's point of view. See BattleOutcome."
+        "description": "Mirrors BattleOutcome, from the player's point of view."
       },
       "MatchupDto": {
         "required": [
@@ -438,12 +434,11 @@
           "displayName": {
             "type": "string"
           }
-        },
-        "description": "One matchup a battle can be requested for, as exposed over the wire: enough\nfor a picker to list it and a client to request it back by id."
+        }
       },
       "SideDto": {
         "type": "integer",
-        "description": "Which army a unit belongs to, as exposed over the wire.\n\nA copy of BattleSide rather than the sim's own enum:\nthe API's response is composed entirely of DTOs it owns, so the sim's type\nnever appears in the OpenAPI contract or the JSON it describes."
+        "description": "Which army a unit belongs to, as exposed over the wire - a deliberate copy\nof BattleSide, kept separate so the sim's type never\nappears in the OpenAPI contract."
       },
       "SimulateBattleRequest": {
         "required": [
@@ -453,7 +448,7 @@
         "properties": {
           "matchupId": {
             "type": "string",
-            "description": "Which hardcoded matchup to run. See MatchupCatalog."
+            "description": "Valid ids are listed in MatchupCatalog."
           },
           "seed": {
             "type": [
@@ -462,8 +457,7 @@
             ],
             "description": "The seed to run the battle with, as a base-10 string — see\nstring SimulateBattleResponse.Seed for why it is a string rather\nthan a JSON number. Null to have the server generate one."
           }
-        },
-        "description": "A request to run a hardcoded matchup once."
+        }
       },
       "SimulateBattleResponse": {
         "required": [
@@ -484,27 +478,26 @@
             "items": {
               "$ref": "#/components/schemas/StartingUnitDto"
             },
-            "description": "Every unit's state at tick 0, in the order IReadOnlyList&lt;BattleUnit&gt; BattleSetup.Units holds them."
+            "description": "In IReadOnlyList&lt;BattleUnit&gt; BattleSetup.Units order."
           },
           "unitDefinitions": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/UnitDefinitionDto"
             },
-            "description": "The stats for every unit kind referenced by IReadOnlyList&lt;StartingUnitDto&gt; SimulateBattleResponse.InitialSetup or IReadOnlyList&lt;BattleEventDto&gt; SimulateBattleResponse.Events."
+            "description": "Only the kinds referenced by IReadOnlyList&lt;StartingUnitDto&gt; SimulateBattleResponse.InitialSetup or IReadOnlyList&lt;BattleEventDto&gt; SimulateBattleResponse.Events, not the full catalog."
           },
           "events": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/BattleEventDto"
             },
-            "description": "Everything that happened, in order. See IReadOnlyList&lt;BattleEvent&gt; BattleSimulation.Events."
+            "description": "Mirrors IReadOnlyList&lt;BattleEvent&gt; BattleSimulation.Events."
           },
           "outcome": {
             "$ref": "#/components/schemas/BattleOutcomeDto"
           }
-        },
-        "description": "Everything a client needs to replay one battle: the seed it ran with, the\nposition it started from, the full log of what happened, the unit stats\nthe log refers to, and how it ended."
+        }
       },
       "StartingUnitDto": {
         "required": [
@@ -521,7 +514,7 @@
               "integer",
               "string"
             ],
-            "description": "This unit's id, unique within the battle. See int BattleUnit.Id.",
+            "description": "Unique within this battle only, not globally. See int BattleUnit.Id.",
             "format": "int32"
           },
           "side": {
@@ -529,13 +522,12 @@
           },
           "definitionId": {
             "type": "string",
-            "description": "The catalog id of the kind of unit this is. Look it up in the response's unit definitions."
+            "description": "Look this up in the response's IReadOnlyList&lt;UnitDefinitionDto&gt; SimulateBattleResponse.UnitDefinitions."
           },
           "position": {
             "$ref": "#/components/schemas/HexCoordDto"
           }
-        },
-        "description": "One unit's state at tick 0, before anything in the battle has happened."
+        }
       },
       "UnitDefinitionDto": {
         "required": [
@@ -605,7 +597,7 @@
             "format": "double"
           }
         },
-        "description": "A kind of unit's stats, as exposed over the wire — enough for a client to\ndisplay names and stats without its own copy of the catalog. See\nUnitDefinition."
+        "description": "Mirrors UnitDefinition."
       }
     }
   },

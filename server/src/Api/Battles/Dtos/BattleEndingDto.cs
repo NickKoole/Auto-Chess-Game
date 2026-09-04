@@ -1,6 +1,6 @@
 namespace Api.Battles.Dtos;
 
-/// <summary>Exactly how a finished battle ended. See <see cref="GameSim.BattleEnding"/>.</summary>
+/// <summary>Mirrors <see cref="GameSim.BattleEnding"/>.</summary>
 public enum BattleEndingDto
 {
     PlayerEliminatedOpponent = 0,

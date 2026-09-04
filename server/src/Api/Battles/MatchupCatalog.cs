@@ -4,11 +4,9 @@ using GameSim;
 namespace Api.Battles;
 
 /// <summary>
-/// The small set of named matchups a battle can be requested for.
-///
-/// Each deploys the player in rows 5-7 and the opponent in rows 0-2 of the 8x8
-/// board — <see cref="Battlefield.DeploymentBand"/> for each side — with the
-/// fighting line closest to the neutral band, so the armies close quickly.
+/// The small set of named matchups a battle can be requested for. Each
+/// deploys the player in rows 5-7 and the opponent in rows 0-2 of the 8x8
+/// board - <see cref="Battlefield.DeploymentBand"/> for each side.
 /// </summary>
 public sealed class MatchupCatalog
 {
@@ -33,7 +31,6 @@ public sealed class MatchupCatalog
         All = all;
     }
 
-    /// <summary>The matchup with this id, or false if none exists.</summary>
     public bool TryGet(string id, [NotNullWhen(true)] out Matchup? matchup) =>
         _byId.TryGetValue(id, out matchup);
 

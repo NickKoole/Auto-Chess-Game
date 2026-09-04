@@ -4,12 +4,7 @@ using GameSim;
 
 namespace Api.Battles;
 
-/// <summary>
-/// Builds a <see cref="SimulateBattleResponse"/> from a finished
-/// <see cref="BattleSimulation"/>, translating every <c>GameSim</c> type into
-/// the DTO that mirrors it. The one place that translation happens, so the sim's
-/// types never reach the response by any other path.
-/// </summary>
+/// <summary>The one place <c>GameSim</c> types are translated into DTOs.</summary>
 public static class BattleResponseFactory
 {
     public static SimulateBattleResponse Create(
@@ -21,12 +16,9 @@ public static class BattleResponseFactory
         var initialSetup = new List<StartingUnitDto>(setup.Units.Count);
         var definitions = new Dictionary<string, UnitDefinitionDto>(StringComparer.Ordinal);
 
-        // Tick 0 is read off the log, not off setup.Units, because
-        // BattleUnit.Position is mutable and the simulation moves those same
-        // instances in place — by the time this runs, a unit's Position is where
-        // it finished, not where it started. UnitSpawnedEvent captured the real
-        // starting coordinate before the first tick, and HexCoord is a value
-        // type, so the log's copy cannot be moved out from under it.
+        // Read off the log, not setup.Units: BattleUnit.Position is mutable and
+        // the simulation moves those instances in place, so by now a unit's
+        // Position is where it finished, not where it started.
         foreach (BattleEvent battleEvent in events)
         {
             if (battleEvent is not UnitSpawnedEvent spawned)
@@ -43,11 +35,8 @@ public static class BattleResponseFactory
             });
         }
 
-        // Reading tick 0 from the log means an unrun simulation yields an empty
-        // initialSetup rather than a wrong one, which is quieter and therefore
-        // worse. The simulation emits exactly one spawn per unit, so anything
-        // else here is a caller that built the response before running the
-        // battle.
+        // The simulation emits exactly one spawn per unit, so a mismatch means
+        // this response was built before the battle ran.
         if (initialSetup.Count != setup.Units.Count)
         {
             throw new InvalidOperationException(
@@ -55,8 +44,8 @@ public static class BattleResponseFactory
                 "Build the response from a simulation that has been run.");
         }
 
-        // Definitions still come from the setup: BattleUnit.Definition is the
-        // shared, immutable template, and nothing in the simulation writes to it.
+        // Definitions come from the setup, not the log: BattleUnit.Definition
+        // is the shared, immutable template, and nothing writes to it.
         foreach (BattleUnit unit in setup.Units)
         {
             definitions.TryAdd(unit.Definition.Id, MapUnitDefinition(unit.Definition));
