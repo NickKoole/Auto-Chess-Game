@@ -14,21 +14,16 @@ export interface GridDimensions {
   originY: number
 }
 
-/** Horizontal distance between adjacent hex centers in the same row. */
+/** Distance between adjacent hex centers in the same row - not one hex's own corner-to-corner width. */
 export function hexWidth(hexSize: number): number {
   return Math.sqrt(3) * hexSize
 }
 
-/** Vertical distance between adjacent row centers. */
 export function hexRowSpacing(hexSize: number): number {
   return hexSize * 1.5
 }
 
-/**
- * Pixel center of a pointy-top hex at offset (row, col). Odd rows are shifted
- * right by half a hex width, so a row stays a clean horizontal band instead of
- * a staircase - see GameSim's Battlefield for why the sim relies on that.
- */
+/** Odd rows are shifted right by half a hex width, so a row stays a clean horizontal band instead of a staircase - matches GameSim's HexCoord odd-r layout. */
 export function hexToPixel(row: number, col: number, hexSize: number): PixelPosition {
   const width = hexWidth(hexSize)
   const rowShift = row % 2 !== 0 ? width / 2 : 0
@@ -38,10 +33,6 @@ export function hexToPixel(row: number, col: number, hexSize: number): PixelPosi
   }
 }
 
-/**
- * The viewBox size and coordinate origin needed to render every hex of an
- * `rows` x `cols` pointy-top grid without clipping a hex's own points/edges.
- */
 export function gridDimensions(rows: number, cols: number, hexSize: number): GridDimensions {
   const width = hexWidth(hexSize)
   const originX = width / 2
@@ -54,7 +45,6 @@ export function gridDimensions(rows: number, cols: number, hexSize: number): Gri
   }
 }
 
-/** SVG `points` attribute for a pointy-top hexagon centered at (cx, cy). */
 export function hexPolygonPoints(cx: number, cy: number, hexSize: number): string {
   const points: string[] = []
   for (let i = 0; i < 6; i++) {

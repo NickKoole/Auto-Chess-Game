@@ -12,7 +12,6 @@ export type ListMatchupsResult =
   | { ok: true; data: MatchupDto[] }
   | { ok: false; error: string }
 
-/** Runs one hardcoded matchup on the server and returns its outcome. */
 export async function simulateBattle(request: SimulateBattleRequest): Promise<SimulateBattleResult> {
   let response: Response
   try {
@@ -32,7 +31,6 @@ export async function simulateBattle(request: SimulateBattleRequest): Promise<Si
   return { ok: true, data: (await response.json()) as SimulateBattleResponse }
 }
 
-/** The matchups a battle can be requested for - the picker's data source. */
 export async function listMatchups(): Promise<ListMatchupsResult> {
   let response: Response
   try {
