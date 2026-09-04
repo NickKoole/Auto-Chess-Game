@@ -1,11 +1,8 @@
 namespace Api.Battles.Dtos;
 
-/// <summary>
-/// A request to run a hardcoded matchup once.
-/// </summary>
 public sealed record SimulateBattleRequest
 {
-    /// <summary>Which hardcoded matchup to run. See <see cref="MatchupCatalog"/>.</summary>
+    /// <summary>Valid ids are listed in <see cref="MatchupCatalog"/>.</summary>
     public required string MatchupId { get; init; }
 
     /// <summary>

@@ -12,15 +12,12 @@ public sealed class PlayerSave
 
     public required string PlayerName { get; set; }
 
-    /// <summary>Server clock, at creation. Never client-supplied.</summary>
     public DateTimeOffset CreatedAtUtc { get; set; }
 
-    /// <summary>Server clock, when the save was last advanced.</summary>
     public DateTimeOffset LastAdvancedAtUtc { get; set; }
 
-    /// <summary>Simulation tick the save has been advanced to.</summary>
     public long LastTickProcessed { get; set; }
 
-    /// <summary>Serialized <c>GameSim</c> state. Opaque to the API layer.</summary>
+    /// <summary>Opaque to the API layer - only <c>GameSim</c> deserializes it.</summary>
     public required string StateJson { get; set; }
 }

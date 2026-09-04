@@ -31,7 +31,6 @@ public sealed class MatchupCatalog
         All = all;
     }
 
-    /// <summary>The matchup with this id, or false if none exists.</summary>
     public bool TryGet(string id, [NotNullWhen(true)] out Matchup? matchup) =>
         _byId.TryGetValue(id, out matchup);
 

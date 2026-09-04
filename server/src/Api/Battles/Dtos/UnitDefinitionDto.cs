@@ -1,10 +1,6 @@
 namespace Api.Battles.Dtos;
 
-/// <summary>
-/// A kind of unit's stats, as exposed over the wire — enough for a client to
-/// display names and stats without its own copy of the catalog. See
-/// <see cref="GameSim.UnitDefinition"/>.
-/// </summary>
+/// <summary>Mirrors <see cref="GameSim.UnitDefinition"/>.</summary>
 public sealed record UnitDefinitionDto
 {
     public required string Id { get; init; }

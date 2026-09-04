@@ -56,14 +56,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description Exactly how a finished battle ended. See BattleEnding. */
+        /** @description Mirrors BattleEnding. */
         BattleEndingDto: number;
-        /**
-         * @description One thing that happened in a battle, mirroring BattleEvent's
-         *     shape and discriminator.
-         */
+        /** @description Mirrors BattleEvent's shape and discriminator. */
         BattleEventDto: components["schemas"]["BattleEventDtoUnitSpawnedEventDto"] | components["schemas"]["BattleEventDtoUnitMovedEventDto"] | components["schemas"]["BattleEventDtoUnitAttackedEventDto"] | components["schemas"]["BattleEventDtoDamageDealtEventDto"] | components["schemas"]["BattleEventDtoUnitDiedEventDto"];
-        /** @description A unit's hit points changed from a landed hit. See DamageDealtEvent. */
+        /** @description Mirrors DamageDealtEvent. */
         BattleEventDtoDamageDealtEventDto: {
             /** @enum {string} */
             type?: "damageDealt";
@@ -78,7 +75,7 @@ export interface components {
             /** Format: int32 */
             tick: number | string;
         };
-        /** @description A unit landed a hit on another. See UnitAttackedEvent. */
+        /** @description Mirrors UnitAttackedEvent. */
         BattleEventDtoUnitAttackedEventDto: {
             /** @enum {string} */
             type?: "unitAttacked";
@@ -89,7 +86,7 @@ export interface components {
             /** Format: int32 */
             tick: number | string;
         };
-        /** @description A unit was removed from the battle. See UnitDiedEvent. */
+        /** @description Mirrors UnitDiedEvent. */
         BattleEventDtoUnitDiedEventDto: {
             /** @enum {string} */
             type?: "unitDied";
@@ -99,7 +96,7 @@ export interface components {
             /** Format: int32 */
             tick: number | string;
         };
-        /** @description A unit stepped from one hex to an adjacent one. See UnitMovedEvent. */
+        /** @description Mirrors UnitMovedEvent. */
         BattleEventDtoUnitMovedEventDto: {
             /** @enum {string} */
             type?: "unitMoved";
@@ -110,7 +107,7 @@ export interface components {
             /** Format: int32 */
             tick: number | string;
         };
-        /** @description A unit's starting state. See UnitSpawnedEvent. */
+        /** @description Mirrors UnitSpawnedEvent. */
         BattleEventDtoUnitSpawnedEventDto: {
             /** @enum {string} */
             type?: "unitSpawned";
@@ -122,37 +119,27 @@ export interface components {
             /** Format: int32 */
             tick: number | string;
         };
-        /** @description How a finished battle came to: who won, when, and exactly how. */
         BattleOutcomeDto: {
             winner: components["schemas"]["MatchWinnerDto"];
-            /**
-             * Format: int32
-             * @description The tick the battle ended on. See int BattleResult.EndTick.
-             */
+            /** Format: int32 */
             terminatingTick: number | string;
             terminationReason: components["schemas"]["BattleEndingDto"];
         };
-        /** @description A typed failure at the API boundary. See CLAUDE.md: errors here are results, not exceptions. */
         ErrorResponse: {
             message: string;
         };
-        /** @description Liveness payload. */
         HealthResponse: {
             status: string;
         };
-        /** @description A hex on the battlefield, as exposed over the wire. See HexCoord. */
+        /** @description Mirrors HexCoord. */
         HexCoordDto: {
             /** Format: int32 */
             row: number | string;
             /** Format: int32 */
             col: number | string;
         };
-        /** @description Who won a battle, from the player's point of view. See BattleOutcome. */
+        /** @description Mirrors BattleOutcome, from the player's point of view. */
         MatchWinnerDto: number;
-        /**
-         * @description One matchup a battle can be requested for, as exposed over the wire: enough
-         *     for a picker to list it and a client to request it back by id.
-         */
         MatchupDto: {
             /** @description Stable identifier. Pass this back as string SimulateBattleRequest.MatchupId. */
             id: string;
@@ -164,9 +151,8 @@ export interface components {
          *     appears in the OpenAPI contract.
          */
         SideDto: number;
-        /** @description A request to run a hardcoded matchup once. */
         SimulateBattleRequest: {
-            /** @description Which hardcoded matchup to run. See MatchupCatalog. */
+            /** @description Valid ids are listed in MatchupCatalog. */
             matchupId: string;
             /**
              * @description The seed to run the battle with, as a base-10 string — see
@@ -175,11 +161,6 @@ export interface components {
              */
             seed?: null | string;
         };
-        /**
-         * @description Everything a client needs to replay one battle: the seed it ran with, the
-         *     position it started from, the full log of what happened, the unit stats
-         *     the log refers to, and how it ended.
-         */
         SimulateBattleResponse: {
             /**
              * @description The seed this battle ran with, formatted as a base-10 string rather than
@@ -189,31 +170,26 @@ export interface components {
              *     re-requesting for them.
              */
             seed: string;
-            /** @description Every unit's state at tick 0, in the order IReadOnlyList&lt;BattleUnit&gt; BattleSetup.Units holds them. */
+            /** @description In IReadOnlyList&lt;BattleUnit&gt; BattleSetup.Units order. */
             initialSetup: components["schemas"]["StartingUnitDto"][];
-            /** @description The stats for every unit kind referenced by IReadOnlyList&lt;StartingUnitDto&gt; SimulateBattleResponse.InitialSetup or IReadOnlyList&lt;BattleEventDto&gt; SimulateBattleResponse.Events. */
+            /** @description Only the kinds referenced by IReadOnlyList&lt;StartingUnitDto&gt; SimulateBattleResponse.InitialSetup or IReadOnlyList&lt;BattleEventDto&gt; SimulateBattleResponse.Events, not the full catalog. */
             unitDefinitions: components["schemas"]["UnitDefinitionDto"][];
-            /** @description Everything that happened, in order. See IReadOnlyList&lt;BattleEvent&gt; BattleSimulation.Events. */
+            /** @description Mirrors IReadOnlyList&lt;BattleEvent&gt; BattleSimulation.Events. */
             events: components["schemas"]["BattleEventDto"][];
             outcome: components["schemas"]["BattleOutcomeDto"];
         };
-        /** @description One unit's state at tick 0, before anything in the battle has happened. */
         StartingUnitDto: {
             /**
              * Format: int32
-             * @description This unit's id, unique within the battle. See int BattleUnit.Id.
+             * @description Unique within this battle only, not globally. See int BattleUnit.Id.
              */
             unitId: number | string;
             side: components["schemas"]["SideDto"];
-            /** @description The catalog id of the kind of unit this is. Look it up in the response's unit definitions. */
+            /** @description Look this up in the response's IReadOnlyList&lt;UnitDefinitionDto&gt; SimulateBattleResponse.UnitDefinitions. */
             definitionId: string;
             position: components["schemas"]["HexCoordDto"];
         };
-        /**
-         * @description A kind of unit's stats, as exposed over the wire — enough for a client to
-         *     display names and stats without its own copy of the catalog. See
-         *     UnitDefinition.
-         */
+        /** @description Mirrors UnitDefinition. */
         UnitDefinitionDto: {
             id: string;
             displayName: string;

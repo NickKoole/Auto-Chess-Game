@@ -4,11 +4,7 @@ using GameSim;
 
 namespace Api.Battles;
 
-/// <summary>
-/// Builds a <see cref="SimulateBattleResponse"/> from a finished
-/// <see cref="BattleSimulation"/> - the one place <c>GameSim</c> types are
-/// translated into DTOs.
-/// </summary>
+/// <summary>The one place <c>GameSim</c> types are translated into DTOs.</summary>
 public static class BattleResponseFactory
 {
     public static SimulateBattleResponse Create(

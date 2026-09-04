@@ -1,6 +1,6 @@
 namespace Api.Battles.Dtos;
 
-/// <summary>A unit's starting state. See <see cref="GameSim.UnitSpawnedEvent"/>.</summary>
+/// <summary>Mirrors <see cref="GameSim.UnitSpawnedEvent"/>.</summary>
 public sealed record UnitSpawnedEventDto : BattleEventDto
 {
     public required int UnitId { get; init; }

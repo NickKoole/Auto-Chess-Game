@@ -30,7 +30,6 @@ app.MapBattleEndpoints();
 
 app.Run();
 
-/// <summary>Liveness payload.</summary>
 public sealed record HealthResponse(string Status);
 
 /// <summary>Exposed so <c>WebApplicationFactory</c> can boot the app in tests.</summary>

@@ -1,10 +1,5 @@
 namespace Api.Battles.Dtos;
 
-/// <summary>
-/// Everything a client needs to replay one battle: the seed it ran with, the
-/// position it started from, the full log of what happened, the unit stats
-/// the log refers to, and how it ended.
-/// </summary>
 public sealed record SimulateBattleResponse
 {
     /// <summary>
@@ -16,13 +11,13 @@ public sealed record SimulateBattleResponse
     /// </summary>
     public required string Seed { get; init; }
 
-    /// <summary>Every unit's state at tick 0, in the order <see cref="GameSim.BattleSetup.Units"/> holds them.</summary>
+    /// <summary>In <see cref="GameSim.BattleSetup.Units"/> order.</summary>
     public required IReadOnlyList<StartingUnitDto> InitialSetup { get; init; }
 
-    /// <summary>The stats for every unit kind referenced by <see cref="InitialSetup"/> or <see cref="Events"/>.</summary>
+    /// <summary>Only the kinds referenced by <see cref="InitialSetup"/> or <see cref="Events"/>, not the full catalog.</summary>
     public required IReadOnlyList<UnitDefinitionDto> UnitDefinitions { get; init; }
 
-    /// <summary>Everything that happened, in order. See <see cref="GameSim.BattleSimulation.Events"/>.</summary>
+    /// <summary>Mirrors <see cref="GameSim.BattleSimulation.Events"/>.</summary>
     public required IReadOnlyList<BattleEventDto> Events { get; init; }
 
     public required BattleOutcomeDto Outcome { get; init; }

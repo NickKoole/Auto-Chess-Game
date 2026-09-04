@@ -2,10 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Api.Battles.Dtos;
 
-/// <summary>
-/// One thing that happened in a battle, mirroring <see cref="GameSim.BattleEvent"/>'s
-/// shape and discriminator.
-/// </summary>
+/// <summary>Mirrors <see cref="GameSim.BattleEvent"/>'s shape and discriminator.</summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(UnitSpawnedEventDto), "unitSpawned")]
 [JsonDerivedType(typeof(UnitMovedEventDto), "unitMoved")]
