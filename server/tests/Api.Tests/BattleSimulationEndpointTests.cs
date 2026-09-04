@@ -46,6 +46,8 @@ public sealed class BattleSimulationEndpointTests(ApiFactory factory) : IClassFi
     [Theory]
     [InlineData("melee-mirror", "12345")]
     [InlineData("archers-vs-melee", "987654321")]
+    [InlineData("knights-and-archers", "112233")]
+    [InlineData("all-varieties", "445566")]
     public async Task InitialSetup_reports_the_matchups_tick_0_placements_not_where_units_ended_up(
         string matchupId, string seed)
     {
