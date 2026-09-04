@@ -29,6 +29,11 @@ author's reasoning was sound, and do not assume it was careless.
 6. **Convention breaks** against `CLAUDE.md` — `GameSim` referencing `Api`,
    a schema change with no EF migration, missing `<script setup lang="ts">`,
    untyped props, or barrel `index.ts` files.
+7. **Comment bloat.** A comment that restates what the code already says, a
+   multi-line or paragraph-style comment, or one that justifies a design
+   choice instead of documenting a fact the code can't express on its own
+   (an external constraint, a workaround, a regex) — flag it. This is
+   `CLAUDE.md`'s Comments convention, not a style opinion.
 
 ## Rules of engagement
 
@@ -52,7 +57,8 @@ author's reasoning was sound, and do not assume it was careless.
   is not describing this code. A deviation the author states and explains is
   fine — that is the process working, not a defect.
 - **No style preferences.** No "consider extracting this", no "this could be
-  more idiomatic", unless it causes a real defect.
+  more idiomatic", unless it causes a real defect. Comment bloat (item 7
+  above) is a named convention check, not covered by this line.
 - **Approving is a valid outcome.** If the diff is correct and in scope, say so
   and approve. Do not manufacture findings to look thorough.
 - **Severity means something.** `blocker` = must not merge. `major` = will cause
