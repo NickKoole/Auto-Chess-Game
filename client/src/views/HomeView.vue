@@ -119,7 +119,6 @@ function pause(): void {
   stopPlayback()
 }
 
-/** Requests a battle for the selected matchup and seed, then plays it back from tick 0. */
 async function runBattle(): Promise<void> {
   if (!selectedMatchupId.value || isRequesting.value) {
     return

@@ -13,7 +13,6 @@ export interface HexPosition {
   col: number
 }
 
-/** One unit's live state, the shape playback (story 2.4) will mutate in place. */
 export interface BattleUnitState {
   id: number
   side: number
@@ -23,17 +22,12 @@ export interface BattleUnitState {
   maxHp: number
 }
 
-/**
- * Everything a view needs to render the battle at some point in time.
- * Rendering reads only this - never the raw API response - so replaying
- * events onto it is a mutation, not a rebuild.
- */
+/** Rendering reads only this, never the raw API response - so replaying events onto it is a mutation, not a rebuild. */
 export interface BattleState {
   units: BattleUnitState[]
   unitDefinitions: Record<string, UnitDefinitionDto>
 }
 
-/** Builds the tick-0 battle state from a battle's simulate response. */
 export function createBattleState(response: SimulateBattleResponse): BattleState {
   const unitDefinitions: Record<string, UnitDefinitionDto> = {}
   for (const definition of response.unitDefinitions) {

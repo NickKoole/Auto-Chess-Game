@@ -24,10 +24,9 @@ export type BattleEvent =
   | (Omit<UnitDiedEventDto, 'type'> & { type: 'unitDied' })
 
 /**
- * Applies every event at `tick` to `state`, in log order. Pure with respect
- * to `log` - it reads events and mutates only `state`. No combat rules live
- * here: damage is copied verbatim from `resultingHp`, death removes exactly
- * the unit the log names, and nothing is computed from stats or targeting.
+ * No combat rules live here: damage is copied verbatim from `resultingHp`,
+ * death removes exactly the unit the log names, and nothing is computed
+ * from stats or targeting.
  */
 export function applyTick(state: BattleState, tick: number, log: readonly BattleEvent[]): void {
   for (const event of log) {
@@ -41,9 +40,7 @@ function applyEvent(state: BattleState, event: BattleEvent): void {
   switch (event.type) {
     case 'unitSpawned':
     case 'unitAttacked':
-      // Spawning is already reflected in the tick-0 battle state (story
-      // 2.3). An attack alone changes nothing visible - the damageDealt
-      // event that follows it is what moves HP.
+      // An attack alone changes nothing visible - the following damageDealt event is what moves HP.
       return
     case 'unitMoved':
       findUnit(state, toNumber(event.unitId)).position = {

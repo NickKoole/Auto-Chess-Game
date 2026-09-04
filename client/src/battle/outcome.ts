@@ -6,11 +6,9 @@ export interface SideSurvivors {
 }
 
 /**
- * Units still standing in `finalState`, grouped by side and sorted by id for
- * a stable read - never derived by counting or comparing HP, since that would
- * be a client-side re-implementation of a rule the server already answered.
- * Pass the state at the battle's terminating tick (`seekTo`'s result), not a
- * mid-battle one.
+ * Never derived by counting or comparing HP - that would be a client-side
+ * re-implementation of a rule the server already answered. Pass the state
+ * at the battle's terminating tick (`seekTo`'s result), not a mid-battle one.
  */
 export function survivorsBySide(finalState: BattleState): SideSurvivors[] {
   const bySide = (side: number): BattleUnitState[] =>
@@ -35,12 +33,7 @@ const ENDING_LABELS: Record<number, string> = {
   [ENDING_TICK_CAP_DRAW]: 'Draw — tick cap reached',
 }
 
-/**
- * Describes how a battle ended, from `outcome.terminationReason` alone - never
- * from counting survivors on the client. The two draw endings get distinct
- * text: a mutual kill and a stalemate at the tick cap read differently, and
- * are not the same event wearing one label.
- */
+/** The two draw endings get distinct text - a mutual kill and a stalemate at the tick cap read differently, not the same event wearing one label. */
 export function endingLabel(terminationReason: number): string {
   return ENDING_LABELS[terminationReason] ?? `Unknown ending (${terminationReason})`
 }
