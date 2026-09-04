@@ -1,25 +1,11 @@
 namespace GameSim;
 
-/// <summary>
-/// The immutable template for a kind of unit — what it is, never what it
-/// is currently doing.
-///
-/// One definition is shared by every unit of that kind, so nothing in the
-/// simulation may write to it. The mutable per-battle state — current HP,
-/// position, attack cooldown — belongs on the battle instance instead.
-/// </summary>
+/// <summary>What a kind of unit is, never what it is currently doing - the mutable per-battle state lives on <see cref="BattleUnit"/> instead.</summary>
 public sealed record UnitDefinition
 {
-    /// <summary>
-    /// Damage variance applied unless a unit is deliberately tuned otherwise.
-    /// </summary>
     public const double DefaultDamageVariance = 0.15;
 
-    /// <summary>
-    /// Creates a definition, rejecting any stat that could not describe a real
-    /// unit. These are programmer errors — a catalog is written by hand, not fed
-    /// from user input — so they throw rather than returning a failure.
-    /// </summary>
+    /// <summary>Rejects any stat that couldn't describe a real unit - a catalog is written by hand, so these are programmer errors, not API-boundary failures.</summary>
     public UnitDefinition(
         string id,
         string displayName,
@@ -32,10 +18,8 @@ public sealed record UnitDefinition
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
 
-        // Thrown by hand rather than via ThrowIfNullOrWhiteSpace so the message
-        // names the unit like every other failure here. The BCL helper names
-        // only the parameter, which tells you a displayName was blank but not
-        // which of six roster entries to go and look at.
+        // Thrown by hand, not via ThrowIfNullOrWhiteSpace, so the message names
+        // the unit - the BCL helper only names the parameter.
         if (string.IsNullOrWhiteSpace(displayName))
         {
             throw new ArgumentException(
@@ -65,37 +49,34 @@ public sealed record UnitDefinition
         DamageVariance = damageVariance;
     }
 
-    /// <summary>Stable identifier, unique within a catalog. Not shown to players.</summary>
+    /// <summary>Unique within a catalog. Not shown to players.</summary>
     public string Id { get; }
 
-    /// <summary>Player-facing name.</summary>
     public string DisplayName { get; }
 
-    /// <summary>Starting and maximum hit points.</summary>
+    /// <summary>Also the starting value - see <see cref="BattleUnit"/>'s constructor.</summary>
     public int MaxHp { get; }
 
-    /// <summary>Base damage per attack, before variance is rolled.</summary>
+    /// <summary>Before variance is rolled.</summary>
     public int AttackDamage { get; }
 
-    /// <summary>Ticks between consecutive attacks. Higher is slower.</summary>
+    /// <summary>Higher is slower.</summary>
     public int AttackIntervalTicks { get; }
 
-    /// <summary>Ticks to cross one hex. Higher is slower — this is a cost, not a speed.</summary>
+    /// <summary>Higher is slower - this is a cost, not a speed.</summary>
     public int MovementTicksPerHex { get; }
 
     /// <summary>
-    /// Reach as a hex distance to the target, so 1 means an adjacent hex and is
-    /// the shortest legal reach — a unit that could attack nothing at all is not
-    /// a unit. Melee and ranged are not kinds here, only ends of this number:
-    /// something that later grants +1 range to a melee unit needs no new
-    /// concept, and no code may treat "melee" as a category.
+    /// 1 means an adjacent hex, the shortest legal reach. Melee and ranged are
+    /// not kinds here, only ends of this number - no code may treat "melee" as
+    /// a category.
     /// </summary>
     public int AttackRangeHexes { get; }
 
     /// <summary>
-    /// Damage spread as a fraction of <see cref="AttackDamage"/> — 0.15 means
-    /// ±15%. Stored as a fraction for legibility; the roll itself must be taken
-    /// in integer maths so a battle stays byte-identical across runtimes.
+    /// Fraction of <see cref="AttackDamage"/> - 0.15 means +/-15%. A
+    /// <see langword="double"/> for legibility only; the roll itself is
+    /// integer maths.
     /// </summary>
     public double DamageVariance { get; }
 
