@@ -54,7 +54,6 @@ public sealed class StaticUnitCatalog : IUnitCatalog
     /// </summary>
     private static UnitDefinition[] BuiltIn() =>
     [
-        // --- melee, range 1 -------------------------------------------------
         new(
             id: "militia",
             displayName: "Militia",
@@ -82,7 +81,6 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             movementTicksPerHex: 5,
             attackRangeHexes: 1),
 
-        // --- ranged, range > 1 ----------------------------------------------
         new(
             id: "archer",
             displayName: "Archer",
