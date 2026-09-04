@@ -3,13 +3,9 @@ using System.Diagnostics.CodeAnalysis;
 namespace GameSim;
 
 /// <summary>
-/// A validated pair of armies on a board: the starting position a battle runs
-/// from.
-///
-/// There is no public constructor, so a <see cref="BattleSetup"/> cannot exist
-/// in an illegal state — if you are holding one, every placement was legal, both
-/// sides brought units, and no two units share a tile. That is what lets the
-/// simulation itself skip re-checking any of it.
+/// A validated pair of armies on a board. No public constructor: holding one
+/// means every placement was legal, both sides brought units, and no two
+/// units share a tile - the simulation never re-checks any of it.
 /// </summary>
 public sealed class BattleSetup
 {
@@ -19,34 +15,18 @@ public sealed class BattleSetup
         Units = units;
     }
 
-    /// <summary>The board, with every unit already standing on it.</summary>
     public Battlefield Battlefield { get; }
 
     /// <summary>
-    /// Every unit in both armies, ordered by owner, then front-to-back within
-    /// each army, then by column.
-    ///
-    /// Front-to-back is <see cref="Battlefield.RowsToEnemyBackLine"/>, not the
-    /// raw row: the two armies advance in opposite directions, so ordering both
-    /// by ascending row would put the player's front rank first and the
-    /// opponent's rear rank first, and a mirror match would resolve its two
-    /// sides' internal contention in opposite orders.
-    ///
-    /// The order is part of the contract, not an implementation detail. Tick
-    /// order decides who wins a mutual kill, so a battle replayed from the same
-    /// seed and the same setup can only be byte-identical if the units start in
-    /// the same order — however the caller happened to list them.
+    /// Every unit in both armies: by side, then front-to-back
+    /// (<see cref="Battlefield.RowsToEnemyBackLine"/>, not raw row - the two
+    /// sides advance in opposite directions), then by column. Part of the
+    /// contract, not an implementation detail: tick order decides a mutual
+    /// kill, so a replay is only byte-identical if units start in this order.
     /// </summary>
     public IReadOnlyList<BattleUnit> Units { get; }
 
-    /// <summary>
-    /// Validates two armies and, if both are legal, builds the setup.
-    ///
-    /// Every placement is checked before anything is built, and
-    /// <paramref name="errors"/> comes back holding all of the reasons
-    /// rather than only the first: an illegal army is something a player fixes,
-    /// and fixing it one tile per attempt is miserable.
-    /// </summary>
+    /// <summary>All errors are collected, not just the first.</summary>
     /// <exception cref="ArgumentNullException">Either list, or a definition inside one, is null.</exception>
     public static bool TryCreate(
         IReadOnlyList<UnitPlacement> playerPlacements,
@@ -109,13 +89,8 @@ public sealed class BattleSetup
 
             if (!claimed.Add(coord))
             {
-                // Necessarily the same side twice: the tile passed CheckTile, so
-                // it is in this side's band, and the bands are disjoint — the
-                // other army's unit on this tile would have been rejected as
-                // OpposingDeploymentBand before ever reaching here. That is why
-                // there is no cross-side TileOccupied case in this loop;
-                // Battlefield.TryPlace still reports one, and would again here
-                // if the bands were ever allowed to overlap.
+                // Necessarily the same side: bands are disjoint, so the other
+                // army's unit here would already be rejected as OpposingDeploymentBand.
                 found.Add(new PlacementError(
                     PlacementErrorKind.DuplicateCoordinate,
                     side,
@@ -135,11 +110,8 @@ public sealed class BattleSetup
             .. opponentPlacements.Select(p => new BattleUnit(p.Definition, BattleSide.Opponent, p.Coord)),
         ];
 
-        // A total order, not merely a stable one: duplicates are already
-        // rejected above, so no two units of a side share (row, column), and
-        // rows-to-cross is one-to-one with the row within a side — so no two
-        // units can tie and the sort cannot fall back on the caller's list
-        // order to break one.
+        // A total order: duplicates are already rejected, so no two units of a
+        // side can tie on (rows-to-cross, column).
         BattleUnit[] ordered =
         [
             .. units
@@ -150,9 +122,8 @@ public sealed class BattleSetup
 
         var battlefield = new Battlefield();
 
-        // The index in this final, sorted order is unique and never ties, for
-        // exactly the reasons the comment on `ordered` above already gives — so
-        // it is a battle-unique id with no further bookkeeping needed.
+        // Index in the final sorted order - already unique, so no further
+        // bookkeeping needed.
         for (int i = 0; i < ordered.Length; i++)
         {
             ordered[i].Id = i;
@@ -162,9 +133,8 @@ public sealed class BattleSetup
         {
             if (!battlefield.TryPlace(unit, out PlacementError? error))
             {
-                // Unreachable: validation above rejected every setup that could
-                // land here. If it ever fires, the two are out of step, and
-                // that is a bug to fix rather than a state to carry on from.
+                // Unreachable: validation above already rejected any setup
+                // that could land here.
                 throw new InvalidOperationException(
                     $"Validated setup failed to place a unit: {error.Message}");
             }

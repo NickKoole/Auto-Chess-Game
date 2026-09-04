@@ -3,35 +3,21 @@ using System.Diagnostics.CodeAnalysis;
 namespace GameSim;
 
 /// <summary>
-/// The 8x8 pointy-top hex board a battle is fought on, and which unit stands on
-/// each tile.
-///
-/// The fight runs vertically: the player deploys along the bottom (rows 5-7) and
-/// advances north, the opponent deploys along the top (rows 0-2) and advances
-/// south, and rows 3-4 are a neutral band nobody may deploy into but everybody
-/// may walk through. With pointy-top hexes in offset rows, a row is a clean
-/// horizontal band, so battle lines form along rows and close on each other.
-///
-/// Occupancy lives here rather than beside the board, because every tick moves
-/// units, and a mover that had to reach past the board to find out what is in
-/// its way would end up owning this array anyway. That mover is
-/// <see cref="Move"/>, not <see cref="TryPlace"/>: deployment and movement obey
-/// different rules on the same tiles — crossing the neutral band is legal
-/// movement and illegal deployment — so movement has its own entry point here,
-/// checking bounds and occupancy but not the bands.
+/// The 8x8 pointy-top hex board a battle is fought on. The player deploys
+/// along rows 5-7 and advances north; the opponent deploys along rows 0-2 and
+/// advances south; rows 3-4 are a neutral band nobody may deploy into but
+/// everybody may walk through.
 /// </summary>
 public sealed class Battlefield
 {
-    /// <summary>Number of rows, indexed 0 (north) to 7 (south).</summary>
+    /// <summary>Indexed 0 (north) to 7 (south).</summary>
     public const int Rows = 8;
 
-    /// <summary>Number of columns, indexed 0 (west) to 7 (east).</summary>
+    /// <summary>Indexed 0 (west) to 7 (east).</summary>
     public const int Columns = 8;
 
-    /// <summary>First row of the neutral band.</summary>
     public const int NeutralFirstRow = 3;
 
-    /// <summary>Last row of the neutral band.</summary>
     public const int NeutralLastRow = 4;
 
     // One slot per tile, row-major. A flat array rather than a dictionary: the
@@ -39,17 +25,10 @@ public sealed class Battlefield
     // on a dictionary's iteration order.
     private readonly BattleUnit?[] _tiles = new BattleUnit?[Rows * Columns];
 
-    /// <summary>Whether a coordinate is on the board at all.</summary>
     public static bool IsInBounds(HexCoord coord) =>
         coord.Row >= 0 && coord.Row < Rows && coord.Col >= 0 && coord.Col < Columns;
 
-    /// <summary>
-    /// Whether a coordinate is in the neutral band, where nothing may deploy.
-    /// False off the board, for the same reason as
-    /// <see cref="IsDeploymentBandOf"/>: both are public row rules, and a
-    /// passability check in story 1.3 is exactly the caller that would ask one
-    /// of them directly rather than through <see cref="CheckTile"/>.
-    /// </summary>
+    /// <summary>False off the board.</summary>
     public static bool IsNeutralBand(HexCoord coord) =>
         IsInBounds(coord) && coord.Row >= NeutralFirstRow && coord.Row <= NeutralLastRow;
 
@@ -65,22 +44,10 @@ public sealed class Battlefield
     };
 
     /// <summary>
-    /// How many rows a unit still has to cross to reach the far edge its side
-    /// is advancing on — the enemy's back line, row 0 for the player and row
-    /// <see cref="Rows"/> - 1 for the opponent.
-    ///
-    /// This is the front-to-back ordering key for a side's own units, and raw
-    /// row will not do the job: the two sides advance in opposite directions,
-    /// so ascending row is front-rank-first for the player and rear-rank-first
-    /// for the opponent. Keyed this way, mirrored positions on the two sides
-    /// also yield the same value, so a mirror match orders both armies
-    /// identically instead of resolving their internal contention in opposite
-    /// orders.
-    ///
-    /// Pure arithmetic on the row: unlike <see cref="IsDeploymentBandOf"/> it
-    /// does not check bounds, because it answers a question about direction
-    /// rather than about legality, and a caller sorting units it already holds
-    /// has coordinates the board accepted.
+    /// Row 0 for the player, row <see cref="Rows"/> - 1 for the opponent - the
+    /// front-to-back sort key for a side's own units, since raw row order runs
+    /// backward for one side. No bounds check: callers already hold accepted
+    /// coordinates.
     /// </summary>
     public static int RowsToEnemyBackLine(BattleSide side, HexCoord coord) => side switch
     {
@@ -90,12 +57,8 @@ public sealed class Battlefield
     };
 
     /// <summary>
-    /// Whether a side may deploy on a coordinate, ignoring what stands there.
-    ///
-    /// False for anything off the board. The band is a row rule, so it is
-    /// tempting to answer with a row comparison alone — but this is public, and
-    /// a caller reaching it directly rather than through <see cref="CheckTile"/>
-    /// would then be told that (row 6, column 99) is a legal player tile.
+    /// Ignores what stands on the tile. False off the board - a row-only
+    /// check would call (row 6, column 99) a legal player tile.
     /// </summary>
     public static bool IsDeploymentBandOf(BattleSide side, HexCoord coord)
     {
@@ -109,12 +72,9 @@ public sealed class Battlefield
     }
 
     /// <summary>
-    /// Checks everything about a tile that does not depend on what is standing
-    /// on it, and returns null when the tile is legal for this side.
-    ///
-    /// The single home of the geography rules: <see cref="TryPlace"/> calls it
-    /// before checking occupancy, and <see cref="BattleSetup"/> calls it while
-    /// validating a whole army. Two copies of these three checks would drift.
+    /// Null when the tile is legal for this side. The single home of the
+    /// geography rules - <see cref="TryPlace"/> and <see cref="BattleSetup"/>
+    /// both call it, so there is only one copy to drift.
     /// </summary>
     public static PlacementError? CheckTile(BattleSide side, HexCoord coord)
     {
@@ -151,40 +111,22 @@ public sealed class Battlefield
     }
 
     /// <summary>
-    /// Whether a unit could step onto a tile: on the board, and empty.
-    ///
-    /// The movement counterpart to <see cref="CheckTile"/>, and deliberately
-    /// blind to the deployment bands — a unit advancing from row 5 into the
-    /// neutral band is making a legal move onto a tile it could never have
-    /// deployed on. It answers about the board as it stands right now, so a
-    /// caller that needs "empty at the start of the tick" has to ask before
-    /// anything has moved, which is what the simulation's decide phase is for.
-    ///
-    /// <para>
-    /// Returns false off the board rather than throwing, unlike
-    /// <see cref="UnitAt"/>: a mover asking about all six neighbours of an edge
-    /// tile is asking a perfectly reasonable question, and making it pre-filter
-    /// for bounds would just move this check to every call site.
-    /// </para>
+    /// On the board and empty. Blind to deployment bands, unlike
+    /// <see cref="CheckTile"/> - a unit may move through the neutral band even
+    /// though it could never deploy there. Answers about the board right now:
+    /// a caller wanting "empty at the start of the tick" must ask before
+    /// anything moves. Returns false off the board rather than throwing,
+    /// unlike <see cref="UnitAt"/>.
     /// </summary>
     public bool IsPassable(HexCoord coord) => IsInBounds(coord) && _tiles[Index(coord)] is null;
 
     /// <summary>
-    /// Moves a unit to an adjacent-or-not destination, updating both the board
-    /// and the unit's own <see cref="BattleUnit.Position"/> together.
-    ///
-    /// Every failure here is a programmer error and throws, rather than coming
-    /// back as a reason the way <see cref="TryPlace"/>'s do. A blocked advance
-    /// is not a failed move: it is a unit that decided to stay put, decided
-    /// before this is ever called. Anything that reaches this method with a
-    /// destination off the board or already occupied has skipped that decision,
-    /// and continuing from it would tear the board and the units apart.
-    ///
-    /// <para>
-    /// Distance is not checked. The one-hex-per-step rule belongs to the mover,
-    /// not to the board — a later dash or blink would move further and would
-    /// have no business getting a second entry point here to do it.
-    /// </para>
+    /// Moves a unit to <paramref name="destination"/> and updates its
+    /// <see cref="BattleUnit.Position"/>. Throws rather than returning a
+    /// reason, unlike <see cref="TryPlace"/>: the mover already decided to
+    /// move before calling this, so an off-board or occupied destination here
+    /// is a programmer error. Distance is not checked - the one-hex-per-step
+    /// rule belongs to the mover, not the board.
     /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">The destination is off the board.</exception>
     /// <exception cref="InvalidOperationException">
@@ -225,12 +167,9 @@ public sealed class Battlefield
     }
 
     /// <summary>
-    /// Takes a dead unit off the board, freeing its tile from the next call to
-    /// <see cref="IsPassable"/> onward.
-    ///
-    /// Does not touch <see cref="BattleUnit.Position"/>: the corpse still knows
-    /// where it fell, which is harmless once nothing may target or path through
-    /// it, and simpler than inventing a value to reset it to.
+    /// Frees the unit's tile. Does not clear <see cref="BattleUnit.Position"/>
+    /// - the corpse still knows where it fell, which is harmless once nothing
+    /// targets or paths through it.
     /// </summary>
     /// <exception cref="InvalidOperationException">
     /// The unit is not standing where the board says it is. Removing a unit
@@ -254,9 +193,6 @@ public sealed class Battlefield
 
     private static int Index(HexCoord coord) => (coord.Row * Columns) + coord.Col;
 
-    /// <summary>
-    /// The unit standing on a tile, or null if it is empty.
-    /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">
     /// The coordinate is not on the board. Asking about a tile that does not
     /// exist is a programmer error, unlike trying to deploy onto one — which is
@@ -276,19 +212,13 @@ public sealed class Battlefield
         return _tiles[Index(coord)];
     }
 
-    /// <summary>Whether a unit is standing on a tile.</summary>
     /// <exception cref="ArgumentOutOfRangeException">The coordinate is not on the board.</exception>
     public bool IsOccupied(HexCoord coord) => UnitAt(coord) is not null;
 
     /// <summary>
-    /// Deploys a unit onto the tile it says it is standing on, or explains why
-    /// it may not stand there. A tile holds at most one unit.
-    ///
-    /// Deployment only. This applies the band rules, so it rejects the neutral
-    /// band and the opposing half outright — which makes it the wrong method to
-    /// move a unit with, since a unit advancing from row 5 to row 4 is making a
-    /// legal move onto a tile it could never have deployed on. Use
-    /// <see cref="Move"/> for that.
+    /// Deploys onto <see cref="BattleUnit.Position"/>, applying the band
+    /// rules - so it rejects a legal mid-battle move like row 5 to row 4 as an
+    /// illegal deployment. Use <see cref="Move"/> to move a unit.
     /// </summary>
     public bool TryPlace(BattleUnit unit, [NotNullWhen(false)] out PlacementError? error)
     {
