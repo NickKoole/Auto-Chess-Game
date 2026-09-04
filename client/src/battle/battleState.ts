@@ -20,6 +20,8 @@ export interface BattleUnitState {
   position: HexPosition
   hp: number
   maxHp: number
+  /** Set from the most recent unitAttacked event naming this unit as attacker - who it's actively swinging at, not who it's chasing. */
+  currentTargetId: number | null
 }
 
 /** Rendering reads only this, never the raw API response - so replaying events onto it is a mutation, not a rebuild. */
@@ -47,8 +49,22 @@ export function createBattleState(response: SimulateBattleResponse): BattleState
       position: { row: toNumber(unit.position.row), col: toNumber(unit.position.col) },
       hp: maxHp,
       maxHp,
+      currentTargetId: null,
     }
   })
 
   return { units, unitDefinitions }
+}
+
+export function unitLabel(unit: BattleUnitState, unitDefinitions: Record<string, UnitDefinitionDto>): string {
+  const displayName = unitDefinitions[unit.definitionId]?.displayName ?? unit.definitionId
+  return `${displayName} #${unit.id}`
+}
+
+/** Undefined once the target has died or hasn't been set yet - the caller decides what "no marker" means. */
+export function currentTargetOf(state: BattleState, unit: BattleUnitState): BattleUnitState | undefined {
+  if (unit.currentTargetId === null) {
+    return undefined
+  }
+  return state.units.find((candidate) => candidate.id === unit.currentTargetId)
 }

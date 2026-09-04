@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { BattleState, BattleUnitState } from '@/battle/battleState'
-import { SIDE_PLAYER } from '@/battle/battleState'
+import { currentTargetOf, SIDE_PLAYER, unitLabel } from '@/battle/battleState'
 import { gridDimensions, hexPolygonPoints, hexToPixel } from '@/battle/hexCoords'
 
 const props = defineProps<{ state: BattleState }>()
@@ -53,16 +53,42 @@ function unitCenter(unit: BattleUnitState) {
 function sideClass(side: number): string {
   return side === SIDE_PLAYER ? 'unit player' : 'unit opponent'
 }
+
+function label(unit: BattleUnitState): string {
+  return unitLabel(unit, props.state.unitDefinitions)
+}
+
+interface TargetMarker {
+  attackerId: number
+  x: number
+  y: number
+}
+
+const targetMarkers = computed<TargetMarker[]>(() =>
+  props.state.units.flatMap((unit): TargetMarker[] => {
+    const target = currentTargetOf(props.state, unit)
+    return target ? [{ attackerId: unit.id, ...unitCenter(target) }] : []
+  }),
+)
 </script>
 
 <template>
   <svg class="battle-board" :viewBox="`0 0 ${dims.width} ${dims.height}`" role="img" aria-label="Battle grid">
     <polygon v-for="hex in hexes" :key="`${hex.row}-${hex.col}`" :points="hex.points" :class="bandClass(hex.row)" />
 
+    <circle
+      v-for="marker in targetMarkers"
+      :key="marker.attackerId"
+      :cx="marker.x"
+      :cy="marker.y"
+      :r="HEX_SIZE * 0.7"
+      class="target-marker"
+    />
+
     <g v-for="unit in props.state.units" :key="unit.id" :data-unit-id="unit.id" class="unit-group">
       <circle :cx="unitCenter(unit).x" :cy="unitCenter(unit).y" :r="HEX_SIZE * 0.55" :class="sideClass(unit.side)" />
       <text :x="unitCenter(unit).x" :y="unitCenter(unit).y - 4" text-anchor="middle" class="unit-label">
-        {{ unit.definitionId }}
+        {{ label(unit) }}
       </text>
       <text :x="unitCenter(unit).x" :y="unitCenter(unit).y + 14" text-anchor="middle" class="unit-hp">
         {{ unit.hp }}
@@ -107,6 +133,13 @@ function sideClass(side: number): string {
   fill: #c62828;
   stroke: #1b1b1b;
   stroke-width: 1;
+}
+
+.target-marker {
+  fill: none;
+  stroke: #f9a825;
+  stroke-width: 2;
+  pointer-events: none;
 }
 
 .unit-label,
