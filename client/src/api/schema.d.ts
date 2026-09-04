@@ -59,10 +59,8 @@ export interface components {
         /** @description Exactly how a finished battle ended. See BattleEnding. */
         BattleEndingDto: number;
         /**
-         * @description One thing that happened in a battle, as exposed over the wire. Mirrors
-         *     BattleEvent's shape and discriminator so a client gets
-         *     the same replay information, without the sim's own type crossing the API
-         *     boundary.
+         * @description One thing that happened in a battle, mirroring BattleEvent's
+         *     shape and discriminator.
          */
         BattleEventDto: components["schemas"]["BattleEventDtoUnitSpawnedEventDto"] | components["schemas"]["BattleEventDtoUnitMovedEventDto"] | components["schemas"]["BattleEventDtoUnitAttackedEventDto"] | components["schemas"]["BattleEventDtoDamageDealtEventDto"] | components["schemas"]["BattleEventDtoUnitDiedEventDto"];
         /** @description A unit's hit points changed from a landed hit. See DamageDealtEvent. */
@@ -161,11 +159,9 @@ export interface components {
             displayName: string;
         };
         /**
-         * @description Which army a unit belongs to, as exposed over the wire.
-         *
-         *     A copy of BattleSide rather than the sim's own enum:
-         *     the API's response is composed entirely of DTOs it owns, so the sim's type
-         *     never appears in the OpenAPI contract or the JSON it describes.
+         * @description Which army a unit belongs to, as exposed over the wire - a deliberate copy
+         *     of BattleSide, kept separate so the sim's type never
+         *     appears in the OpenAPI contract.
          */
         SideDto: number;
         /** @description A request to run a hardcoded matchup once. */

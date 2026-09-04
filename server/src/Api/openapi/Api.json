@@ -117,7 +117,7 @@
             "$ref": "#/components/schemas/BattleEventDtoUnitDiedEventDto"
           }
         ],
-        "description": "One thing that happened in a battle, as exposed over the wire. Mirrors\nBattleEvent's shape and discriminator so a client gets\nthe same replay information, without the sim's own type crossing the API\nboundary.",
+        "description": "One thing that happened in a battle, mirroring BattleEvent's\nshape and discriminator.",
         "discriminator": {
           "propertyName": "type",
           "mapping": {
@@ -443,7 +443,7 @@
       },
       "SideDto": {
         "type": "integer",
-        "description": "Which army a unit belongs to, as exposed over the wire.\n\nA copy of BattleSide rather than the sim's own enum:\nthe API's response is composed entirely of DTOs it owns, so the sim's type\nnever appears in the OpenAPI contract or the JSON it describes."
+        "description": "Which army a unit belongs to, as exposed over the wire - a deliberate copy\nof BattleSide, kept separate so the sim's type never\nappears in the OpenAPI contract."
       },
       "SimulateBattleRequest": {
         "required": [
