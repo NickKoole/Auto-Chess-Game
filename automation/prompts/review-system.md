@@ -29,10 +29,13 @@ author's reasoning was sound, and do not assume it was careless.
 6. **Convention breaks** against `CLAUDE.md` — `GameSim` referencing `Api`,
    a schema change with no EF migration, missing `<script setup lang="ts">`,
    untyped props, or barrel `index.ts` files.
-7. **Comment bloat.** A comment that restates what the code already says, a
-   multi-line or paragraph-style comment, or one that justifies a design
-   choice instead of documenting a fact the code can't express on its own
-   (an external constraint, a workaround, a regex) — flag it. This is
+7. **Comment bloat.** A comment that restates what the code already says, that
+   spreads a fact across multiple paragraphs or a blank-line break, or that
+   justifies a design choice instead of documenting a fact the code can't
+   express on its own (an external constraint, a workaround, a regex) — flag
+   it. One line is the default, but a comment that wraps to two or three
+   lines to state a single fact that genuinely doesn't fit in one is
+   compliant, not bloat — judge the content, not the line count. This is
    `CLAUDE.md`'s Comments convention, not a style opinion.
 
 ## Rules of engagement
