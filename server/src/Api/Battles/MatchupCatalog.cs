@@ -55,8 +55,40 @@ public sealed class MatchupCatalog
             DisplayName: "Archers vs Melee",
             PlayerPlacements: FrontLine(units.Get("archer"), row: 5, cols: [2, 3, 4]),
             OpponentPlacements: FrontLine(units.Get("militia"), row: 2, cols: [2, 3, 4]));
+
+        yield return new Matchup(
+            "knights-and-archers",
+            DisplayName: "Knights and Archers",
+            PlayerPlacements:
+            [
+                .. FrontLine(units.Get("knight"), row: 5, cols: [2, 3, 4]),
+                .. FrontLine(units.Get("archer"), row: 6, cols: [2, 3, 4]),
+            ],
+            OpponentPlacements:
+            [
+                .. FrontLine(units.Get("knight"), row: 2, cols: [2, 3, 4]),
+                .. FrontLine(units.Get("archer"), row: 1, cols: [2, 3, 4]),
+            ]);
+
+        yield return new Matchup(
+            "all-varieties",
+            DisplayName: "All Varieties",
+            PlayerPlacements:
+            [
+                .. Row(row: 5, cols: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("berserker")),
+                .. Row(row: 6, cols: [2, 3, 4], units.Get("archer"), units.Get("crossbowman"), units.Get("mage")),
+            ],
+            OpponentPlacements:
+            [
+                .. Row(row: 2, cols: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("berserker")),
+                .. Row(row: 1, cols: [2, 3, 4], units.Get("archer"), units.Get("crossbowman"), units.Get("mage")),
+            ]);
     }
 
     private static IReadOnlyList<UnitPlacement> FrontLine(UnitDefinition definition, int row, int[] cols) =>
         [.. cols.Select(col => new UnitPlacement(definition, new HexCoord(row, col)))];
+
+    /// <summary>One definition per column, paired in order - unlike <see cref="FrontLine"/>, a mixed row rather than one unit repeated.</summary>
+    private static IReadOnlyList<UnitPlacement> Row(int row, int[] cols, params UnitDefinition[] definitions) =>
+        [.. cols.Zip(definitions, (col, definition) => new UnitPlacement(definition, new HexCoord(row, col)))];
 }
