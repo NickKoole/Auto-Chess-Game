@@ -39,8 +39,9 @@ export function applyTick(state: BattleState, tick: number, log: readonly Battle
 function applyEvent(state: BattleState, event: BattleEvent): void {
   switch (event.type) {
     case 'unitSpawned':
+      return
     case 'unitAttacked':
-      // An attack alone changes nothing visible - the following damageDealt event is what moves HP.
+      findUnit(state, toNumber(event.attackerId)).currentTargetId = toNumber(event.targetId)
       return
     case 'unitMoved':
       findUnit(state, toNumber(event.unitId)).position = {

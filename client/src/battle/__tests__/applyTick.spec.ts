@@ -6,8 +6,24 @@ import { applyTick, type BattleEvent } from '../applyTick'
 function state(): BattleState {
   return {
     units: [
-      { id: 0, side: SIDE_PLAYER, definitionId: 'knight', position: { row: 5, col: 2 }, hp: 30, maxHp: 30 },
-      { id: 1, side: SIDE_OPPONENT, definitionId: 'knight', position: { row: 2, col: 2 }, hp: 30, maxHp: 30 },
+      {
+        id: 0,
+        side: SIDE_PLAYER,
+        definitionId: 'knight',
+        position: { row: 5, col: 2 },
+        hp: 30,
+        maxHp: 30,
+        currentTargetId: null,
+      },
+      {
+        id: 1,
+        side: SIDE_OPPONENT,
+        definitionId: 'knight',
+        position: { row: 2, col: 2 },
+        hp: 30,
+        maxHp: 30,
+        currentTargetId: null,
+      },
     ],
     unitDefinitions: {},
   }
@@ -68,7 +84,7 @@ describe('applyTick', () => {
     expect(s.units[0]).toMatchObject({ hp: 25, position: { row: 4, col: 2 } })
   })
 
-  it('ignores unitSpawned and unitAttacked - neither changes visible state', () => {
+  it('ignores unitSpawned - initial placement is already handled by createBattleState', () => {
     const s = state()
     const before = JSON.parse(JSON.stringify(s))
     const log: BattleEvent[] = [
@@ -80,12 +96,43 @@ describe('applyTick', () => {
         position: { row: 5, col: 3 },
         tick: 0,
       },
-      { type: 'unitAttacked', attackerId: 0, targetId: 1, tick: 0 },
     ]
 
     applyTick(s, 0, log)
 
     expect(s).toEqual(before)
+  })
+
+  it('records the attacker current target id on unitAttacked', () => {
+    const s = state()
+    const log: BattleEvent[] = [{ type: 'unitAttacked', attackerId: 0, targetId: 1, tick: 0 }]
+
+    applyTick(s, 0, log)
+
+    expect(s.units[0]!.currentTargetId).toBe(1)
+    expect(s.units[1]!.currentTargetId).toBeNull()
+  })
+
+  it('overwrites the previous target when the attacker swings at someone new', () => {
+    const s = state()
+    s.units.push({
+      id: 2,
+      side: SIDE_OPPONENT,
+      definitionId: 'archer',
+      position: { row: 2, col: 3 },
+      hp: 20,
+      maxHp: 20,
+      currentTargetId: null,
+    })
+    const log: BattleEvent[] = [
+      { type: 'unitAttacked', attackerId: 0, targetId: 1, tick: 0 },
+      { type: 'unitAttacked', attackerId: 0, targetId: 2, tick: 1 },
+    ]
+
+    applyTick(s, 0, log)
+    applyTick(s, 1, log)
+
+    expect(s.units[0]!.currentTargetId).toBe(2)
   })
 
   it('fails loudly on an unhandled event type instead of skipping it', () => {
@@ -100,6 +147,13 @@ describe('applyTick', () => {
     const log: BattleEvent[] = [
       { type: 'damageDealt', attackerId: 0, targetId: 99, amount: 5, resultingHp: 10, tick: 1 },
     ]
+
+    expect(() => applyTick(s, 1, log)).toThrow(/99/)
+  })
+
+  it('throws if unitAttacked names an attacker id not present in state', () => {
+    const s = state()
+    const log: BattleEvent[] = [{ type: 'unitAttacked', attackerId: 99, targetId: 0, tick: 1 }]
 
     expect(() => applyTick(s, 1, log)).toThrow(/99/)
   })
