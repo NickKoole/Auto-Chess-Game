@@ -2,11 +2,11 @@ namespace GameSim;
 
 /// <summary>
 /// One unit in one battle: a shared <see cref="UnitDefinition"/> plus
-/// everything that changes as it fights. A class, not a record - value
-/// equality would be wrong once two units can share every field, and this
-/// type is aliased and mutated throughout the sim rather than copied.
-/// Nothing here writes to <see cref="Definition"/>: it is shared by every
-/// unit of its kind, in this battle and every other.
+/// everything that changes as it fights. Aliased and mutated in place
+/// throughout the sim - by board tiles, <see cref="BattleSetup.Units"/>, and
+/// other units' <see cref="Target"/> references - never copied. Nothing here
+/// writes to <see cref="Definition"/>: it is shared by every unit of its
+/// kind, in this battle and every other.
 /// </summary>
 public sealed class BattleUnit
 {
