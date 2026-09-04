@@ -58,6 +58,11 @@ function label(unit: BattleUnitState): string {
   return unitLabel(unit, props.state.unitDefinitions)
 }
 
+function targetLabel(unit: BattleUnitState): string | null {
+  const target = currentTargetOf(props.state, unit)
+  return target ? `→#${target.id}` : null
+}
+
 interface TargetMarker {
   attackerId: number
   x: number
@@ -92,6 +97,15 @@ const targetMarkers = computed<TargetMarker[]>(() =>
       </text>
       <text :x="unitCenter(unit).x" :y="unitCenter(unit).y + 14" text-anchor="middle" class="unit-hp">
         {{ unit.hp }}
+      </text>
+      <text
+        v-if="targetLabel(unit)"
+        :x="unitCenter(unit).x"
+        :y="unitCenter(unit).y + 25"
+        text-anchor="middle"
+        class="unit-target-label"
+      >
+        {{ targetLabel(unit) }}
       </text>
     </g>
   </svg>
@@ -146,6 +160,13 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 .unit-hp {
   font-size: 10px;
   fill: #fff;
+  pointer-events: none;
+  user-select: none;
+}
+
+.unit-target-label {
+  font-size: 8px;
+  fill: #f9a825;
   pointer-events: none;
   user-select: none;
 }
