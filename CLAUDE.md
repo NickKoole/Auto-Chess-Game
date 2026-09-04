@@ -98,6 +98,20 @@ wall-clock delta. This is the whole reason the backend exists.
 
 ## Conventions
 
+**Comments**
+- Default is no comments. Code should read from names and structure alone;
+  don't add a comment to explain what a line already says.
+- Write a comment only when a reader genuinely can't get the fact from the
+  code itself — e.g. a workaround for an external bug, a non-obvious ordering
+  constraint, a regex, a value picked to satisfy an external system. Never a
+  comment restating the code. Even then: one `//` (or `///` for C#) line at
+  the statement, and never to justify a design choice.
+- Never reference a ticket in code — no issue numbers in comments, test
+  names, or identifiers. The ID belongs in the commit message, the branch and
+  the PR; in a file it's a dead reference for the next reader.
+- If you're about to write a comment, ask: would a better variable/function
+  name make this comment unnecessary? If yes, rename instead of commenting.
+
 **C#**
 - File-scoped namespaces, nullable reference types enabled, `var` only when the
   type is obvious from the right-hand side.

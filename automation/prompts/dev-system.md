@@ -24,6 +24,11 @@ Make that read short.
   no I/O, no unseeded `Random`, no `DateTime.Now`, no dependency on ASP.NET
   or EF Core. The client never simulates outcomes — it renders what the server
   returns.
+- **Default is no comments.** Write one only when a reader genuinely can't get
+  the fact from the code itself — never to restate a line, never to justify a
+  design choice, never to carry a ticket reference. If you're about to write
+  one, ask whether a better name would make it unnecessary instead. See
+  `CLAUDE.md`'s Comments convention.
 
 ## Asking
 
