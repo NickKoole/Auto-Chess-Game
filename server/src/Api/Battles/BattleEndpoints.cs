@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Api.Battles.Dtos;
 using GameSim;
@@ -27,11 +28,53 @@ public static class BattleEndpoints
         // TypedResults, not Results: Results.Ok erases the response type, and
         // the OpenAPI generator needs it present to emit a real schema.
         app.MapPost("/battles/simulate", Results<Ok<SimulateBattleResponse>, BadRequest<ErrorResponse>> (
-            SimulateBattleRequest request, MatchupCatalog matchups) =>
+            SimulateBattleRequest request, MatchupCatalog matchups, EnemySetupCatalog enemySetups, IUnitCatalog units) =>
         {
-            if (!matchups.TryGet(request.MatchupId, out Matchup? matchup))
+            IReadOnlyList<UnitPlacement> playerPlacements;
+            IReadOnlyList<UnitPlacement> opponentPlacements;
+
+            // Only the player-submitted path can fail setup validation: a
+            // hardcoded matchup or enemy setup is always legal by construction.
+            bool playerSubmitted;
+
+            if (!string.IsNullOrWhiteSpace(request.MatchupId))
             {
-                return TypedResults.BadRequest(new ErrorResponse($"Unknown matchup id '{request.MatchupId}'."));
+                if (!matchups.TryGet(request.MatchupId, out Matchup? matchup))
+                {
+                    return TypedResults.BadRequest(new ErrorResponse($"Unknown matchup id '{request.MatchupId}'."));
+                }
+
+                playerPlacements = matchup.PlayerPlacements;
+                opponentPlacements = matchup.OpponentPlacements;
+                playerSubmitted = false;
+            }
+            else if (!string.IsNullOrWhiteSpace(request.EnemySetupId))
+            {
+                if (!enemySetups.TryGet(request.EnemySetupId, out EnemySetup? enemySetup))
+                {
+                    return TypedResults.BadRequest(
+                        new ErrorResponse($"Unknown enemy setup id '{request.EnemySetupId}'."));
+                }
+
+                if (request.PlayerPlacements is null || request.PlayerPlacements.Count == 0)
+                {
+                    return TypedResults.BadRequest(
+                        new ErrorResponse("playerPlacements must include at least one unit."));
+                }
+
+                if (!TryResolvePlacements(
+                    units, request.PlayerPlacements, out IReadOnlyList<UnitPlacement>? resolved, out string? error))
+                {
+                    return TypedResults.BadRequest(new ErrorResponse(error));
+                }
+
+                playerPlacements = resolved;
+                opponentPlacements = enemySetup.Placements;
+                playerSubmitted = true;
+            }
+            else
+            {
+                return TypedResults.BadRequest(new ErrorResponse("Request must include either matchupId or enemySetupId."));
             }
 
             ulong seed;
@@ -46,11 +89,17 @@ public static class BattleEndpoints
             }
 
             if (!BattleSetup.TryCreate(
-                matchup.PlayerPlacements, matchup.OpponentPlacements, out BattleSetup? setup, out _))
+                playerPlacements, opponentPlacements, out BattleSetup? setup, out IReadOnlyList<PlacementError> setupErrors))
             {
-                // Unreachable: every hardcoded matchup is built from legal placements.
-                throw new InvalidOperationException(
-                    $"Matchup '{matchup.Id}' failed setup validation. Hardcoded matchups must always be legal.");
+                if (!playerSubmitted)
+                {
+                    // Unreachable: every hardcoded matchup and enemy setup is built from legal placements.
+                    throw new InvalidOperationException(
+                        "Hardcoded matchup/enemy setup failed setup validation. Both must always be legal.");
+                }
+
+                return TypedResults.BadRequest(
+                    new ErrorResponse(string.Join(" ", setupErrors.Select(e => e.Message))));
             }
 
             var simulation = new BattleSimulation(setup, seed);
@@ -61,5 +110,31 @@ public static class BattleEndpoints
         .WithName("SimulateBattle");
 
         return app;
+    }
+
+    private static bool TryResolvePlacements(
+        IUnitCatalog units,
+        IReadOnlyList<PlayerPlacementDto> submitted,
+        [NotNullWhen(true)] out IReadOnlyList<UnitPlacement>? placements,
+        [NotNullWhen(false)] out string? error)
+    {
+        var resolved = new List<UnitPlacement>(submitted.Count);
+
+        foreach (PlayerPlacementDto placement in submitted)
+        {
+            UnitDefinition? definition = units.All.FirstOrDefault(d => d.Id == placement.UnitId);
+            if (definition is null)
+            {
+                placements = null;
+                error = $"Unknown unit id '{placement.UnitId}'.";
+                return false;
+            }
+
+            resolved.Add(new UnitPlacement(definition, new HexCoord(placement.Position.Row, placement.Position.Col)));
+        }
+
+        placements = resolved;
+        error = null;
+        return true;
     }
 }
