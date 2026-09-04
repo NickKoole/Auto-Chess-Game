@@ -4,9 +4,8 @@ namespace GameSim;
 /// A hex on a pointy-top grid, in offset coordinates: zero-indexed row and
 /// column, rows running top to bottom. Layout is odd-r - odd rows sit half a
 /// hex to the right - which every formula here assumes. Board size and
-/// occupancy are <see cref="Battlefield"/>'s business, not this type's.
-///
-/// No direct north or south neighbour, so closing vertical distance means
+/// occupancy are <see cref="Battlefield"/>'s business, not this type's. No
+/// direct north or south neighbour, so closing vertical distance means
 /// alternating NE/NW - that still costs one hex per row, not two.
 /// </summary>
 /// <param name="Row">Row index, increasing southwards.</param>
@@ -33,18 +32,11 @@ public readonly record struct HexCoord(int Row, int Col)
     /// The six adjacent hexes. Odd rows lean east, even rows lean west, so the
     /// two northern neighbours are <c>(Row - 1, Col)</c> and
     /// <c>(Row - 1, Col + lean)</c>, mirrored to the south; east and west are
-    /// always <c>Col - 1</c> or <c>Col + 1</c>.
-    ///
-    /// <para>
-    /// Order is fixed but arbitrary - no caller may let it decide anything. A
-    /// mover choosing between two equally good steps must break the tie on the
-    /// coordinates themselves, not on this array's order.
-    /// </para>
-    ///
-    /// <para>
+    /// always <c>Col - 1</c> or <c>Col + 1</c>. Order is fixed but arbitrary -
+    /// no caller may let it decide anything; a mover choosing between two
+    /// equally good steps must break the tie on the coordinates themselves.
     /// Not bounds-checked: an edge hex still returns six neighbours, some off
-    /// the board. Filter with <see cref="Battlefield.IsInBounds"/>.
-    /// </para>
+    /// the board - filter with <see cref="Battlefield.IsInBounds"/>.
     /// </summary>
     public HexCoord[] Neighbours()
     {
