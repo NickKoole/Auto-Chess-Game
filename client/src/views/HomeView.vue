@@ -11,9 +11,15 @@ import {
   type SimulateBattleResponse,
   type UnitDefinitionDto,
 } from '@/api/battles'
+import { toNumber } from '@/api/numeric'
 import { applyTick, type BattleEvent } from '@/battle/applyTick'
 import { createBattleState, type BattleState } from '@/battle/battleState'
-import { compositionToBattleState, placeUnit, type CompositionPlacement } from '@/battle/composition'
+import {
+  compositionToBattleState,
+  placeUnit,
+  type CompositionPlacement,
+  type EnemyPreviewPlacement,
+} from '@/battle/composition'
 import { endingLabel, survivorsBySide } from '@/battle/outcome'
 import { seekTo, terminatingTickOf } from '@/battle/playback'
 import BattleBoard from '@/components/BattleBoard.vue'
@@ -72,7 +78,23 @@ const unitDefinitionsById = computed<Record<string, UnitDefinitionDto>>(() => {
   return map
 })
 
-const compositionState = computed(() => compositionToBattleState(playerPlacements.value, unitDefinitionsById.value))
+const selectedEnemySetup = computed(() => enemySetups.value.find((s) => s.id === selectedEnemySetupId.value))
+
+const enemyPreviewPlacements = computed<EnemyPreviewPlacement[]>(
+  () =>
+    selectedEnemySetup.value?.placements.map((p) => ({
+      definitionId: p.definitionId,
+      position: { row: toNumber(p.position.row), col: toNumber(p.position.col) },
+    })) ?? [],
+)
+
+const compositionPreviewState = computed(() =>
+  compositionToBattleState(playerPlacements.value, unitDefinitionsById.value, enemyPreviewPlacements.value),
+)
+
+// Once a battle has actually run, the same board switches from the static
+// preview to rendering that live result in place - never a second board.
+const compositionBoardState = computed(() => battleState.value ?? compositionPreviewState.value)
 
 function stopPlayback(): void {
   if (timer !== undefined) {
@@ -321,7 +343,7 @@ onUnmounted(() => {
         </span>
       </section>
 
-      <BattleBoard :state="compositionState" interactive @tile-drop="onTileDrop" />
+      <BattleBoard :state="compositionBoardState" :interactive="!battleState" @tile-drop="onTileDrop" />
 
       <p v-if="placementError" role="alert">{{ placementError }}</p>
 
@@ -382,7 +404,7 @@ onUnmounted(() => {
         · Tick: {{ currentTick }} / {{ terminatingTick }}
       </p>
 
-      <BattleBoard :state="battleState" />
+      <BattleBoard v-if="mode === 'matchup'" :state="battleState" />
 
       <section v-if="hasFinished" aria-label="Outcome">
         <p role="status">

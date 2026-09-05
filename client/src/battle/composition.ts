@@ -1,6 +1,6 @@
 import type { components } from '@/api/schema.d.ts'
 import { toNumber } from '@/api/numeric'
-import { SIDE_PLAYER, type BattleState, type BattleUnitState, type HexPosition } from './battleState'
+import { SIDE_OPPONENT, SIDE_PLAYER, type BattleState, type BattleUnitState, type HexPosition } from './battleState'
 
 type UnitDefinitionDto = components['schemas']['UnitDefinitionDto']
 
@@ -43,12 +43,24 @@ export function placeUnit(
   }
 }
 
-/** Renders a composition through the same board `BattleBoard.vue` already knows how to draw - full HP, no target, player side. */
+export interface EnemyPreviewPlacement {
+  definitionId: string
+  position: HexPosition
+}
+
+/**
+ * Renders a composition through the same board `BattleBoard.vue` already
+ * knows how to draw - full HP, no target, player side. `enemyPreview` units
+ * render dimmed on the opponent's band, flagged `isPreview` since no battle
+ * is simulating them - ids run negative so they never collide with a player
+ * placement's index-based id.
+ */
 export function compositionToBattleState(
   placements: readonly CompositionPlacement[],
   unitDefinitions: Record<string, UnitDefinitionDto>,
+  enemyPreview: readonly EnemyPreviewPlacement[] = [],
 ): BattleState {
-  const units = placements.map((placement, index): BattleUnitState => {
+  const playerUnits = placements.map((placement, index): BattleUnitState => {
     const maxHp = toNumber(unitDefinitions[placement.unitId]?.maxHp ?? 0)
     return {
       id: index,
@@ -61,5 +73,19 @@ export function compositionToBattleState(
     }
   })
 
-  return { units, unitDefinitions }
+  const enemyUnits = enemyPreview.map((placement, index): BattleUnitState => {
+    const maxHp = toNumber(unitDefinitions[placement.definitionId]?.maxHp ?? 0)
+    return {
+      id: -(index + 1),
+      side: SIDE_OPPONENT,
+      definitionId: placement.definitionId,
+      position: placement.position,
+      hp: maxHp,
+      maxHp,
+      currentTargetId: null,
+      isPreview: true,
+    }
+  })
+
+  return { units: [...playerUnits, ...enemyUnits], unitDefinitions }
 }

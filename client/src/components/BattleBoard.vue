@@ -70,11 +70,15 @@ function unitCenter(unit: BattleUnitState) {
   return { x: x + dims.value.originX, y: y + dims.value.originY }
 }
 
-function sideClass(side: number): string {
-  return side === SIDE_PLAYER ? 'unit player' : 'unit opponent'
+function sideClass(unit: BattleUnitState): string {
+  const side = unit.side === SIDE_PLAYER ? 'player' : 'opponent'
+  return unit.isPreview ? `unit ${side} preview` : `unit ${side}`
 }
 
 function label(unit: BattleUnitState): string {
+  if (unit.isPreview) {
+    return props.state.unitDefinitions[unit.definitionId]?.displayName ?? unit.definitionId
+  }
   return unitLabel(unit, props.state.unitDefinitions)
 }
 
@@ -118,7 +122,7 @@ const targetMarkers = computed<TargetMarker[]>(() =>
     />
 
     <g v-for="unit in props.state.units" :key="unit.id" :data-unit-id="unit.id" class="unit-group">
-      <circle :cx="unitCenter(unit).x" :cy="unitCenter(unit).y" :r="HEX_SIZE * 0.62" :class="sideClass(unit.side)" />
+      <circle :cx="unitCenter(unit).x" :cy="unitCenter(unit).y" :r="HEX_SIZE * 0.62" :class="sideClass(unit)" />
       <text :x="unitCenter(unit).x" :y="unitCenter(unit).y - 9" text-anchor="middle" class="unit-label">
         {{ label(unit) }}
       </text>
@@ -178,6 +182,12 @@ const targetMarkers = computed<TargetMarker[]>(() =>
   fill: #c62828;
   stroke: #1b1b1b;
   stroke-width: 1;
+}
+
+.unit.preview {
+  fill: none;
+  stroke-dasharray: 3 2;
+  opacity: 0.6;
 }
 
 .target-marker {

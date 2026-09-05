@@ -22,6 +22,8 @@ export interface BattleUnitState {
   maxHp: number
   /** Set from the most recent unitAttacked event naming this unit as attacker - who it's actively swinging at, not who it's chasing. */
   currentTargetId: number | null
+  /** True for an enemy-setup preview unit rendered before a battle has run - no battle is simulating it yet. */
+  isPreview?: boolean
 }
 
 /** Rendering reads only this, never the raw API response - so replaying events onto it is a mutation, not a rebuild. */
