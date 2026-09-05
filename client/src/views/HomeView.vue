@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
   listEnemySetups,
   listMatchups,
@@ -103,6 +103,20 @@ function stopPlayback(): void {
   }
   isPlaying.value = false
 }
+
+// A leftover result from the other mode would otherwise show through as
+// stale, and - for composition - leave the board's interactive prop wired to
+// a battleState that will never clear, permanently blocking placement.
+watch(mode, () => {
+  stopPlayback()
+  outcome.value = null
+  finalState.value = null
+  error.value = null
+  battleState.value = null
+  currentTick.value = 0
+  terminatingTick.value = 0
+  hasFinished.value = false
+})
 
 // Every control but Play routes through here: one code path for step,
 // jump and scrub, all built on the same rebuild-from-tick-0 primitive.

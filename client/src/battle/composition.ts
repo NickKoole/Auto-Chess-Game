@@ -48,13 +48,7 @@ export interface EnemyPreviewPlacement {
   position: HexPosition
 }
 
-/**
- * Renders a composition through the same board `BattleBoard.vue` already
- * knows how to draw - full HP, no target, player side. `enemyPreview` units
- * render dimmed on the opponent's band, flagged `isPreview` since no battle
- * is simulating them - ids run negative so they never collide with a player
- * placement's index-based id.
- */
+/** Renders a composition through the same board `BattleBoard.vue` already knows how to draw - full HP, no target, player side. */
 export function compositionToBattleState(
   placements: readonly CompositionPlacement[],
   unitDefinitions: Record<string, UnitDefinitionDto>,
@@ -76,6 +70,7 @@ export function compositionToBattleState(
   const enemyUnits = enemyPreview.map((placement, index): BattleUnitState => {
     const maxHp = toNumber(unitDefinitions[placement.definitionId]?.maxHp ?? 0)
     return {
+      // Negative so a preview unit's id never collides with a player placement's index-based id.
       id: -(index + 1),
       side: SIDE_OPPONENT,
       definitionId: placement.definitionId,
