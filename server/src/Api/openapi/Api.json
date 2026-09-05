@@ -417,7 +417,8 @@
       "EnemySetupDto": {
         "required": [
           "id",
-          "displayName"
+          "displayName",
+          "placements"
         ],
         "type": "object",
         "properties": {
@@ -427,6 +428,28 @@
           },
           "displayName": {
             "type": "string"
+          },
+          "placements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnemySetupPlacementDto"
+            }
+          }
+        }
+      },
+      "EnemySetupPlacementDto": {
+        "required": [
+          "definitionId",
+          "position"
+        ],
+        "type": "object",
+        "properties": {
+          "definitionId": {
+            "type": "string",
+            "description": "An id from `GET /battles/units`."
+          },
+          "position": {
+            "$ref": "#/components/schemas/HexCoordDto"
           }
         }
       },

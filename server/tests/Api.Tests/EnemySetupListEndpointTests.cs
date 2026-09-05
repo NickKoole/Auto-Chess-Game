@@ -51,6 +51,39 @@ public sealed class EnemySetupListEndpointTests(ApiFactory factory) : IClassFixt
         JsonElement first = document.RootElement[0];
         Assert.True(first.TryGetProperty("id", out _));
         Assert.True(first.TryGetProperty("displayName", out _));
+        Assert.True(first.TryGetProperty("placements", out JsonElement placements));
+
+        JsonElement firstPlacement = placements[0];
+        Assert.True(firstPlacement.TryGetProperty("definitionId", out _));
+        Assert.True(firstPlacement.TryGetProperty("position", out JsonElement position));
+        Assert.True(position.TryGetProperty("row", out _));
+        Assert.True(position.TryGetProperty("col", out _));
+    }
+
+    [Fact]
+    public async Task Exposes_each_setups_placements_matching_the_catalog()
+    {
+        HttpClient client = factory.CreateClient();
+        var catalog = new EnemySetupCatalog(new StaticUnitCatalog());
+
+        List<EnemySetupDto>? body = await client.GetFromJsonAsync<List<EnemySetupDto>>("/battles/enemy-setups");
+
+        Assert.NotNull(body);
+        foreach (EnemySetupDto dto in body)
+        {
+            EnemySetup expected = catalog.All.Single(s => s.Id == dto.Id);
+
+            var expectedPlacements = expected.Placements
+                .Select(p => (p.Definition.Id, p.Coord.Row, p.Coord.Col))
+                .OrderBy(t => t.Id).ThenBy(t => t.Row).ThenBy(t => t.Col)
+                .ToList();
+            var actualPlacements = dto.Placements
+                .Select(p => (p.DefinitionId, p.Position.Row, p.Position.Col))
+                .OrderBy(t => t.DefinitionId).ThenBy(t => t.Row).ThenBy(t => t.Col)
+                .ToList();
+
+            Assert.Equal(expectedPlacements, actualPlacements);
+        }
     }
 
     [Fact]
