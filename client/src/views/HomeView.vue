@@ -132,6 +132,11 @@ function seek(tick: number): void {
   }
 
   const isForwardStep = tick === currentTick.value + 1
+  // A killing blow's unitDied shares its unitAttacked's tick, so the target
+  // is already gone from a post-tick state - read positions from the state
+  // as it stood going into this tick instead, while attacker and target are
+  // both still guaranteed present.
+  const preTickState = battleState.value
 
   stopPlayback()
   const result = seekTo(response, tick)
@@ -139,8 +144,8 @@ function seek(tick: number): void {
   currentTick.value = result.tick
   hasFinished.value = result.tick >= terminatingTick.value
   activeProjectiles.value =
-    isForwardStep && result.tick === tick
-      ? projectilesForTick(result.state, result.tick, response.events as BattleEvent[])
+    isForwardStep && result.tick === tick && preTickState
+      ? projectilesForTick(preTickState, tick, response.events as BattleEvent[])
       : []
 }
 
@@ -190,8 +195,11 @@ function play(): void {
   isPlaying.value = true
   timer = setInterval(() => {
     currentTick.value += 1
-    applyTick(battleState.value!, currentTick.value, log)
+    // Read positions before applying the tick: a killing blow's unitDied
+    // shares this tick, and would already have removed the target from
+    // state by the time applyTick returns.
     activeProjectiles.value = projectilesForTick(battleState.value!, currentTick.value, log)
+    applyTick(battleState.value!, currentTick.value, log)
     if (currentTick.value >= terminatingTick.value) {
       stopPlayback()
       hasFinished.value = true

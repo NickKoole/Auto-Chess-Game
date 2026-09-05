@@ -93,6 +93,20 @@ describe('projectilesForTick', () => {
     expect(projectilesForTick(state(), 4, log)).toEqual([])
   })
 
+  it('still emits a projectile for a killing blow, whose unitDied shares this tick', () => {
+    // Given the state as it stood before this tick - the contract callers
+    // must honor - the target is still present even though it dies this tick.
+    const log: BattleEvent[] = [
+      { type: 'unitAttacked', attackerId: 0, targetId: 1, tick: 4 },
+      { type: 'damageDealt', attackerId: 0, targetId: 1, amount: 60, resultingHp: 0, tick: 4 },
+      { type: 'unitDied', unitId: 1, position: { row: 2, col: 2 }, tick: 4 },
+    ]
+
+    expect(projectilesForTick(state(), 4, log)).toEqual([
+      { id: '0-1-4', from: { row: 5, col: 2 }, to: { row: 2, col: 2 } },
+    ])
+  })
+
   it('ignores unitAttacked events for a different tick', () => {
     const log: BattleEvent[] = [{ type: 'unitAttacked', attackerId: 0, targetId: 1, tick: 5 }]
 

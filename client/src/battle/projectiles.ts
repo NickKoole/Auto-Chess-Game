@@ -11,9 +11,10 @@ export interface Projectile {
 }
 
 /**
- * `state` must already reflect `tick` applied - attacker/target positions
- * are read live from it, not reconstructed, so a unit that died this same
- * tick is skipped rather than guessed at.
+ * `state` must be the state as it stood *before* `tick` is applied, not
+ * after: a killing blow's `unitDied` shares its `unitAttacked`'s tick, so a
+ * post-tick state would already have removed the target and silently
+ * dropped the projectile for exactly the moment it matters most.
  */
 export function projectilesForTick(state: BattleState, tick: number, log: readonly BattleEvent[]): Projectile[] {
   const projectiles: Projectile[] = []
