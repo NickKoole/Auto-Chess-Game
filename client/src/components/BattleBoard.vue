@@ -185,7 +185,6 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 }
 
 .unit.preview {
-  fill: none;
   stroke-dasharray: 3 2;
   opacity: 0.6;
 }
