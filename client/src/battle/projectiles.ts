@@ -15,9 +15,11 @@ export interface Projectile {
  * `postTickState` after. Both are needed because a unit decides its own
  * action independently each tick: the attacker never also moves this tick
  * (so its pre-tick position is authoritative), but the target might - its
- * post-tick position is preferred, falling back to pre-tick only when a
- * same-tick `unitDied` (sharing the killing blow's `unitAttacked` tick) has
- * already removed it from `postTickState`.
+ * post-tick position is preferred. If a same-tick `unitDied` (sharing the
+ * killing blow's `unitAttacked` tick) has already removed it from
+ * `postTickState`, that event's own `position` is used instead of
+ * `preTickState`'s, since the server records where a unit died *after* any
+ * movement that tick, not where it started.
  */
 export function projectilesForTick(
   preTickState: BattleState,
@@ -44,15 +46,25 @@ export function projectilesForTick(
       continue
     }
 
-    const target =
-      postTickState.units.find((unit) => unit.id === targetId) ??
-      preTickState.units.find((unit) => unit.id === targetId)
-    if (!target) {
+    const targetPosition =
+      postTickState.units.find((unit) => unit.id === targetId)?.position ??
+      deathPositionOf(log, targetId, tick) ??
+      preTickState.units.find((unit) => unit.id === targetId)?.position
+    if (!targetPosition) {
       continue
     }
 
-    projectiles.push({ id: `${attackerId}-${targetId}-${tick}`, from: attacker.position, to: target.position })
+    projectiles.push({ id: `${attackerId}-${targetId}-${tick}`, from: attacker.position, to: targetPosition })
   }
 
   return projectiles
+}
+
+function deathPositionOf(log: readonly BattleEvent[], unitId: number, tick: number): HexPosition | undefined {
+  for (const event of log) {
+    if (event.type === 'unitDied' && toNumber(event.unitId) === unitId && toNumber(event.tick) === tick) {
+      return { row: toNumber(event.position.row), col: toNumber(event.position.col) }
+    }
+  }
+  return undefined
 }

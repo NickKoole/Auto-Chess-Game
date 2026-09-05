@@ -118,6 +118,22 @@ describe('projectilesForTick', () => {
     ])
   })
 
+  it('uses the unitDied position, not the pre-tick one, for a target that moves and dies the same tick', () => {
+    const preTickState = state()
+    const postTickState = state()
+    postTickState.units = postTickState.units.filter((unit) => unit.id !== 1)
+    const log: BattleEvent[] = [
+      { type: 'unitAttacked', attackerId: 0, targetId: 1, tick: 4 },
+      { type: 'unitMoved', unitId: 1, from: { row: 2, col: 2 }, to: { row: 3, col: 2 }, tick: 4 },
+      { type: 'damageDealt', attackerId: 0, targetId: 1, amount: 60, resultingHp: 0, tick: 4 },
+      { type: 'unitDied', unitId: 1, position: { row: 3, col: 2 }, tick: 4 },
+    ]
+
+    expect(projectilesForTick(preTickState, postTickState, 4, log)).toEqual([
+      { id: '0-1-4', from: { row: 5, col: 2 }, to: { row: 3, col: 2 } },
+    ])
+  })
+
   it('ignores unitAttacked events for a different tick', () => {
     const log: BattleEvent[] = [{ type: 'unitAttacked', attackerId: 0, targetId: 1, tick: 5 }]
 
