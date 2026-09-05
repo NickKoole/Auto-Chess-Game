@@ -199,7 +199,10 @@ export function defaultBranch() {
 
 /** Create (or reuse) an isolated checkout for this ticket. */
 export function ensureWorktree(issue) {
-  const branch = `agent/${issue.number}-${slug(issue.title)}`;
+  // Prefer the branch a prior claim already recorded: the issue title can be
+  // renamed after claiming (e.g. adding epic numbering), and recomputing the
+  // slug then would point at a branch that was never created.
+  const branch = loadSession(issue.number)?.branch ?? `agent/${issue.number}-${slug(issue.title)}`;
   const dir = join(WORKTREE_ROOT, `issue-${issue.number}`);
   const base = defaultBranch();
 
