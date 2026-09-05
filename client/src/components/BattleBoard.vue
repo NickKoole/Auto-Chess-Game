@@ -171,6 +171,12 @@ const targetMarkers = computed<TargetMarker[]>(() =>
   cursor: copy;
 }
 
+.unit-group {
+  /* A unit sits visually on top of its hex; without this it swallows the
+     hex's dragover/drop instead of letting a drop on the unit reach it. */
+  pointer-events: none;
+}
+
 .unit.player {
   fill: #2e7d32;
   stroke: #1b1b1b;
