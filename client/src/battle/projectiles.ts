@@ -11,12 +11,20 @@ export interface Projectile {
 }
 
 /**
- * `state` must be the state as it stood *before* `tick` is applied, not
- * after: a killing blow's `unitDied` shares its `unitAttacked`'s tick, so a
- * post-tick state would already have removed the target and silently
- * dropped the projectile for exactly the moment it matters most.
+ * `preTickState` is the state as it stood before `tick` was applied,
+ * `postTickState` after. Both are needed because a unit decides its own
+ * action independently each tick: the attacker never also moves this tick
+ * (so its pre-tick position is authoritative), but the target might - its
+ * post-tick position is preferred, falling back to pre-tick only when a
+ * same-tick `unitDied` (sharing the killing blow's `unitAttacked` tick) has
+ * already removed it from `postTickState`.
  */
-export function projectilesForTick(state: BattleState, tick: number, log: readonly BattleEvent[]): Projectile[] {
+export function projectilesForTick(
+  preTickState: BattleState,
+  postTickState: BattleState,
+  tick: number,
+  log: readonly BattleEvent[],
+): Projectile[] {
   const projectiles: Projectile[] = []
 
   for (const event of log) {
@@ -26,14 +34,20 @@ export function projectilesForTick(state: BattleState, tick: number, log: readon
 
     const attackerId = toNumber(event.attackerId)
     const targetId = toNumber(event.targetId)
-    const attacker = state.units.find((unit) => unit.id === attackerId)
-    const target = state.units.find((unit) => unit.id === targetId)
-    if (!attacker || !target) {
+    const attacker = preTickState.units.find((unit) => unit.id === attackerId)
+    if (!attacker) {
       continue
     }
 
-    const range = toNumber(state.unitDefinitions[attacker.definitionId]?.attackRangeHexes ?? MELEE_RANGE_HEXES)
+    const range = toNumber(preTickState.unitDefinitions[attacker.definitionId]?.attackRangeHexes ?? MELEE_RANGE_HEXES)
     if (range <= MELEE_RANGE_HEXES) {
+      continue
+    }
+
+    const target =
+      postTickState.units.find((unit) => unit.id === targetId) ??
+      preTickState.units.find((unit) => unit.id === targetId)
+    if (!target) {
       continue
     }
 

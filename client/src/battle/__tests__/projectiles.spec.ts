@@ -80,29 +80,40 @@ describe('projectilesForTick', () => {
   it('emits a projectile for a ranged attacker at the given tick', () => {
     const log: BattleEvent[] = [{ type: 'unitAttacked', attackerId: 0, targetId: 1, tick: 4 }]
 
-    const projectiles = projectilesForTick(state(), 4, log)
+    const projectiles = projectilesForTick(state(), state(), 4, log)
 
-    expect(projectiles).toEqual([
-      { id: '0-1-4', from: { row: 5, col: 2 }, to: { row: 2, col: 2 } },
-    ])
+    expect(projectiles).toEqual([{ id: '0-1-4', from: { row: 5, col: 2 }, to: { row: 2, col: 2 } }])
   })
 
   it('emits nothing for a melee attacker (attackRangeHexes 1)', () => {
     const log: BattleEvent[] = [{ type: 'unitAttacked', attackerId: 2, targetId: 3, tick: 4 }]
 
-    expect(projectilesForTick(state(), 4, log)).toEqual([])
+    expect(projectilesForTick(state(), state(), 4, log)).toEqual([])
   })
 
-  it('still emits a projectile for a killing blow, whose unitDied shares this tick', () => {
-    // Given the state as it stood before this tick - the contract callers
-    // must honor - the target is still present even though it dies this tick.
+  it('prefers the target\'s post-tick position, since it may move the same tick it is attacked', () => {
+    const preTickState = state()
+    const postTickState = state()
+    const movedTarget = postTickState.units.find((unit) => unit.id === 1)!
+    movedTarget.position = { row: 3, col: 2 }
+    const log: BattleEvent[] = [{ type: 'unitAttacked', attackerId: 0, targetId: 1, tick: 4 }]
+
+    const projectiles = projectilesForTick(preTickState, postTickState, 4, log)
+
+    expect(projectiles).toEqual([{ id: '0-1-4', from: { row: 5, col: 2 }, to: { row: 3, col: 2 } }])
+  })
+
+  it('falls back to the pre-tick target position for a killing blow, whose unitDied shares this tick', () => {
+    const preTickState = state()
+    const postTickState = state()
+    postTickState.units = postTickState.units.filter((unit) => unit.id !== 1)
     const log: BattleEvent[] = [
       { type: 'unitAttacked', attackerId: 0, targetId: 1, tick: 4 },
       { type: 'damageDealt', attackerId: 0, targetId: 1, amount: 60, resultingHp: 0, tick: 4 },
       { type: 'unitDied', unitId: 1, position: { row: 2, col: 2 }, tick: 4 },
     ]
 
-    expect(projectilesForTick(state(), 4, log)).toEqual([
+    expect(projectilesForTick(preTickState, postTickState, 4, log)).toEqual([
       { id: '0-1-4', from: { row: 5, col: 2 }, to: { row: 2, col: 2 } },
     ])
   })
@@ -110,7 +121,7 @@ describe('projectilesForTick', () => {
   it('ignores unitAttacked events for a different tick', () => {
     const log: BattleEvent[] = [{ type: 'unitAttacked', attackerId: 0, targetId: 1, tick: 5 }]
 
-    expect(projectilesForTick(state(), 4, log)).toEqual([])
+    expect(projectilesForTick(state(), state(), 4, log)).toEqual([])
   })
 
   it('ignores non-unitAttacked events entirely', () => {
@@ -118,18 +129,23 @@ describe('projectilesForTick', () => {
       { type: 'damageDealt', attackerId: 0, targetId: 1, amount: 8, resultingHp: 52, tick: 4 },
     ]
 
-    expect(projectilesForTick(state(), 4, log)).toEqual([])
+    expect(projectilesForTick(state(), state(), 4, log)).toEqual([])
   })
 
-  it('skips an event whose attacker or target is no longer in state', () => {
+  it('skips an event whose attacker or target is not present in either state', () => {
     const log: BattleEvent[] = [{ type: 'unitAttacked', attackerId: 0, targetId: 99, tick: 4 }]
 
-    expect(projectilesForTick(state(), 4, log)).toEqual([])
+    expect(projectilesForTick(state(), state(), 4, log)).toEqual([])
+  })
+
+  it('skips an event whose attacker is not present pre-tick, even if somehow present post-tick', () => {
+    const log: BattleEvent[] = [{ type: 'unitAttacked', attackerId: 99, targetId: 1, tick: 4 }]
+
+    expect(projectilesForTick(state(), state(), 4, log)).toEqual([])
   })
 
   it('emits one projectile per qualifying ranged attack on the same tick', () => {
-    const s = state()
-    s.units.push({
+    const extraArcher = {
       id: 4,
       side: SIDE_PLAYER,
       definitionId: 'archer',
@@ -137,13 +153,17 @@ describe('projectilesForTick', () => {
       hp: 60,
       maxHp: 60,
       currentTargetId: null,
-    })
+    }
+    const preTickState = state()
+    preTickState.units.push(extraArcher)
+    const postTickState = state()
+    postTickState.units.push(extraArcher)
     const log: BattleEvent[] = [
       { type: 'unitAttacked', attackerId: 0, targetId: 1, tick: 4 },
       { type: 'unitAttacked', attackerId: 4, targetId: 1, tick: 4 },
     ]
 
-    expect(projectilesForTick(s, 4, log)).toEqual([
+    expect(projectilesForTick(preTickState, postTickState, 4, log)).toEqual([
       { id: '0-1-4', from: { row: 5, col: 2 }, to: { row: 2, col: 2 } },
       { id: '4-1-4', from: { row: 6, col: 3 }, to: { row: 2, col: 2 } },
     ])

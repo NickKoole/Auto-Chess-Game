@@ -13,7 +13,7 @@ import {
 } from '@/api/battles'
 import { toNumber } from '@/api/numeric'
 import { applyTick, type BattleEvent } from '@/battle/applyTick'
-import { createBattleState, type BattleState } from '@/battle/battleState'
+import { cloneBattleState, createBattleState, type BattleState } from '@/battle/battleState'
 import {
   compositionToBattleState,
   placeUnit,
@@ -132,10 +132,8 @@ function seek(tick: number): void {
   }
 
   const isForwardStep = tick === currentTick.value + 1
-  // A killing blow's unitDied shares its unitAttacked's tick, so the target
-  // is already gone from a post-tick state - read positions from the state
-  // as it stood going into this tick instead, while attacker and target are
-  // both still guaranteed present.
+  // seekTo builds a fresh state rather than mutating this one, so it is a
+  // genuine pre-tick snapshot - no cloning needed, unlike play()'s loop.
   const preTickState = battleState.value
 
   stopPlayback()
@@ -145,7 +143,7 @@ function seek(tick: number): void {
   hasFinished.value = result.tick >= terminatingTick.value
   activeProjectiles.value =
     isForwardStep && result.tick === tick && preTickState
-      ? projectilesForTick(preTickState, tick, response.events as BattleEvent[])
+      ? projectilesForTick(preTickState, result.state, tick, response.events as BattleEvent[])
       : []
 }
 
@@ -195,11 +193,12 @@ function play(): void {
   isPlaying.value = true
   timer = setInterval(() => {
     currentTick.value += 1
-    // Read positions before applying the tick: a killing blow's unitDied
-    // shares this tick, and would already have removed the target from
-    // state by the time applyTick returns.
-    activeProjectiles.value = projectilesForTick(battleState.value!, currentTick.value, log)
+    // applyTick mutates battleState.value in place, so unlike seek()'s
+    // rebuild-based path this needs an explicit snapshot to keep a real
+    // pre-tick state to fall back on for a target this tick kills.
+    const preTickState = cloneBattleState(battleState.value!)
     applyTick(battleState.value!, currentTick.value, log)
+    activeProjectiles.value = projectilesForTick(preTickState, battleState.value!, currentTick.value, log)
     if (currentTick.value >= terminatingTick.value) {
       stopPlayback()
       hasFinished.value = true
