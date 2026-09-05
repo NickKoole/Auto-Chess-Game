@@ -21,10 +21,11 @@ public sealed class EnemySetupListEndpointTests(ApiFactory factory) : IClassFixt
         List<EnemySetupDto>? body = await response.Content.ReadFromJsonAsync<List<EnemySetupDto>>();
 
         Assert.NotNull(body);
-        Assert.Equal(3, body.Count);
+        Assert.Equal(4, body.Count);
         Assert.Contains(body, s => s.Id == "elite-line");
         Assert.Contains(body, s => s.Id == "mixed-line");
         Assert.Contains(body, s => s.Id == "swarm");
+        Assert.Contains(body, s => s.Id == "guarded-archers");
         Assert.All(body, s => Assert.False(string.IsNullOrWhiteSpace(s.DisplayName)));
     }
 
@@ -104,5 +105,23 @@ public sealed class EnemySetupListEndpointTests(ApiFactory factory) : IClassFixt
             var coords = setup.Placements.Select(p => p.Coord).ToList();
             Assert.Equal(coords.Count, coords.Distinct().Count());
         }
+    }
+
+    [Fact]
+    public void Guarded_archers_places_two_knights_at_the_front_row_and_two_archers_behind_them()
+    {
+        var catalog = new EnemySetupCatalog(new StaticUnitCatalog());
+        EnemySetup setup = catalog.All.Single(s => s.Id == "guarded-archers");
+
+        List<HexCoord> knightCoords = [.. setup.Placements.Where(p => p.Definition.Id == "knight").Select(p => p.Coord)];
+        List<HexCoord> archerCoords = [.. setup.Placements.Where(p => p.Definition.Id == "archer").Select(p => p.Coord)];
+
+        Assert.Equal(2, knightCoords.Count);
+        Assert.Equal(2, archerCoords.Count);
+        Assert.Equal(setup.Placements.Count, knightCoords.Count + archerCoords.Count);
+
+        // Row 2 is the opponent's front row (adjacent to the neutral band); row 0 is furthest from the player.
+        Assert.All(knightCoords, c => Assert.Equal(2, c.Row));
+        Assert.All(archerCoords, c => Assert.Equal(0, c.Row));
     }
 }
