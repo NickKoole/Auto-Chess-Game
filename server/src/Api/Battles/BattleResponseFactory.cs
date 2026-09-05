@@ -107,6 +107,19 @@ public static class BattleResponseFactory
             nameof(battleEvent), battleEvent, $"Unknown battle event type '{battleEvent.GetType()}'."),
     };
 
+    public static EnemySetupDto MapEnemySetup(EnemySetup setup) => new()
+    {
+        Id = setup.Id,
+        DisplayName = setup.DisplayName,
+        Placements = [.. setup.Placements.Select(MapPlacement)],
+    };
+
+    private static EnemySetupPlacementDto MapPlacement(UnitPlacement placement) => new()
+    {
+        DefinitionId = placement.Definition.Id,
+        Position = MapCoord(placement.Coord),
+    };
+
     public static UnitDefinitionDto MapUnitDefinition(UnitDefinition definition) => new()
     {
         Id = definition.Id,

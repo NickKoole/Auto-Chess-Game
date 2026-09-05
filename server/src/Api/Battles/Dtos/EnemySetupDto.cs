@@ -6,4 +6,6 @@ public sealed record EnemySetupDto
     public required string Id { get; init; }
 
     public required string DisplayName { get; init; }
+
+    public required IReadOnlyList<EnemySetupPlacementDto> Placements { get; init; }
 }

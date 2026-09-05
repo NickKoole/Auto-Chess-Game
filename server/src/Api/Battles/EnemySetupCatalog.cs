@@ -57,6 +57,15 @@ public sealed class EnemySetupCatalog
             "swarm",
             DisplayName: "Swarm",
             Placements: FrontLine(units.Get("militia"), row: 2, cols: [1, 2, 3, 4, 5, 6]));
+
+        yield return new EnemySetup(
+            "guarded-archers",
+            DisplayName: "Guarded Archers",
+            Placements:
+            [
+                .. FrontLine(units.Get("knight"), row: 2, cols: [3, 4]),
+                .. FrontLine(units.Get("archer"), row: 0, cols: [3, 4]),
+            ]);
     }
 
     private static IReadOnlyList<UnitPlacement> FrontLine(UnitDefinition definition, int row, int[] cols) =>

@@ -70,11 +70,14 @@ function unitCenter(unit: BattleUnitState) {
   return { x: x + dims.value.originX, y: y + dims.value.originY }
 }
 
-function sideClass(side: number): string {
-  return side === SIDE_PLAYER ? 'unit player' : 'unit opponent'
+function sideClass(unit: BattleUnitState): string {
+  return unit.side === SIDE_PLAYER ? 'unit player' : 'unit opponent'
 }
 
 function label(unit: BattleUnitState): string {
+  if (unit.isPreview) {
+    return props.state.unitDefinitions[unit.definitionId]?.displayName ?? unit.definitionId
+  }
   return unitLabel(unit, props.state.unitDefinitions)
 }
 
@@ -118,7 +121,7 @@ const targetMarkers = computed<TargetMarker[]>(() =>
     />
 
     <g v-for="unit in props.state.units" :key="unit.id" :data-unit-id="unit.id" class="unit-group">
-      <circle :cx="unitCenter(unit).x" :cy="unitCenter(unit).y" :r="HEX_SIZE * 0.62" :class="sideClass(unit.side)" />
+      <circle :cx="unitCenter(unit).x" :cy="unitCenter(unit).y" :r="HEX_SIZE * 0.62" :class="sideClass(unit)" />
       <text :x="unitCenter(unit).x" :y="unitCenter(unit).y - 9" text-anchor="middle" class="unit-label">
         {{ label(unit) }}
       </text>
@@ -166,6 +169,12 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 
 .droppable {
   cursor: copy;
+}
+
+.unit-group {
+  /* A unit sits visually on top of its hex; without this it swallows the
+     hex's dragover/drop instead of letting a drop on the unit reach it. */
+  pointer-events: none;
 }
 
 .unit.player {

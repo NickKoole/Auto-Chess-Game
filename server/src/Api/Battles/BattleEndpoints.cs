@@ -22,7 +22,7 @@ public static class BattleEndpoints
 
         app.MapGet("/battles/enemy-setups", Ok<IReadOnlyList<EnemySetupDto>> (EnemySetupCatalog enemySetups) =>
             TypedResults.Ok<IReadOnlyList<EnemySetupDto>>(
-                [.. enemySetups.All.Select(s => new EnemySetupDto { Id = s.Id, DisplayName = s.DisplayName })]))
+                [.. enemySetups.All.Select(BattleResponseFactory.MapEnemySetup)]))
         .WithName("ListEnemySetups");
 
         // TypedResults, not Results: Results.Ok erases the response type, and

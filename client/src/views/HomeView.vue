@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
   listEnemySetups,
   listMatchups,
@@ -11,9 +11,15 @@ import {
   type SimulateBattleResponse,
   type UnitDefinitionDto,
 } from '@/api/battles'
+import { toNumber } from '@/api/numeric'
 import { applyTick, type BattleEvent } from '@/battle/applyTick'
 import { createBattleState, type BattleState } from '@/battle/battleState'
-import { compositionToBattleState, placeUnit, type CompositionPlacement } from '@/battle/composition'
+import {
+  compositionToBattleState,
+  placeUnit,
+  type CompositionPlacement,
+  type EnemyPreviewPlacement,
+} from '@/battle/composition'
 import { endingLabel, survivorsBySide } from '@/battle/outcome'
 import { seekTo, terminatingTickOf } from '@/battle/playback'
 import BattleBoard from '@/components/BattleBoard.vue'
@@ -72,7 +78,23 @@ const unitDefinitionsById = computed<Record<string, UnitDefinitionDto>>(() => {
   return map
 })
 
-const compositionState = computed(() => compositionToBattleState(playerPlacements.value, unitDefinitionsById.value))
+const selectedEnemySetup = computed(() => enemySetups.value.find((s) => s.id === selectedEnemySetupId.value))
+
+const enemyPreviewPlacements = computed<EnemyPreviewPlacement[]>(
+  () =>
+    selectedEnemySetup.value?.placements.map((p) => ({
+      definitionId: p.definitionId,
+      position: { row: toNumber(p.position.row), col: toNumber(p.position.col) },
+    })) ?? [],
+)
+
+const compositionPreviewState = computed(() =>
+  compositionToBattleState(playerPlacements.value, unitDefinitionsById.value, enemyPreviewPlacements.value),
+)
+
+// Once a battle has actually run, the same board switches from the static
+// preview to rendering that live result in place - never a second board.
+const compositionBoardState = computed(() => battleState.value ?? compositionPreviewState.value)
 
 function stopPlayback(): void {
   if (timer !== undefined) {
@@ -81,6 +103,20 @@ function stopPlayback(): void {
   }
   isPlaying.value = false
 }
+
+// A leftover result from the other mode would otherwise show through as
+// stale, and - for composition - leave the board's interactive prop wired to
+// a battleState that will never clear, permanently blocking placement.
+watch(mode, () => {
+  stopPlayback()
+  outcome.value = null
+  finalState.value = null
+  error.value = null
+  battleState.value = null
+  currentTick.value = 0
+  terminatingTick.value = 0
+  hasFinished.value = false
+})
 
 // Every control but Play routes through here: one code path for step,
 // jump and scrub, all built on the same rebuild-from-tick-0 primitive.
@@ -321,7 +357,7 @@ onUnmounted(() => {
         </span>
       </section>
 
-      <BattleBoard :state="compositionState" interactive @tile-drop="onTileDrop" />
+      <BattleBoard :state="compositionBoardState" :interactive="!battleState" @tile-drop="onTileDrop" />
 
       <p v-if="placementError" role="alert">{{ placementError }}</p>
 
@@ -382,7 +418,7 @@ onUnmounted(() => {
         · Tick: {{ currentTick }} / {{ terminatingTick }}
       </p>
 
-      <BattleBoard :state="battleState" />
+      <BattleBoard v-if="mode === 'matchup'" :state="battleState" />
 
       <section v-if="hasFinished" aria-label="Outcome">
         <p role="status">

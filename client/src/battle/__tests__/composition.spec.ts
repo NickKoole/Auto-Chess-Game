@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { components } from '@/api/schema.d.ts'
-import { SIDE_PLAYER } from '../battleState'
+import { SIDE_OPPONENT, SIDE_PLAYER } from '../battleState'
 import {
   compositionToBattleState,
   isInPlayerBand,
@@ -8,6 +8,7 @@ import {
   PLAYER_BAND_FIRST_ROW,
   PLAYER_BAND_LAST_ROW,
   type CompositionPlacement,
+  type EnemyPreviewPlacement,
 } from '../composition'
 
 type UnitDefinitionDto = components['schemas']['UnitDefinitionDto']
@@ -106,5 +107,47 @@ describe('compositionToBattleState', () => {
   it('gives an unknown definition id zero HP rather than throwing', () => {
     const state = compositionToBattleState([{ unitId: 'ghost', position: { row: 5, col: 2 } }], {})
     expect(state.units[0]).toMatchObject({ hp: 0, maxHp: 0 })
+  })
+
+  it('appends enemy preview units, dimmed, on the opponent side, with ids that never collide with a player unit', () => {
+    const placements: CompositionPlacement[] = [{ unitId: 'knight', position: { row: 5, col: 2 } }]
+    const enemyPreview: EnemyPreviewPlacement[] = [
+      { definitionId: 'knight', position: { row: 2, col: 3 } },
+      { definitionId: 'knight', position: { row: 2, col: 4 } },
+    ]
+    const definitions = { knight: knightDefinition() }
+
+    const state = compositionToBattleState(placements, definitions, enemyPreview)
+
+    expect(state.units).toEqual([
+      { id: 0, side: SIDE_PLAYER, definitionId: 'knight', position: { row: 5, col: 2 }, hp: 180, maxHp: 180, currentTargetId: null },
+      {
+        id: -1,
+        side: SIDE_OPPONENT,
+        definitionId: 'knight',
+        position: { row: 2, col: 3 },
+        hp: 180,
+        maxHp: 180,
+        currentTargetId: null,
+        isPreview: true,
+      },
+      {
+        id: -2,
+        side: SIDE_OPPONENT,
+        definitionId: 'knight',
+        position: { row: 2, col: 4 },
+        hp: 180,
+        maxHp: 180,
+        currentTargetId: null,
+        isPreview: true,
+      },
+    ])
+  })
+
+  it('renders no enemy preview units when none are given', () => {
+    const state = compositionToBattleState([{ unitId: 'knight', position: { row: 5, col: 2 } }], {
+      knight: knightDefinition(),
+    })
+    expect(state.units).toHaveLength(1)
   })
 })

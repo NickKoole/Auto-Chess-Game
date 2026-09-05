@@ -160,9 +160,13 @@ describe('listEnemySetups', () => {
 
   it('fetches the enemy setup list and returns it parsed', async () => {
     const responseBody: EnemySetupDto[] = [
-      { id: 'elite-line', displayName: 'Elite Line' },
-      { id: 'mixed-line', displayName: 'Mixed Line' },
-      { id: 'swarm', displayName: 'Swarm' },
+      {
+        id: 'elite-line',
+        displayName: 'Elite Line',
+        placements: [{ definitionId: 'knight', position: { row: 2, col: 3 } }],
+      },
+      { id: 'mixed-line', displayName: 'Mixed Line', placements: [] },
+      { id: 'swarm', displayName: 'Swarm', placements: [] },
     ]
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(responseBody))
     vi.stubGlobal('fetch', fetchMock)

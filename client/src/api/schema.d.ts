@@ -161,6 +161,12 @@ export interface components {
             /** @description Stable identifier for this enemy setup, unique within the list. */
             id: string;
             displayName: string;
+            placements: components["schemas"]["EnemySetupPlacementDto"][];
+        };
+        EnemySetupPlacementDto: {
+            /** @description An id from `GET /battles/units`. */
+            definitionId: string;
+            position: components["schemas"]["HexCoordDto"];
         };
         ErrorResponse: {
             message: string;
