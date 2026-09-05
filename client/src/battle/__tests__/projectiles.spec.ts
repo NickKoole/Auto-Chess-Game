@@ -103,7 +103,7 @@ describe('projectilesForTick', () => {
     expect(projectiles).toEqual([{ id: '0-1-4', from: { row: 5, col: 2 }, to: { row: 3, col: 2 } }])
   })
 
-  it('falls back to the pre-tick target position for a killing blow, whose unitDied shares this tick', () => {
+  it('uses the unitDied position for a killing blow that does not move, whose unitDied shares this tick', () => {
     const preTickState = state()
     const postTickState = state()
     postTickState.units = postTickState.units.filter((unit) => unit.id !== 1)
