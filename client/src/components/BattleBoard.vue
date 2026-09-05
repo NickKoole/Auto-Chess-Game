@@ -71,8 +71,7 @@ function unitCenter(unit: BattleUnitState) {
 }
 
 function sideClass(unit: BattleUnitState): string {
-  const side = unit.side === SIDE_PLAYER ? 'player' : 'opponent'
-  return unit.isPreview ? `unit ${side} preview` : `unit ${side}`
+  return unit.side === SIDE_PLAYER ? 'unit player' : 'unit opponent'
 }
 
 function label(unit: BattleUnitState): string {
@@ -182,11 +181,6 @@ const targetMarkers = computed<TargetMarker[]>(() =>
   fill: #c62828;
   stroke: #1b1b1b;
   stroke-width: 1;
-}
-
-.unit.preview {
-  stroke-dasharray: 3 2;
-  opacity: 0.6;
 }
 
 .target-marker {
