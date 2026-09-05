@@ -1,8 +1,19 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { listMatchups, simulateBattle, type MatchupDto, type SimulateBattleResponse } from '@/api/battles'
+import {
+  listEnemySetups,
+  listMatchups,
+  listUnits,
+  simulateBattle,
+  type EnemySetupDto,
+  type MatchupDto,
+  type SimulateBattleRequest,
+  type SimulateBattleResponse,
+  type UnitDefinitionDto,
+} from '@/api/battles'
 import { applyTick, type BattleEvent } from '@/battle/applyTick'
 import { createBattleState, type BattleState } from '@/battle/battleState'
+import { compositionToBattleState, placeUnit, type CompositionPlacement } from '@/battle/composition'
 import { endingLabel, survivorsBySide } from '@/battle/outcome'
 import { seekTo, terminatingTickOf } from '@/battle/playback'
 import BattleBoard from '@/components/BattleBoard.vue'
@@ -16,9 +27,23 @@ const SIDE_LABELS: Record<number, string> = {
   1: 'Opponent',
 }
 
+type BattleMode = 'matchup' | 'composition'
+const mode = ref<BattleMode>('matchup')
+
 const matchups = ref<MatchupDto[]>([])
 const matchupsError = ref<string | null>(null)
 const selectedMatchupId = ref('')
+
+const units = ref<UnitDefinitionDto[]>([])
+const unitsError = ref<string | null>(null)
+
+const enemySetups = ref<EnemySetupDto[]>([])
+const enemySetupsError = ref<string | null>(null)
+const selectedEnemySetupId = ref('')
+
+const playerPlacements = ref<CompositionPlacement[]>([])
+const placementError = ref<string | null>(null)
+
 const seedInput = ref('')
 const isRequesting = ref(false)
 
@@ -38,6 +63,16 @@ function sideLabel(side: number): string {
 }
 
 const survivorGroups = computed(() => (finalState.value ? survivorsBySide(finalState.value) : []))
+
+const unitDefinitionsById = computed<Record<string, UnitDefinitionDto>>(() => {
+  const map: Record<string, UnitDefinitionDto> = {}
+  for (const unit of units.value) {
+    map[unit.id] = unit
+  }
+  return map
+})
+
+const compositionState = computed(() => compositionToBattleState(playerPlacements.value, unitDefinitionsById.value))
 
 function stopPlayback(): void {
   if (timer !== undefined) {
@@ -119,11 +154,12 @@ function pause(): void {
   stopPlayback()
 }
 
-async function runBattle(): Promise<void> {
-  if (!selectedMatchupId.value || isRequesting.value) {
-    return
-  }
+function resolvedSeed(): string | undefined {
+  const trimmed = seedInput.value.trim()
+  return trimmed === '' ? undefined : trimmed
+}
 
+async function runBattleWithRequest(request: SimulateBattleRequest): Promise<void> {
   // Cleanly cancel whatever is currently playing before anything else, so a
   // stray interval can never go on applying the old log once this starts.
   // isRequesting stays true for the rest of this call, disabling the button
@@ -140,11 +176,7 @@ async function runBattle(): Promise<void> {
   terminatingTick.value = 0
   hasFinished.value = false
 
-  const trimmedSeed = seedInput.value.trim()
-  const result = await simulateBattle({
-    matchupId: selectedMatchupId.value,
-    seed: trimmedSeed === '' ? undefined : trimmedSeed,
-  })
+  const result = await simulateBattle(request)
 
   isRequesting.value = false
 
@@ -159,6 +191,38 @@ async function runBattle(): Promise<void> {
   }
 }
 
+async function runMatchupBattle(): Promise<void> {
+  if (!selectedMatchupId.value || isRequesting.value) {
+    return
+  }
+  await runBattleWithRequest({ matchupId: selectedMatchupId.value, seed: resolvedSeed() })
+}
+
+async function runCompositionBattle(): Promise<void> {
+  if (playerPlacements.value.length === 0 || !selectedEnemySetupId.value || isRequesting.value) {
+    return
+  }
+  await runBattleWithRequest({
+    enemySetupId: selectedEnemySetupId.value,
+    playerPlacements: playerPlacements.value.map((p) => ({ unitId: p.unitId, position: p.position })),
+    seed: resolvedSeed(),
+  })
+}
+
+function onDragStart(event: DragEvent, unitId: string): void {
+  event.dataTransfer?.setData('text/plain', unitId)
+}
+
+function onTileDrop({ row, col, unitId }: { row: number; col: number; unitId: string }): void {
+  const result = placeUnit(playerPlacements.value, unitId, { row, col })
+  if (result.ok) {
+    playerPlacements.value = result.placements
+    placementError.value = null
+  } else {
+    placementError.value = result.reason
+  }
+}
+
 async function loadMatchups(): Promise<void> {
   const result = await listMatchups()
   if (result.ok) {
@@ -169,7 +233,30 @@ async function loadMatchups(): Promise<void> {
   }
 }
 
-onMounted(loadMatchups)
+async function loadUnits(): Promise<void> {
+  const result = await listUnits()
+  if (result.ok) {
+    units.value = result.data
+  } else {
+    unitsError.value = result.error
+  }
+}
+
+async function loadEnemySetups(): Promise<void> {
+  const result = await listEnemySetups()
+  if (result.ok) {
+    enemySetups.value = result.data
+    selectedEnemySetupId.value = result.data[0]?.id ?? ''
+  } else {
+    enemySetupsError.value = result.error
+  }
+}
+
+onMounted(() => {
+  loadMatchups()
+  loadUnits()
+  loadEnemySetups()
+})
 
 onUnmounted(() => {
   stopPlayback()
@@ -180,10 +267,21 @@ onUnmounted(() => {
   <main>
     <h1>Battle playback</h1>
 
-    <p v-if="matchupsError" role="alert">Could not load matchups: {{ matchupsError }}</p>
+    <p>
+      <label>
+        <input type="radio" v-model="mode" value="matchup" :disabled="isRequesting" />
+        Fixed matchup
+      </label>
+      <label>
+        <input type="radio" v-model="mode" value="composition" :disabled="isRequesting" />
+        Build your own army
+      </label>
+    </p>
 
-    <template v-else>
-      <p>
+    <template v-if="mode === 'matchup'">
+      <p v-if="matchupsError" role="alert">Could not load matchups: {{ matchupsError }}</p>
+
+      <p v-else>
         <label>
           Matchup:
           <select v-model="selectedMatchupId" :disabled="isRequesting">
@@ -202,60 +300,108 @@ onUnmounted(() => {
             :disabled="isRequesting"
           />
         </label>
-        <button type="button" :disabled="!selectedMatchupId || isRequesting" @click="runBattle">
+        <button type="button" :disabled="!selectedMatchupId || isRequesting" @click="runMatchupBattle">
           {{ isRequesting ? 'Running…' : 'Run battle' }}
         </button>
       </p>
-
-      <p v-if="error" role="alert">Could not run the battle: {{ error }}</p>
-
-      <template v-if="outcome && battleState">
-        <p>Seed: {{ outcome.seed }}</p>
-
-        <p>
-          <button type="button" :disabled="isPlaying" @click="play">
-            {{ hasFinished ? 'Play again' : currentTick > 0 ? 'Resume' : 'Play' }}
-          </button>
-          <button type="button" :disabled="!isPlaying" @click="pause">Pause</button>
-          <button type="button" :disabled="currentTick <= 0" @click="jumpToStart">|&lt; Start</button>
-          <button type="button" :disabled="currentTick <= 0" @click="stepBack">&lt; Step</button>
-          <button type="button" :disabled="currentTick >= terminatingTick" @click="stepForward">Step &gt;</button>
-          <button type="button" :disabled="currentTick >= terminatingTick" @click="jumpToEnd">End &gt;|</button>
-        </p>
-
-        <p>
-          <input
-            type="range"
-            min="0"
-            :max="terminatingTick"
-            :value="currentTick"
-            aria-label="Seek to tick"
-            @input="onScrub"
-          />
-          · Tick: {{ currentTick }} / {{ terminatingTick }}
-        </p>
-
-        <BattleBoard :state="battleState" />
-
-        <section v-if="hasFinished" aria-label="Outcome">
-          <p role="status">
-            {{ endingLabel(outcome.outcome.terminationReason) }} · Ended on tick {{ outcome.outcome.terminatingTick }}
-          </p>
-
-          <div v-for="group in survivorGroups" :key="group.side">
-            <h3>{{ sideLabel(group.side) }}</h3>
-            <p v-if="group.units.length === 0">No survivors</p>
-            <ul v-else>
-              <li v-for="unit in group.units" :key="unit.id">
-                {{ battleState.unitDefinitions[unit.definitionId]?.displayName ?? unit.definitionId }}:
-                {{ unit.hp }}/{{ unit.maxHp }} hp
-              </li>
-            </ul>
-          </div>
-        </section>
-      </template>
-
-      <p v-else-if="!error">Pick a matchup and press Run battle.</p>
     </template>
+
+    <template v-else>
+      <p v-if="unitsError" role="alert">Could not load units: {{ unitsError }}</p>
+      <p v-if="enemySetupsError" role="alert">Could not load enemy setups: {{ enemySetupsError }}</p>
+
+      <section aria-label="Roster">
+        <span
+          v-for="unit in units"
+          :key="unit.id"
+          draggable="true"
+          @dragstart="onDragStart($event, unit.id)"
+        >
+          {{ unit.displayName }}
+        </span>
+      </section>
+
+      <BattleBoard :state="compositionState" interactive @tile-drop="onTileDrop" />
+
+      <p v-if="placementError" role="alert">{{ placementError }}</p>
+
+      <p>
+        <label>
+          Enemy setup:
+          <select v-model="selectedEnemySetupId" :disabled="isRequesting">
+            <option v-for="setup in enemySetups" :key="setup.id" :value="setup.id">
+              {{ setup.displayName }}
+            </option>
+          </select>
+        </label>
+        <label>
+          Seed:
+          <input
+            v-model="seedInput"
+            type="text"
+            placeholder="random"
+            aria-label="Seed (blank for random)"
+            :disabled="isRequesting"
+          />
+        </label>
+        <button
+          type="button"
+          :disabled="playerPlacements.length === 0 || !selectedEnemySetupId || isRequesting"
+          @click="runCompositionBattle"
+        >
+          {{ isRequesting ? 'Running…' : 'Run battle' }}
+        </button>
+      </p>
+    </template>
+
+    <p v-if="error" role="alert">Could not run the battle: {{ error }}</p>
+
+    <template v-if="outcome && battleState">
+      <p>Seed: {{ outcome.seed }}</p>
+
+      <p>
+        <button type="button" :disabled="isPlaying" @click="play">
+          {{ hasFinished ? 'Play again' : currentTick > 0 ? 'Resume' : 'Play' }}
+        </button>
+        <button type="button" :disabled="!isPlaying" @click="pause">Pause</button>
+        <button type="button" :disabled="currentTick <= 0" @click="jumpToStart">|&lt; Start</button>
+        <button type="button" :disabled="currentTick <= 0" @click="stepBack">&lt; Step</button>
+        <button type="button" :disabled="currentTick >= terminatingTick" @click="stepForward">Step &gt;</button>
+        <button type="button" :disabled="currentTick >= terminatingTick" @click="jumpToEnd">End &gt;|</button>
+      </p>
+
+      <p>
+        <input
+          type="range"
+          min="0"
+          :max="terminatingTick"
+          :value="currentTick"
+          aria-label="Seek to tick"
+          @input="onScrub"
+        />
+        · Tick: {{ currentTick }} / {{ terminatingTick }}
+      </p>
+
+      <BattleBoard :state="battleState" />
+
+      <section v-if="hasFinished" aria-label="Outcome">
+        <p role="status">
+          {{ endingLabel(outcome.outcome.terminationReason) }} · Ended on tick {{ outcome.outcome.terminatingTick }}
+        </p>
+
+        <div v-for="group in survivorGroups" :key="group.side">
+          <h3>{{ sideLabel(group.side) }}</h3>
+          <p v-if="group.units.length === 0">No survivors</p>
+          <ul v-else>
+            <li v-for="unit in group.units" :key="unit.id">
+              {{ battleState.unitDefinitions[unit.definitionId]?.displayName ?? unit.definitionId }}:
+              {{ unit.hp }}/{{ unit.maxHp }} hp
+            </li>
+          </ul>
+        </div>
+      </section>
+    </template>
+
+    <p v-else-if="!error">Pick a matchup, or build your own army, and press Run battle.</p>
   </main>
 </template>

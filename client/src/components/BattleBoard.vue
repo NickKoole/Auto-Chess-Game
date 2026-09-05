@@ -2,9 +2,14 @@
 import { computed } from 'vue'
 import type { BattleState, BattleUnitState } from '@/battle/battleState'
 import { currentTargetOf, SIDE_PLAYER, unitLabel } from '@/battle/battleState'
+import { isInPlayerBand } from '@/battle/composition'
 import { gridDimensions, hexPolygonPoints, hexToPixel } from '@/battle/hexCoords'
 
-const props = defineProps<{ state: BattleState }>()
+const props = defineProps<{ state: BattleState; interactive?: boolean }>()
+
+const emit = defineEmits<{
+  'tile-drop': [payload: { row: number; col: number; unitId: string }]
+}>()
 
 // Mirrors GameSim's Battlefield: an 8x8 board, rows 3-4 neutral, rows 0-2 the
 // opponent's deployment band (the far side), rows 5-7 the player's (the near
@@ -39,10 +44,25 @@ const hexes = computed<HexTile[]>(() => {
 })
 
 function bandClass(row: number): string {
-  if (row >= NEUTRAL_FIRST_ROW && row <= NEUTRAL_LAST_ROW) {
-    return 'hex neutral-band'
+  const band =
+    row >= NEUTRAL_FIRST_ROW && row <= NEUTRAL_LAST_ROW
+      ? 'neutral-band'
+      : row < NEUTRAL_FIRST_ROW
+        ? 'opponent-band'
+        : 'player-band'
+  const droppable = props.interactive && isInPlayerBand(row) ? ' droppable' : ''
+  return `hex ${band}${droppable}`
+}
+
+function onDrop(event: DragEvent, row: number, col: number): void {
+  if (!props.interactive) {
+    return
   }
-  return row < NEUTRAL_FIRST_ROW ? 'hex opponent-band' : 'hex player-band'
+  const unitId = event.dataTransfer?.getData('text/plain')
+  if (!unitId) {
+    return
+  }
+  emit('tile-drop', { row, col, unitId })
 }
 
 function unitCenter(unit: BattleUnitState) {
@@ -79,7 +99,14 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 
 <template>
   <svg class="battle-board" :viewBox="`0 0 ${dims.width} ${dims.height}`" role="img" aria-label="Battle grid">
-    <polygon v-for="hex in hexes" :key="`${hex.row}-${hex.col}`" :points="hex.points" :class="bandClass(hex.row)" />
+    <polygon
+      v-for="hex in hexes"
+      :key="`${hex.row}-${hex.col}`"
+      :points="hex.points"
+      :class="bandClass(hex.row)"
+      @dragover.prevent
+      @drop="onDrop($event, hex.row, hex.col)"
+    />
 
     <circle
       v-for="marker in targetMarkers"
@@ -135,6 +162,10 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 
 .player-band {
   fill: #d1e7dd;
+}
+
+.droppable {
+  cursor: copy;
 }
 
 .unit.player {
