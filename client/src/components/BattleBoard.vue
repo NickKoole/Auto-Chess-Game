@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { BattleState, BattleUnitState } from '@/battle/battleState'
+import type { BattleState, BattleUnitState, HexPosition } from '@/battle/battleState'
 import { currentTargetOf, SIDE_PLAYER, unitLabel } from '@/battle/battleState'
 import { isInPlayerBand } from '@/battle/composition'
 import { gridDimensions, hexPolygonPoints, hexToPixel } from '@/battle/hexCoords'
+import type { Projectile } from '@/battle/projectiles'
 
-const props = defineProps<{ state: BattleState; interactive?: boolean }>()
+const props = withDefaults(
+  defineProps<{ state: BattleState; interactive?: boolean; projectiles?: Projectile[] }>(),
+  { projectiles: () => [] },
+)
 
 const emit = defineEmits<{
   'tile-drop': [payload: { row: number; col: number; unitId: string }]
@@ -65,9 +69,13 @@ function onDrop(event: DragEvent, row: number, col: number): void {
   emit('tile-drop', { row, col, unitId })
 }
 
-function unitCenter(unit: BattleUnitState) {
-  const { x, y } = hexToPixel(unit.position.row, unit.position.col, HEX_SIZE)
+function positionCenter(position: HexPosition) {
+  const { x, y } = hexToPixel(position.row, position.col, HEX_SIZE)
   return { x: x + dims.value.originX, y: y + dims.value.originY }
+}
+
+function unitCenter(unit: BattleUnitState) {
+  return positionCenter(unit.position)
 }
 
 function sideClass(unit: BattleUnitState): string {
@@ -138,6 +146,24 @@ const targetMarkers = computed<TargetMarker[]>(() =>
         {{ targetLabel(unit) }}
       </text>
     </g>
+
+    <!-- dur is kept under HomeView's TICK_INTERVAL_MS so a projectile never survives into the next tick. -->
+    <circle v-for="p in props.projectiles" :key="p.id" r="4" class="projectile">
+      <animate
+        attributeName="cx"
+        :from="positionCenter(p.from).x"
+        :to="positionCenter(p.to).x"
+        dur="0.025s"
+        fill="freeze"
+      />
+      <animate
+        attributeName="cy"
+        :from="positionCenter(p.from).y"
+        :to="positionCenter(p.to).y"
+        dur="0.025s"
+        fill="freeze"
+      />
+    </circle>
   </svg>
 </template>
 
@@ -193,6 +219,13 @@ const targetMarkers = computed<TargetMarker[]>(() =>
   fill: none;
   stroke: #f9a825;
   stroke-width: 2;
+  pointer-events: none;
+}
+
+.projectile {
+  fill: #ffd54f;
+  stroke: #7a5c00;
+  stroke-width: 1;
   pointer-events: none;
 }
 

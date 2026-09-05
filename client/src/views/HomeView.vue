@@ -22,6 +22,7 @@ import {
 } from '@/battle/composition'
 import { endingLabel, survivorsBySide } from '@/battle/outcome'
 import { seekTo, terminatingTickOf } from '@/battle/playback'
+import { projectilesForTick, type Projectile } from '@/battle/projectiles'
 import BattleBoard from '@/components/BattleBoard.vue'
 
 // A 150-350 tick battle at 30ms/tick is a 5-10 second playback - watchable,
@@ -61,6 +62,7 @@ const currentTick = ref(0)
 const terminatingTick = ref(0)
 const isPlaying = ref(false)
 const hasFinished = ref(false)
+const activeProjectiles = ref<Projectile[]>([])
 
 let timer: ReturnType<typeof setInterval> | undefined
 
@@ -116,21 +118,30 @@ watch(mode, () => {
   currentTick.value = 0
   terminatingTick.value = 0
   hasFinished.value = false
+  activeProjectiles.value = []
 })
 
 // Every control but Play routes through here: one code path for step,
-// jump and scrub, all built on the same rebuild-from-tick-0 primitive.
+// jump and scrub, all built on the same rebuild-from-tick-0 primitive. A
+// projectile only ever shows for a genuine one-tick forward move - jumping
+// or scrubbing to any other tick, including backward, clears it instead.
 function seek(tick: number): void {
   const response = outcome.value
   if (!response) {
     return
   }
 
+  const isForwardStep = tick === currentTick.value + 1
+
   stopPlayback()
   const result = seekTo(response, tick)
   battleState.value = result.state
   currentTick.value = result.tick
   hasFinished.value = result.tick >= terminatingTick.value
+  activeProjectiles.value =
+    isForwardStep && result.tick === tick
+      ? projectilesForTick(result.state, result.tick, response.events as BattleEvent[])
+      : []
 }
 
 function stepForward(): void {
@@ -168,6 +179,7 @@ function play(): void {
     const result = seekTo(response, 0)
     battleState.value = result.state
     currentTick.value = result.tick
+    activeProjectiles.value = []
   }
   hasFinished.value = false
 
@@ -179,6 +191,7 @@ function play(): void {
   timer = setInterval(() => {
     currentTick.value += 1
     applyTick(battleState.value!, currentTick.value, log)
+    activeProjectiles.value = projectilesForTick(battleState.value!, currentTick.value, log)
     if (currentTick.value >= terminatingTick.value) {
       stopPlayback()
       hasFinished.value = true
@@ -211,6 +224,7 @@ async function runBattleWithRequest(request: SimulateBattleRequest): Promise<voi
   currentTick.value = 0
   terminatingTick.value = 0
   hasFinished.value = false
+  activeProjectiles.value = []
 
   const result = await simulateBattle(request)
 
@@ -357,7 +371,12 @@ onUnmounted(() => {
         </span>
       </section>
 
-      <BattleBoard :state="compositionBoardState" :interactive="!battleState" @tile-drop="onTileDrop" />
+      <BattleBoard
+        :state="compositionBoardState"
+        :interactive="!battleState"
+        :projectiles="activeProjectiles"
+        @tile-drop="onTileDrop"
+      />
 
       <p v-if="placementError" role="alert">{{ placementError }}</p>
 
@@ -418,7 +437,7 @@ onUnmounted(() => {
         · Tick: {{ currentTick }} / {{ terminatingTick }}
       </p>
 
-      <BattleBoard v-if="mode === 'matchup'" :state="battleState" />
+      <BattleBoard v-if="mode === 'matchup'" :state="battleState" :projectiles="activeProjectiles" />
 
       <section v-if="hasFinished" aria-label="Outcome">
         <p role="status">
