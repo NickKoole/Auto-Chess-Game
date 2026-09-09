@@ -7,6 +7,7 @@ import {
   placeUnit,
   PLAYER_BAND_FIRST_ROW,
   PLAYER_BAND_LAST_ROW,
+  toggleRosterSelection,
   type CompositionPlacement,
   type EnemyPreviewPlacement,
 } from '../composition'
@@ -84,6 +85,20 @@ describe('placeUnit', () => {
     const existing: CompositionPlacement[] = [{ unitId: 'knight', position: { row: 5, col: 2 } }]
     placeUnit(existing, 'archer', { row: 6, col: 3 })
     expect(existing).toEqual([{ unitId: 'knight', position: { row: 5, col: 2 } }])
+  })
+})
+
+describe('toggleRosterSelection', () => {
+  it('selects a unit when nothing is currently selected', () => {
+    expect(toggleRosterSelection(null, 'knight')).toBe('knight')
+  })
+
+  it('deselects when tapping the already-selected unit again', () => {
+    expect(toggleRosterSelection('knight', 'knight')).toBeNull()
+  })
+
+  it('switches selection when tapping a different unit', () => {
+    expect(toggleRosterSelection('knight', 'archer')).toBe('archer')
   })
 })
 

@@ -7,8 +7,13 @@ import { gridDimensions, hexPolygonPoints, hexToPixel } from '@/battle/hexCoords
 import { PROJECTILE_VISIBLE_MS, type TimedProjectile } from '@/battle/projectiles'
 
 const props = withDefaults(
-  defineProps<{ state: BattleState; interactive?: boolean; projectiles?: TimedProjectile[] }>(),
-  { projectiles: () => [] },
+  defineProps<{
+    state: BattleState
+    interactive?: boolean
+    projectiles?: TimedProjectile[]
+    selectedUnitId?: string | null
+  }>(),
+  { projectiles: () => [], selectedUnitId: null },
 )
 
 const emit = defineEmits<{
@@ -67,6 +72,13 @@ function onDrop(event: DragEvent, row: number, col: number): void {
     return
   }
   emit('tile-drop', { row, col, unitId })
+}
+
+function onTileClick(row: number, col: number): void {
+  if (!props.interactive || !props.selectedUnitId) {
+    return
+  }
+  emit('tile-drop', { row, col, unitId: props.selectedUnitId })
 }
 
 function positionCenter(position: HexPosition) {
@@ -164,6 +176,7 @@ const targetMarkers = computed<TargetMarker[]>(() =>
       :class="bandClass(hex.row)"
       @dragover.prevent
       @drop="onDrop($event, hex.row, hex.col)"
+      @click="onTileClick(hex.row, hex.col)"
     />
 
     <circle

@@ -17,6 +17,7 @@ import { cloneBattleState, createBattleState, type BattleState } from '@/battle/
 import {
   compositionToBattleState,
   placeUnit,
+  toggleRosterSelection,
   type CompositionPlacement,
   type EnemyPreviewPlacement,
 } from '@/battle/composition'
@@ -50,6 +51,7 @@ const selectedEnemySetupId = ref('')
 
 const playerPlacements = ref<CompositionPlacement[]>([])
 const placementError = ref<string | null>(null)
+const selectedUnitId = ref<string | null>(null)
 
 const seedInput = ref('')
 const isRequesting = ref(false)
@@ -297,11 +299,16 @@ function onDragStart(event: DragEvent, unitId: string): void {
   event.dataTransfer?.setData('text/plain', unitId)
 }
 
+function onRosterClick(unitId: string): void {
+  selectedUnitId.value = toggleRosterSelection(selectedUnitId.value, unitId)
+}
+
 function onTileDrop({ row, col, unitId }: { row: number; col: number; unitId: string }): void {
   const result = placeUnit(playerPlacements.value, unitId, { row, col })
   if (result.ok) {
     playerPlacements.value = result.placements
     placementError.value = null
+    selectedUnitId.value = null
   } else {
     placementError.value = result.reason
   }
@@ -400,7 +407,9 @@ onUnmounted(() => {
           v-for="unit in units"
           :key="unit.id"
           draggable="true"
+          :class="{ selected: unit.id === selectedUnitId }"
           @dragstart="onDragStart($event, unit.id)"
+          @click="onRosterClick(unit.id)"
         >
           {{ unit.displayName }}
         </span>
@@ -410,6 +419,7 @@ onUnmounted(() => {
         :state="compositionBoardState"
         :interactive="!battleState"
         :projectiles="activeProjectiles"
+        :selected-unit-id="selectedUnitId"
         @tile-drop="onTileDrop"
       />
 
@@ -495,3 +505,18 @@ onUnmounted(() => {
     <p v-else-if="!error">Pick a matchup, or build your own army, and press Run battle.</p>
   </main>
 </template>
+
+<style scoped>
+section[aria-label='Roster'] span {
+  display: inline-block;
+  cursor: pointer;
+  padding: 2px 6px;
+  margin: 2px;
+  border: 1px solid transparent;
+}
+
+section[aria-label='Roster'] span.selected {
+  border-color: #2e7d32;
+  background: #d1e7dd;
+}
+</style>
