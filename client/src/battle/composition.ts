@@ -43,6 +43,10 @@ export function placeUnit(
   }
 }
 
+export function toggleRosterSelection(current: string | null, tapped: string): string | null {
+  return current === tapped ? null : tapped
+}
+
 export interface EnemyPreviewPlacement {
   definitionId: string
   position: HexPosition
