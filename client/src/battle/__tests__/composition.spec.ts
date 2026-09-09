@@ -8,6 +8,7 @@ import {
   placeUnit,
   PLAYER_BAND_FIRST_ROW,
   PLAYER_BAND_LAST_ROW,
+  removePlacementAt,
   toggleRosterSelection,
   type CompositionPlacement,
   type EnemyPreviewPlacement,
@@ -85,6 +86,29 @@ describe('placeUnit', () => {
   it('does not mutate the array passed in', () => {
     const existing: CompositionPlacement[] = [{ unitId: 'knight', position: { row: 5, col: 2 } }]
     placeUnit(existing, 'archer', { row: 6, col: 3 })
+    expect(existing).toEqual([{ unitId: 'knight', position: { row: 5, col: 2 } }])
+  })
+})
+
+describe('removePlacementAt', () => {
+  it('removes the placement at the given position, leaving every other placement untouched', () => {
+    const existing: CompositionPlacement[] = [
+      { unitId: 'knight', position: { row: 5, col: 2 } },
+      { unitId: 'archer', position: { row: 6, col: 3 } },
+    ]
+    const result = removePlacementAt(existing, { row: 5, col: 2 })
+    expect(result).toEqual([{ unitId: 'archer', position: { row: 6, col: 3 } }])
+  })
+
+  it('is a no-op when nothing occupies the given position', () => {
+    const existing: CompositionPlacement[] = [{ unitId: 'knight', position: { row: 5, col: 2 } }]
+    const result = removePlacementAt(existing, { row: 6, col: 3 })
+    expect(result).toEqual(existing)
+  })
+
+  it('does not mutate the array passed in', () => {
+    const existing: CompositionPlacement[] = [{ unitId: 'knight', position: { row: 5, col: 2 } }]
+    removePlacementAt(existing, { row: 5, col: 2 })
     expect(existing).toEqual([{ unitId: 'knight', position: { row: 5, col: 2 } }])
   })
 })

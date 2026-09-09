@@ -18,6 +18,7 @@ import {
   canResetArmy,
   compositionToBattleState,
   placeUnit,
+  removePlacementAt,
   toggleRosterSelection,
   type CompositionPlacement,
   type EnemyPreviewPlacement,
@@ -315,6 +316,10 @@ function onTileDrop({ row, col, unitId }: { row: number; col: number; unitId: st
   }
 }
 
+function onUnitDelete({ row, col }: { row: number; col: number }): void {
+  playerPlacements.value = removePlacementAt(playerPlacements.value, { row, col })
+}
+
 function resetArmy(): void {
   stopPlayback()
   playerPlacements.value = []
@@ -447,6 +452,7 @@ onUnmounted(() => {
         :projectiles="activeProjectiles"
         :selected-unit-id="selectedUnitId"
         @tile-drop="onTileDrop"
+        @unit-delete="onUnitDelete"
       />
 
       <p v-if="placementError" role="alert">{{ placementError }}</p>

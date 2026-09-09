@@ -18,6 +18,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'tile-drop': [payload: { row: number; col: number; unitId: string }]
+  'unit-delete': [payload: { row: number; col: number }]
 }>()
 
 // Mirrors GameSim's Battlefield: an 8x8 board, rows 3-4 neutral, rows 0-2 the
@@ -75,10 +76,19 @@ function onDrop(event: DragEvent, row: number, col: number): void {
 }
 
 function onTileClick(row: number, col: number): void {
-  if (!props.interactive || !props.selectedUnitId) {
+  if (!props.interactive) {
     return
   }
-  emit('tile-drop', { row, col, unitId: props.selectedUnitId })
+  if (props.selectedUnitId) {
+    emit('tile-drop', { row, col, unitId: props.selectedUnitId })
+    return
+  }
+  const occupant = props.state.units.find(
+    (unit) => unit.side === SIDE_PLAYER && unit.position.row === row && unit.position.col === col,
+  )
+  if (occupant) {
+    emit('unit-delete', { row, col })
+  }
 }
 
 function positionCenter(position: HexPosition) {

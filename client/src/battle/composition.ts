@@ -43,6 +43,13 @@ export function placeUnit(
   }
 }
 
+export function removePlacementAt(
+  existing: readonly CompositionPlacement[],
+  position: HexPosition,
+): CompositionPlacement[] {
+  return existing.filter((p) => !(p.position.row === position.row && p.position.col === position.col))
+}
+
 export function canResetArmy(placementCount: number, battleState: BattleState | null, hasFinished: boolean): boolean {
   return placementCount > 0 && (battleState === null || hasFinished)
 }
