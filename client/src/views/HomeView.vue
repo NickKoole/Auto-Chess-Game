@@ -316,8 +316,18 @@ function onTileDrop({ row, col, unitId }: { row: number; col: number; unitId: st
 }
 
 function resetArmy(): void {
+  stopPlayback()
   playerPlacements.value = []
   placementError.value = null
+  selectedUnitId.value = null
+  outcome.value = null
+  finalState.value = null
+  error.value = null
+  battleState.value = null
+  currentTick.value = 0
+  terminatingTick.value = 0
+  hasFinished.value = false
+  clearProjectiles()
 }
 
 async function loadMatchups(): Promise<void> {
@@ -424,7 +434,7 @@ onUnmounted(() => {
       <p>
         <button
           type="button"
-          :disabled="!canResetArmy(playerPlacements.length, battleState)"
+          :disabled="!canResetArmy(playerPlacements.length, battleState, hasFinished)"
           @click="resetArmy"
         >
           Reset army
