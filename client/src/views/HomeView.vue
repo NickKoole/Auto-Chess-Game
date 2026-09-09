@@ -15,6 +15,7 @@ import { toNumber } from '@/api/numeric'
 import { applyTick, type BattleEvent } from '@/battle/applyTick'
 import { cloneBattleState, createBattleState, type BattleState } from '@/battle/battleState'
 import {
+  canResetArmy,
   compositionToBattleState,
   placeUnit,
   type CompositionPlacement,
@@ -307,6 +308,11 @@ function onTileDrop({ row, col, unitId }: { row: number; col: number; unitId: st
   }
 }
 
+function resetArmy(): void {
+  playerPlacements.value = []
+  placementError.value = null
+}
+
 async function loadMatchups(): Promise<void> {
   const result = await listMatchups()
   if (result.ok) {
@@ -405,6 +411,16 @@ onUnmounted(() => {
           {{ unit.displayName }}
         </span>
       </section>
+
+      <p>
+        <button
+          type="button"
+          :disabled="!canResetArmy(playerPlacements.length, battleState)"
+          @click="resetArmy"
+        >
+          Reset army
+        </button>
+      </p>
 
       <BattleBoard
         :state="compositionBoardState"
