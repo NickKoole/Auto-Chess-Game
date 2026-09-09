@@ -58,6 +58,14 @@ export function createBattleState(response: SimulateBattleResponse): BattleState
   return { units, unitDefinitions }
 }
 
+/** Deep enough that mutating a unit's position in place afterward (as applyTick does) never affects this copy. */
+export function cloneBattleState(state: BattleState): BattleState {
+  return {
+    units: state.units.map((unit) => ({ ...unit, position: { ...unit.position } })),
+    unitDefinitions: state.unitDefinitions,
+  }
+}
+
 export function unitLabel(unit: BattleUnitState, unitDefinitions: Record<string, UnitDefinitionDto>): string {
   const displayName = unitDefinitions[unit.definitionId]?.displayName ?? unit.definitionId
   return `${displayName} #${unit.id}`

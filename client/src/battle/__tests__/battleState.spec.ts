@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { components } from '@/api/schema.d.ts'
-import { createBattleState, currentTargetOf, SIDE_OPPONENT, SIDE_PLAYER, unitLabel } from '../battleState'
+import { cloneBattleState, createBattleState, currentTargetOf, SIDE_OPPONENT, SIDE_PLAYER, unitLabel } from '../battleState'
 
 type SimulateBattleResponse = components['schemas']['SimulateBattleResponse']
 
@@ -84,6 +84,24 @@ describe('createBattleState', () => {
       initialSetup: [{ unitId: 0, side: SIDE_PLAYER, definitionId: 'ghost', position: { row: 5, col: 2 } }],
     })
     expect(() => createBattleState(broken)).toThrow(/ghost/)
+  })
+})
+
+describe('cloneBattleState', () => {
+  it('is unaffected by later mutating the original unit fields in place', () => {
+    const state = createBattleState(response())
+    const clone = cloneBattleState(state)
+
+    state.units[0]!.position = { row: 0, col: 0 }
+    state.units[0]!.hp = 1
+
+    expect(clone.units[0]!.position).toEqual({ row: 5, col: 2 })
+    expect(clone.units[0]!.hp).toBe(30)
+  })
+
+  it('shares the same unitDefinitions reference, since those never change during playback', () => {
+    const state = createBattleState(response())
+    expect(cloneBattleState(state).unitDefinitions).toBe(state.unitDefinitions)
   })
 })
 

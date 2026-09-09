@@ -13,7 +13,7 @@ import {
 } from '@/api/battles'
 import { toNumber } from '@/api/numeric'
 import { applyTick, type BattleEvent } from '@/battle/applyTick'
-import { createBattleState, type BattleState } from '@/battle/battleState'
+import { cloneBattleState, createBattleState, type BattleState } from '@/battle/battleState'
 import {
   compositionToBattleState,
   placeUnit,
@@ -22,6 +22,7 @@ import {
 } from '@/battle/composition'
 import { endingLabel, survivorsBySide } from '@/battle/outcome'
 import { seekTo, terminatingTickOf } from '@/battle/playback'
+import { projectilesForTick, PROJECTILE_VISIBLE_MS, type Projectile, type TimedProjectile } from '@/battle/projectiles'
 import BattleBoard from '@/components/BattleBoard.vue'
 
 // A 150-350 tick battle at 30ms/tick is a 5-10 second playback - watchable,
@@ -61,8 +62,36 @@ const currentTick = ref(0)
 const terminatingTick = ref(0)
 const isPlaying = ref(false)
 const hasFinished = ref(false)
+const activeProjectiles = ref<TimedProjectile[]>([])
+const projectileTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 let timer: ReturnType<typeof setInterval> | undefined
+
+function clearProjectiles(): void {
+  for (const pending of projectileTimers.values()) {
+    clearTimeout(pending)
+  }
+  projectileTimers.clear()
+  activeProjectiles.value = []
+}
+
+// Appends rather than replacing, so projectiles fired on consecutive ticks
+// can be in flight at once instead of each wiping out the last.
+function showProjectiles(fired: Projectile[]): void {
+  if (fired.length === 0) {
+    return
+  }
+  const firedAt = performance.now()
+  const timed = fired.map((projectile) => ({ ...projectile, firedAt }))
+  activeProjectiles.value = [...activeProjectiles.value, ...timed]
+  for (const projectile of timed) {
+    const pending = setTimeout(() => {
+      activeProjectiles.value = activeProjectiles.value.filter((p) => p.id !== projectile.id)
+      projectileTimers.delete(projectile.id)
+    }, PROJECTILE_VISIBLE_MS)
+    projectileTimers.set(projectile.id, pending)
+  }
+}
 
 function sideLabel(side: number): string {
   return SIDE_LABELS[side] ?? `Unknown (${side})`
@@ -116,21 +145,33 @@ watch(mode, () => {
   currentTick.value = 0
   terminatingTick.value = 0
   hasFinished.value = false
+  clearProjectiles()
 })
 
 // Every control but Play routes through here: one code path for step,
-// jump and scrub, all built on the same rebuild-from-tick-0 primitive.
+// jump and scrub, all built on the same rebuild-from-tick-0 primitive. A
+// projectile only ever shows for a genuine one-tick forward move - jumping
+// or scrubbing to any other tick, including backward, clears it instead.
 function seek(tick: number): void {
   const response = outcome.value
   if (!response) {
     return
   }
 
+  const isForwardStep = tick === currentTick.value + 1
+  // seekTo builds a fresh state rather than mutating this one, so it is a
+  // genuine pre-tick snapshot - no cloning needed, unlike play()'s loop.
+  const preTickState = battleState.value
+
   stopPlayback()
   const result = seekTo(response, tick)
   battleState.value = result.state
   currentTick.value = result.tick
   hasFinished.value = result.tick >= terminatingTick.value
+  clearProjectiles()
+  if (isForwardStep && result.tick === tick && preTickState) {
+    showProjectiles(projectilesForTick(preTickState, result.state, tick, response.events as BattleEvent[]))
+  }
 }
 
 function stepForward(): void {
@@ -168,6 +209,7 @@ function play(): void {
     const result = seekTo(response, 0)
     battleState.value = result.state
     currentTick.value = result.tick
+    clearProjectiles()
   }
   hasFinished.value = false
 
@@ -178,7 +220,12 @@ function play(): void {
   isPlaying.value = true
   timer = setInterval(() => {
     currentTick.value += 1
+    // applyTick mutates battleState.value in place, so unlike seek()'s
+    // rebuild-based path this needs an explicit snapshot to keep a real
+    // pre-tick state to fall back on for a target this tick kills.
+    const preTickState = cloneBattleState(battleState.value!)
     applyTick(battleState.value!, currentTick.value, log)
+    showProjectiles(projectilesForTick(preTickState, battleState.value!, currentTick.value, log))
     if (currentTick.value >= terminatingTick.value) {
       stopPlayback()
       hasFinished.value = true
@@ -211,6 +258,7 @@ async function runBattleWithRequest(request: SimulateBattleRequest): Promise<voi
   currentTick.value = 0
   terminatingTick.value = 0
   hasFinished.value = false
+  clearProjectiles()
 
   const result = await simulateBattle(request)
 
@@ -296,6 +344,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopPlayback()
+  clearProjectiles()
 })
 </script>
 
@@ -357,7 +406,12 @@ onUnmounted(() => {
         </span>
       </section>
 
-      <BattleBoard :state="compositionBoardState" :interactive="!battleState" @tile-drop="onTileDrop" />
+      <BattleBoard
+        :state="compositionBoardState"
+        :interactive="!battleState"
+        :projectiles="activeProjectiles"
+        @tile-drop="onTileDrop"
+      />
 
       <p v-if="placementError" role="alert">{{ placementError }}</p>
 
@@ -418,7 +472,7 @@ onUnmounted(() => {
         · Tick: {{ currentTick }} / {{ terminatingTick }}
       </p>
 
-      <BattleBoard v-if="mode === 'matchup'" :state="battleState" />
+      <BattleBoard v-if="mode === 'matchup'" :state="battleState" :projectiles="activeProjectiles" />
 
       <section v-if="hasFinished" aria-label="Outcome">
         <p role="status">
