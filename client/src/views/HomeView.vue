@@ -513,10 +513,12 @@ section[aria-label='Roster'] span {
   padding: 2px 6px;
   margin: 2px;
   border: 1px solid transparent;
+  user-select: none;
 }
 
 section[aria-label='Roster'] span.selected {
   border-color: #2e7d32;
   background: #d1e7dd;
+  color: #1b1b1b;
 }
 </style>
