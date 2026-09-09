@@ -377,12 +377,12 @@ onUnmounted(() => {
 
     <p>
       <label>
-        <input type="radio" v-model="mode" value="matchup" :disabled="isRequesting" />
-        Fixed matchup
-      </label>
-      <label>
         <input type="radio" v-model="mode" value="composition" :disabled="isRequesting" />
         Build your own army
+      </label>
+      <label>
+        <input type="radio" v-model="mode" value="matchup" :disabled="isRequesting" />
+        Fixed matchup
       </label>
     </p>
 
