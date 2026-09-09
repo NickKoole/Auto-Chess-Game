@@ -8,6 +8,7 @@ import {
   placeUnit,
   PLAYER_BAND_FIRST_ROW,
   PLAYER_BAND_LAST_ROW,
+  toggleRosterSelection,
   type CompositionPlacement,
   type EnemyPreviewPlacement,
 } from '../composition'
@@ -105,6 +106,20 @@ describe('canResetArmy', () => {
 
   it('is false with no placements and a battle running', () => {
     expect(canResetArmy(0, activeBattle)).toBe(false)
+  })
+})
+
+describe('toggleRosterSelection', () => {
+  it('selects a unit when nothing is currently selected', () => {
+    expect(toggleRosterSelection(null, 'knight')).toBe('knight')
+  })
+
+  it('deselects when tapping the already-selected unit again', () => {
+    expect(toggleRosterSelection('knight', 'knight')).toBeNull()
+  })
+
+  it('switches selection when tapping a different unit', () => {
+    expect(toggleRosterSelection('knight', 'archer')).toBe('archer')
   })
 })
 

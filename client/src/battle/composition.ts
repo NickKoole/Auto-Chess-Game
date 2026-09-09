@@ -47,6 +47,10 @@ export function canResetArmy(placementCount: number, battleState: BattleState | 
   return placementCount > 0 && battleState === null
 }
 
+export function toggleRosterSelection(current: string | null, tapped: string): string | null {
+  return current === tapped ? null : tapped
+}
+
 export interface EnemyPreviewPlacement {
   definitionId: string
   position: HexPosition
