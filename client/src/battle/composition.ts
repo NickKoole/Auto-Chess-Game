@@ -43,6 +43,10 @@ export function placeUnit(
   }
 }
 
+export function canResetArmy(placementCount: number, battleState: BattleState | null, hasFinished: boolean): boolean {
+  return placementCount > 0 && (battleState === null || hasFinished)
+}
+
 export function toggleRosterSelection(current: string | null, tapped: string): string | null {
   return current === tapped ? null : tapped
 }

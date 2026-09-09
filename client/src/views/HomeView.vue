@@ -15,6 +15,7 @@ import { toNumber } from '@/api/numeric'
 import { applyTick, type BattleEvent } from '@/battle/applyTick'
 import { cloneBattleState, createBattleState, type BattleState } from '@/battle/battleState'
 import {
+  canResetArmy,
   compositionToBattleState,
   placeUnit,
   toggleRosterSelection,
@@ -36,7 +37,7 @@ const SIDE_LABELS: Record<number, string> = {
 }
 
 type BattleMode = 'matchup' | 'composition'
-const mode = ref<BattleMode>('matchup')
+const mode = ref<BattleMode>('composition')
 
 const matchups = ref<MatchupDto[]>([])
 const matchupsError = ref<string | null>(null)
@@ -314,6 +315,21 @@ function onTileDrop({ row, col, unitId }: { row: number; col: number; unitId: st
   }
 }
 
+function resetArmy(): void {
+  stopPlayback()
+  playerPlacements.value = []
+  placementError.value = null
+  selectedUnitId.value = null
+  outcome.value = null
+  finalState.value = null
+  error.value = null
+  battleState.value = null
+  currentTick.value = 0
+  terminatingTick.value = 0
+  hasFinished.value = false
+  clearProjectiles()
+}
+
 async function loadMatchups(): Promise<void> {
   const result = await listMatchups()
   if (result.ok) {
@@ -361,12 +377,12 @@ onUnmounted(() => {
 
     <p>
       <label>
-        <input type="radio" v-model="mode" value="matchup" :disabled="isRequesting" />
-        Fixed matchup
-      </label>
-      <label>
         <input type="radio" v-model="mode" value="composition" :disabled="isRequesting" />
         Build your own army
+      </label>
+      <label>
+        <input type="radio" v-model="mode" value="matchup" :disabled="isRequesting" />
+        Fixed matchup
       </label>
     </p>
 
@@ -414,6 +430,16 @@ onUnmounted(() => {
           {{ unit.displayName }}
         </span>
       </section>
+
+      <p>
+        <button
+          type="button"
+          :disabled="!canResetArmy(playerPlacements.length, battleState, hasFinished)"
+          @click="resetArmy"
+        >
+          Reset army
+        </button>
+      </p>
 
       <BattleBoard
         :state="compositionBoardState"

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { components } from '@/api/schema.d.ts'
-import { SIDE_OPPONENT, SIDE_PLAYER } from '../battleState'
+import { SIDE_OPPONENT, SIDE_PLAYER, type BattleState } from '../battleState'
 import {
+  canResetArmy,
   compositionToBattleState,
   isInPlayerBand,
   placeUnit,
@@ -85,6 +86,34 @@ describe('placeUnit', () => {
     const existing: CompositionPlacement[] = [{ unitId: 'knight', position: { row: 5, col: 2 } }]
     placeUnit(existing, 'archer', { row: 6, col: 3 })
     expect(existing).toEqual([{ unitId: 'knight', position: { row: 5, col: 2 } }])
+  })
+})
+
+describe('canResetArmy', () => {
+  const activeBattle: BattleState = { units: [], unitDefinitions: {} }
+
+  it('is false with no placements, even with no battle running', () => {
+    expect(canResetArmy(0, null, false)).toBe(false)
+  })
+
+  it('is true with placements and no battle running', () => {
+    expect(canResetArmy(3, null, false)).toBe(true)
+  })
+
+  it('is false while a battle is actively running or mid-playback, regardless of placements', () => {
+    expect(canResetArmy(3, activeBattle, false)).toBe(false)
+  })
+
+  it('is false with no placements and a battle running', () => {
+    expect(canResetArmy(0, activeBattle, false)).toBe(false)
+  })
+
+  it('is true once a battle has finished, even though battleState is still set', () => {
+    expect(canResetArmy(3, activeBattle, true)).toBe(true)
+  })
+
+  it('is false once finished if there are no placements to reset', () => {
+    expect(canResetArmy(0, activeBattle, true)).toBe(false)
   })
 })
 
