@@ -22,7 +22,7 @@ import {
 } from '@/battle/composition'
 import { endingLabel, survivorsBySide } from '@/battle/outcome'
 import { seekTo, terminatingTickOf } from '@/battle/playback'
-import { projectilesForTick, type Projectile } from '@/battle/projectiles'
+import { projectilesForTick, PROJECTILE_VISIBLE_MS, type Projectile, type TimedProjectile } from '@/battle/projectiles'
 import BattleBoard from '@/components/BattleBoard.vue'
 
 // A 150-350 tick battle at 30ms/tick is a 5-10 second playback - watchable,
@@ -62,9 +62,38 @@ const currentTick = ref(0)
 const terminatingTick = ref(0)
 const isPlaying = ref(false)
 const hasFinished = ref(false)
-const activeProjectiles = ref<Projectile[]>([])
+const activeProjectiles = ref<TimedProjectile[]>([])
+const projectileTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 let timer: ReturnType<typeof setInterval> | undefined
+
+function clearProjectiles(): void {
+  for (const pending of projectileTimers.values()) {
+    clearTimeout(pending)
+  }
+  projectileTimers.clear()
+  activeProjectiles.value = []
+}
+
+// Appends rather than replacing, so projectiles fired on consecutive ticks
+// can be in flight at once instead of each wiping out the last. firedAt lets
+// BattleBoard interpolate position itself, rather than relying on SMIL/CSS
+// animation timing to actually show the motion.
+function showProjectiles(fired: Projectile[]): void {
+  if (fired.length === 0) {
+    return
+  }
+  const firedAt = performance.now()
+  const timed = fired.map((projectile) => ({ ...projectile, firedAt }))
+  activeProjectiles.value = [...activeProjectiles.value, ...timed]
+  for (const projectile of timed) {
+    const pending = setTimeout(() => {
+      activeProjectiles.value = activeProjectiles.value.filter((p) => p.id !== projectile.id)
+      projectileTimers.delete(projectile.id)
+    }, PROJECTILE_VISIBLE_MS)
+    projectileTimers.set(projectile.id, pending)
+  }
+}
 
 function sideLabel(side: number): string {
   return SIDE_LABELS[side] ?? `Unknown (${side})`
@@ -118,7 +147,7 @@ watch(mode, () => {
   currentTick.value = 0
   terminatingTick.value = 0
   hasFinished.value = false
-  activeProjectiles.value = []
+  clearProjectiles()
 })
 
 // Every control but Play routes through here: one code path for step,
@@ -141,10 +170,10 @@ function seek(tick: number): void {
   battleState.value = result.state
   currentTick.value = result.tick
   hasFinished.value = result.tick >= terminatingTick.value
-  activeProjectiles.value =
-    isForwardStep && result.tick === tick && preTickState
-      ? projectilesForTick(preTickState, result.state, tick, response.events as BattleEvent[])
-      : []
+  clearProjectiles()
+  if (isForwardStep && result.tick === tick && preTickState) {
+    showProjectiles(projectilesForTick(preTickState, result.state, tick, response.events as BattleEvent[]))
+  }
 }
 
 function stepForward(): void {
@@ -182,7 +211,7 @@ function play(): void {
     const result = seekTo(response, 0)
     battleState.value = result.state
     currentTick.value = result.tick
-    activeProjectiles.value = []
+    clearProjectiles()
   }
   hasFinished.value = false
 
@@ -198,7 +227,7 @@ function play(): void {
     // pre-tick state to fall back on for a target this tick kills.
     const preTickState = cloneBattleState(battleState.value!)
     applyTick(battleState.value!, currentTick.value, log)
-    activeProjectiles.value = projectilesForTick(preTickState, battleState.value!, currentTick.value, log)
+    showProjectiles(projectilesForTick(preTickState, battleState.value!, currentTick.value, log))
     if (currentTick.value >= terminatingTick.value) {
       stopPlayback()
       hasFinished.value = true
@@ -231,7 +260,7 @@ async function runBattleWithRequest(request: SimulateBattleRequest): Promise<voi
   currentTick.value = 0
   terminatingTick.value = 0
   hasFinished.value = false
-  activeProjectiles.value = []
+  clearProjectiles()
 
   const result = await simulateBattle(request)
 
@@ -317,6 +346,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopPlayback()
+  clearProjectiles()
 })
 </script>
 

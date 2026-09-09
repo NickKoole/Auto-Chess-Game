@@ -4,10 +4,19 @@ import type { BattleState, HexPosition } from './battleState'
 
 const MELEE_RANGE_HEXES = 1
 
+// A shot's own visible lifetime, independent of the simulation's tick rate.
+export const PROJECTILE_VISIBLE_MS = 150
+
 export interface Projectile {
   id: string
   from: HexPosition
   to: HexPosition
+}
+
+// Same as Projectile, plus the wall-clock moment it was fired, so a renderer
+// can interpolate its position without relying on SMIL/CSS animation timing.
+export interface TimedProjectile extends Projectile {
+  firedAt: number
 }
 
 /**

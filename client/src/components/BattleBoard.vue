@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import type { BattleState, BattleUnitState, HexPosition } from '@/battle/battleState'
 import { currentTargetOf, SIDE_PLAYER, unitLabel } from '@/battle/battleState'
 import { isInPlayerBand } from '@/battle/composition'
 import { gridDimensions, hexPolygonPoints, hexToPixel } from '@/battle/hexCoords'
-import type { Projectile } from '@/battle/projectiles'
+import { PROJECTILE_VISIBLE_MS, type TimedProjectile } from '@/battle/projectiles'
 
 const props = withDefaults(
-  defineProps<{ state: BattleState; interactive?: boolean; projectiles?: Projectile[] }>(),
+  defineProps<{ state: BattleState; interactive?: boolean; projectiles?: TimedProjectile[] }>(),
   { projectiles: () => [] },
 )
 
@@ -72,6 +72,53 @@ function onDrop(event: DragEvent, row: number, col: number): void {
 function positionCenter(position: HexPosition) {
   const { x, y } = hexToPixel(position.row, position.col, HEX_SIZE)
   return { x: x + dims.value.originX, y: y + dims.value.originY }
+}
+
+// Drives projectile motion directly rather than via SMIL/CSS, whose timing
+// is unreliable for elements created dynamically well after page load.
+const now = ref(performance.now())
+let animationFrame: number | undefined
+
+function tick(): void {
+  now.value = performance.now()
+  animationFrame = requestAnimationFrame(tick)
+}
+
+watch(
+  () => props.projectiles.length > 0,
+  (hasProjectiles) => {
+    if (hasProjectiles && animationFrame === undefined) {
+      animationFrame = requestAnimationFrame(tick)
+    } else if (!hasProjectiles && animationFrame !== undefined) {
+      cancelAnimationFrame(animationFrame)
+      animationFrame = undefined
+    }
+  },
+  { immediate: true },
+)
+
+onUnmounted(() => {
+  if (animationFrame !== undefined) {
+    cancelAnimationFrame(animationFrame)
+  }
+})
+
+function projectilePosition(projectile: TimedProjectile) {
+  const progress = Math.min(1, Math.max(0, (now.value - projectile.firedAt) / PROJECTILE_VISIBLE_MS))
+  const from = positionCenter(projectile.from)
+  const to = positionCenter(projectile.to)
+  return { x: from.x + (to.x - from.x) * progress, y: from.y + (to.y - from.y) * progress }
+}
+
+function projectileAngleDegrees(projectile: TimedProjectile): number {
+  const from = positionCenter(projectile.from)
+  const to = positionCenter(projectile.to)
+  return (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI
+}
+
+function projectileTransform(projectile: TimedProjectile): string {
+  const { x, y } = projectilePosition(projectile)
+  return `translate(${x}, ${y}) rotate(${projectileAngleDegrees(projectile)})`
 }
 
 function unitCenter(unit: BattleUnitState) {
@@ -147,23 +194,10 @@ const targetMarkers = computed<TargetMarker[]>(() =>
       </text>
     </g>
 
-    <!-- dur is kept under HomeView's TICK_INTERVAL_MS so a projectile never survives into the next tick. -->
-    <circle v-for="p in props.projectiles" :key="p.id" r="4" class="projectile">
-      <animate
-        attributeName="cx"
-        :from="positionCenter(p.from).x"
-        :to="positionCenter(p.to).x"
-        dur="0.025s"
-        fill="freeze"
-      />
-      <animate
-        attributeName="cy"
-        :from="positionCenter(p.from).y"
-        :to="positionCenter(p.to).y"
-        dur="0.025s"
-        fill="freeze"
-      />
-    </circle>
+    <g v-for="p in props.projectiles" :key="p.id" :transform="projectileTransform(p)">
+      <line x1="-10" y1="0" x2="4" y2="0" class="projectile-shaft" />
+      <polygon points="9,0 1,-3.5 1,3.5" class="projectile-head" />
+    </g>
   </svg>
 </template>
 
@@ -222,7 +256,13 @@ const targetMarkers = computed<TargetMarker[]>(() =>
   pointer-events: none;
 }
 
-.projectile {
+.projectile-shaft {
+  stroke: #7a5c00;
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.projectile-head {
   fill: #ffd54f;
   stroke: #7a5c00;
   stroke-width: 1;
