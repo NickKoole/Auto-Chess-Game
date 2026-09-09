@@ -37,7 +37,7 @@ const SIDE_LABELS: Record<number, string> = {
 }
 
 type BattleMode = 'matchup' | 'composition'
-const mode = ref<BattleMode>('matchup')
+const mode = ref<BattleMode>('composition')
 
 const matchups = ref<MatchupDto[]>([])
 const matchupsError = ref<string | null>(null)
