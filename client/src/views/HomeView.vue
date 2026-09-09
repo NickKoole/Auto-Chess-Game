@@ -76,9 +76,7 @@ function clearProjectiles(): void {
 }
 
 // Appends rather than replacing, so projectiles fired on consecutive ticks
-// can be in flight at once instead of each wiping out the last. firedAt lets
-// BattleBoard interpolate position itself, rather than relying on SMIL/CSS
-// animation timing to actually show the motion.
+// can be in flight at once instead of each wiping out the last.
 function showProjectiles(fired: Projectile[]): void {
   if (fired.length === 0) {
     return
