@@ -43,7 +43,6 @@ export function placeUnit(
   }
 }
 
-/** Mirrors BattleBoard's own `interactive` gating from #92 - a battle result on screen locks placement, and reset with it. */
 export function canResetArmy(placementCount: number, battleState: BattleState | null): boolean {
   return placementCount > 0 && battleState === null
 }
