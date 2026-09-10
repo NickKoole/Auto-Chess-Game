@@ -55,7 +55,6 @@ export function isDeploymentEditable(battleState: BattleState | null, currentTic
   return battleState === null || (currentTick === 0 && !isPlaying)
 }
 
-/** Available once there's something to reset and it's safe to do so - either the deployment is editable, or the battle has already played out and the button is starting a clean slate rather than interrupting a live view. */
 export function canResetArmy(placementCount: number, hasFinished: boolean, editable: boolean): boolean {
   return placementCount > 0 && (hasFinished || editable)
 }

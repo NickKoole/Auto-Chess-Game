@@ -130,9 +130,7 @@ const compositionPreviewState = computed(() =>
 // preview to rendering that live result in place - never a second board.
 const compositionBoardState = computed(() => battleState.value ?? compositionPreviewState.value)
 
-// True before any battle has run, or once playback has been rewound to tick
-// 0 (via jumpToStart) and isn't auto-playing - the same condition unlocks
-// both the Reset army button and dragging/tapping placements on the board.
+// Drives both the Reset army button and the board's `interactive` prop.
 const canEditDeployment = computed(() => isDeploymentEditable(battleState.value, currentTick.value, isPlaying.value))
 
 function stopPlayback(): void {
@@ -292,9 +290,7 @@ function onRosterClick(unitId: string): void {
   selectedUnitId.value = toggleRosterSelection(selectedUnitId.value, unitId)
 }
 
-// Discards a previous run's playback without touching playerPlacements -
-// shared by resetArmy (which also clears placements) and by editing at tick
-// 0, which needs the board to drop the frozen replay and show live edits.
+// Discards a previous run's playback without touching playerPlacements.
 function clearBattleResult(): void {
   stopPlayback()
   outcome.value = null
@@ -307,9 +303,7 @@ function clearBattleResult(): void {
   clearProjectiles()
 }
 
-// Any edit to the placements - drop, delete, or a future third gesture -
-// invalidates a battle result showing on the board, however it happened; one
-// watcher covers all of them instead of each edit handler repeating the guard.
+// Any edit to the placements invalidates a battle result still on screen.
 watch(playerPlacements, () => {
   if (battleState.value) {
     clearBattleResult()
