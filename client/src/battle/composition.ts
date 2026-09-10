@@ -43,8 +43,20 @@ export function placeUnit(
   }
 }
 
-export function canResetArmy(placementCount: number, battleState: BattleState | null, hasFinished: boolean): boolean {
-  return placementCount > 0 && (battleState === null || hasFinished)
+export function removePlacementAt(
+  existing: readonly CompositionPlacement[],
+  position: HexPosition,
+): CompositionPlacement[] {
+  return existing.filter((p) => !(p.position.row === position.row && p.position.col === position.col))
+}
+
+/** True before any battle has run, or once playback has been rewound to tick 0 and isn't auto-playing. */
+export function isDeploymentEditable(battleState: BattleState | null, currentTick: number, isPlaying: boolean): boolean {
+  return battleState === null || (currentTick === 0 && !isPlaying)
+}
+
+export function canResetArmy(placementCount: number, hasFinished: boolean, editable: boolean): boolean {
+  return placementCount > 0 && (hasFinished || editable)
 }
 
 export function toggleRosterSelection(current: string | null, tapped: string): string | null {
