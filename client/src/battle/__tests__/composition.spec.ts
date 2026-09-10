@@ -4,6 +4,7 @@ import { SIDE_OPPONENT, SIDE_PLAYER, type BattleState } from '../battleState'
 import {
   canResetArmy,
   compositionToBattleState,
+  isDeploymentEditable,
   isInPlayerBand,
   placeUnit,
   PLAYER_BAND_FIRST_ROW,
@@ -113,31 +114,41 @@ describe('removePlacementAt', () => {
   })
 })
 
-describe('canResetArmy', () => {
+describe('isDeploymentEditable', () => {
   const activeBattle: BattleState = { units: [], unitDefinitions: {} }
 
-  it('is false with no placements, even with no battle running', () => {
-    expect(canResetArmy(0, null, false)).toBe(false)
+  it('is true before any battle has run', () => {
+    expect(isDeploymentEditable(null, 0, false)).toBe(true)
   })
 
-  it('is true with placements and no battle running', () => {
-    expect(canResetArmy(3, null, false)).toBe(true)
+  it('is false mid-playback, away from tick 0', () => {
+    expect(isDeploymentEditable(activeBattle, 5, false)).toBe(false)
   })
 
-  it('is false while a battle is actively running or mid-playback, regardless of placements', () => {
-    expect(canResetArmy(3, activeBattle, false)).toBe(false)
+  it('is false at tick 0 while auto-playing', () => {
+    expect(isDeploymentEditable(activeBattle, 0, true)).toBe(false)
   })
 
-  it('is false with no placements and a battle running', () => {
-    expect(canResetArmy(0, activeBattle, false)).toBe(false)
+  it('is true once rewound to tick 0 and paused, even though battleState is still set', () => {
+    expect(isDeploymentEditable(activeBattle, 0, false)).toBe(true)
+  })
+})
+
+describe('canResetArmy', () => {
+  it('is false with no placements, even when editable', () => {
+    expect(canResetArmy(0, false, true)).toBe(false)
   })
 
-  it('is true once a battle has finished, even though battleState is still set', () => {
-    expect(canResetArmy(3, activeBattle, true)).toBe(true)
+  it('is true with placements when editable', () => {
+    expect(canResetArmy(3, false, true)).toBe(true)
   })
 
-  it('is false once finished if there are no placements to reset', () => {
-    expect(canResetArmy(0, activeBattle, true)).toBe(false)
+  it('is false with placements when neither finished nor editable', () => {
+    expect(canResetArmy(3, false, false)).toBe(false)
+  })
+
+  it('is true once a battle has finished, even mid-playback at a non-zero tick', () => {
+    expect(canResetArmy(3, true, false)).toBe(true)
   })
 })
 

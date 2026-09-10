@@ -50,8 +50,14 @@ export function removePlacementAt(
   return existing.filter((p) => !(p.position.row === position.row && p.position.col === position.col))
 }
 
-export function canResetArmy(placementCount: number, battleState: BattleState | null, hasFinished: boolean): boolean {
-  return placementCount > 0 && (battleState === null || hasFinished)
+/** True before any battle has run, or once playback has been rewound to tick 0 and isn't auto-playing. */
+export function isDeploymentEditable(battleState: BattleState | null, currentTick: number, isPlaying: boolean): boolean {
+  return battleState === null || (currentTick === 0 && !isPlaying)
+}
+
+/** Available once there's something to reset and it's safe to do so - either the deployment is editable, or the battle has already played out and the button is starting a clean slate rather than interrupting a live view. */
+export function canResetArmy(placementCount: number, hasFinished: boolean, editable: boolean): boolean {
+  return placementCount > 0 && (hasFinished || editable)
 }
 
 export function toggleRosterSelection(current: string | null, tapped: string): string | null {

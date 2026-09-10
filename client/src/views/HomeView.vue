@@ -17,6 +17,7 @@ import { cloneBattleState, createBattleState, type BattleState } from '@/battle/
 import {
   canResetArmy,
   compositionToBattleState,
+  isDeploymentEditable,
   placeUnit,
   removePlacementAt,
   toggleRosterSelection,
@@ -129,6 +130,11 @@ const compositionPreviewState = computed(() =>
 // preview to rendering that live result in place - never a second board.
 const compositionBoardState = computed(() => battleState.value ?? compositionPreviewState.value)
 
+// True before any battle has run, or once playback has been rewound to tick
+// 0 (via jumpToStart) and isn't auto-playing - the same condition unlocks
+// both the Reset army button and dragging/tapping placements on the board.
+const canEditDeployment = computed(() => isDeploymentEditable(battleState.value, currentTick.value, isPlaying.value))
+
 function stopPlayback(): void {
   if (timer !== undefined) {
     clearInterval(timer)
@@ -141,15 +147,7 @@ function stopPlayback(): void {
 // stale, and - for composition - leave the board's interactive prop wired to
 // a battleState that will never clear, permanently blocking placement.
 watch(mode, () => {
-  stopPlayback()
-  outcome.value = null
-  finalState.value = null
-  error.value = null
-  battleState.value = null
-  currentTick.value = 0
-  terminatingTick.value = 0
-  hasFinished.value = false
-  clearProjectiles()
+  clearBattleResult()
 })
 
 // Every control but Play routes through here: one code path for step,
@@ -247,22 +245,11 @@ function resolvedSeed(): string | undefined {
 }
 
 async function runBattleWithRequest(request: SimulateBattleRequest): Promise<void> {
-  // Cleanly cancel whatever is currently playing before anything else, so a
-  // stray interval can never go on applying the old log once this starts.
   // isRequesting stays true for the rest of this call, disabling the button
   // that is this function's only entry point — so no second call can start
   // until this one finishes, and a stale response can never land.
-  stopPlayback()
-
   isRequesting.value = true
-  outcome.value = null
-  finalState.value = null
-  error.value = null
-  battleState.value = null
-  currentTick.value = 0
-  terminatingTick.value = 0
-  hasFinished.value = false
-  clearProjectiles()
+  clearBattleResult()
 
   const result = await simulateBattle(request)
 
@@ -305,12 +292,38 @@ function onRosterClick(unitId: string): void {
   selectedUnitId.value = toggleRosterSelection(selectedUnitId.value, unitId)
 }
 
+// Discards a previous run's playback without touching playerPlacements -
+// shared by resetArmy (which also clears placements) and by editing at tick
+// 0, which needs the board to drop the frozen replay and show live edits.
+function clearBattleResult(): void {
+  stopPlayback()
+  outcome.value = null
+  finalState.value = null
+  error.value = null
+  battleState.value = null
+  currentTick.value = 0
+  terminatingTick.value = 0
+  hasFinished.value = false
+  clearProjectiles()
+}
+
+// Any edit to the placements - drop, delete, or a future third gesture -
+// invalidates a battle result showing on the board, however it happened; one
+// watcher covers all of them instead of each edit handler repeating the guard.
+watch(playerPlacements, () => {
+  if (battleState.value) {
+    clearBattleResult()
+  }
+})
+
+// selectedUnitId is left as-is on a successful placement, so a roster
+// selection is a toggle: once turned on, clicking the board keeps placing
+// that unit type until the roster item is clicked again to turn it off.
 function onTileDrop({ row, col, unitId }: { row: number; col: number; unitId: string }): void {
   const result = placeUnit(playerPlacements.value, unitId, { row, col })
   if (result.ok) {
     playerPlacements.value = result.placements
     placementError.value = null
-    selectedUnitId.value = null
   } else {
     placementError.value = result.reason
   }
@@ -321,18 +334,10 @@ function onUnitDelete({ row, col }: { row: number; col: number }): void {
 }
 
 function resetArmy(): void {
-  stopPlayback()
+  clearBattleResult()
   playerPlacements.value = []
   placementError.value = null
   selectedUnitId.value = null
-  outcome.value = null
-  finalState.value = null
-  error.value = null
-  battleState.value = null
-  currentTick.value = 0
-  terminatingTick.value = 0
-  hasFinished.value = false
-  clearProjectiles()
 }
 
 async function loadMatchups(): Promise<void> {
@@ -439,7 +444,7 @@ onUnmounted(() => {
       <p>
         <button
           type="button"
-          :disabled="!canResetArmy(playerPlacements.length, battleState, hasFinished)"
+          :disabled="!canResetArmy(playerPlacements.length, hasFinished, canEditDeployment)"
           @click="resetArmy"
         >
           Reset army
@@ -448,7 +453,7 @@ onUnmounted(() => {
 
       <BattleBoard
         :state="compositionBoardState"
-        :interactive="!battleState"
+        :interactive="canEditDeployment"
         :projectiles="activeProjectiles"
         :selected-unit-id="selectedUnitId"
         @tile-drop="onTileDrop"
