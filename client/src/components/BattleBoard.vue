@@ -311,7 +311,7 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 .unit-target-label {
   font-family: var(--font-body);
   font-size: 8px;
-  fill: var(--accent);
+  fill: var(--text);
   pointer-events: none;
   user-select: none;
 }
