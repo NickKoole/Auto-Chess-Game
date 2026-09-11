@@ -231,23 +231,30 @@ const targetMarkers = computed<TargetMarker[]>(() =>
   max-width: 640px;
   height: auto;
   margin: 0 auto;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 14px 30px oklch(0 0 0 / 0.5);
+  clip-path: polygon(0 10px, 10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
 }
 
 .hex {
-  stroke: #333;
-  stroke-width: 1;
+  stroke-width: 1.4;
 }
 
 .opponent-band {
-  fill: #f8d7da;
+  fill: var(--opp-fill);
+  stroke: var(--opp-stroke);
 }
 
 .neutral-band {
-  fill: #e2e2e2;
+  fill: var(--neu-fill);
+  stroke: var(--neu-stroke);
 }
 
 .player-band {
-  fill: #d1e7dd;
+  fill: var(--ply-fill);
+  stroke: var(--ply-stroke);
 }
 
 .droppable {
@@ -261,48 +268,50 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 }
 
 .unit.player {
-  fill: #2e7d32;
-  stroke: #1b1b1b;
-  stroke-width: 1;
+  fill: var(--unit-player);
+  stroke: oklch(0.1 0 0);
+  stroke-width: 1.5;
 }
 
 .unit.opponent {
-  fill: #c62828;
-  stroke: #1b1b1b;
-  stroke-width: 1;
+  fill: var(--unit-enemy);
+  stroke: oklch(0.1 0 0);
+  stroke-width: 1.5;
 }
 
 .target-marker {
   fill: none;
-  stroke: #f9a825;
+  stroke: var(--accent);
   stroke-width: 2;
   pointer-events: none;
 }
 
 .projectile-shaft {
-  stroke: #7a5c00;
+  stroke: var(--panel-border);
   stroke-width: 1.5;
   pointer-events: none;
 }
 
 .projectile-head {
-  fill: #ffd54f;
-  stroke: #7a5c00;
+  fill: var(--accent);
+  stroke: var(--panel-border);
   stroke-width: 1;
   pointer-events: none;
 }
 
 .unit-label,
 .unit-hp {
+  font-family: var(--font-body);
   font-size: 8px;
-  fill: #fff;
+  fill: var(--text);
   pointer-events: none;
   user-select: none;
 }
 
 .unit-target-label {
+  font-family: var(--font-body);
   font-size: 8px;
-  fill: #ffff00;
+  fill: var(--text);
   pointer-events: none;
   user-select: none;
 }
