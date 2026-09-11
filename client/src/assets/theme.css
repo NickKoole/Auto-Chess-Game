@@ -1,0 +1,65 @@
+:root {
+  --bg: oklch(0.19 0.006 95);
+  --panel: oklch(0.24 0.008 95);
+  --panel-border: oklch(0.36 0.01 90);
+  --text: oklch(0.85 0.01 90);
+  --text-muted: oklch(0.55 0.01 90);
+  --accent: oklch(0.42 0.17 25);
+  --accent-hover: oklch(0.52 0.19 25);
+  --accent-contrast: oklch(0.95 0.01 90);
+
+  --opp-fill: oklch(0.28 0.10 25);
+  --opp-stroke: oklch(0.42 0.17 25);
+  --ply-fill: oklch(0.24 0.015 240);
+  --ply-stroke: oklch(0.44 0.03 240);
+  --neu-fill: oklch(0.21 0.005 95);
+  --neu-stroke: oklch(0.32 0.01 90);
+
+  --unit-player: oklch(0.48 0.03 240);
+  --unit-enemy: oklch(0.42 0.17 25);
+  --bar-bg: oklch(0.15 0.005 95);
+  --bar-hp: oklch(0.45 0.17 25);
+
+  --font-display: 'Pirata One', Georgia, serif;
+  --font-body: 'Crimson Text', Georgia, serif;
+
+  --radius: 2px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--text);
+  background: radial-gradient(90% 80% at 50% 0%, var(--panel) 0%, var(--bg) 75%);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+a {
+  color: var(--accent);
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+#app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2.5rem 2rem;
+}

@@ -376,10 +376,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main>
+  <main class="screen">
     <h1>Battle playback</h1>
 
-    <p>
+    <p class="mode-row">
       <label>
         <input type="radio" v-model="mode" value="composition" :disabled="isRequesting" />
         Build your own army
@@ -393,7 +393,7 @@ onUnmounted(() => {
     <template v-if="mode === 'matchup'">
       <p v-if="matchupsError" role="alert">Could not load matchups: {{ matchupsError }}</p>
 
-      <p v-else>
+      <p v-else class="controls-row">
         <label>
           Matchup:
           <select v-model="selectedMatchupId" :disabled="isRequesting">
@@ -412,7 +412,7 @@ onUnmounted(() => {
             :disabled="isRequesting"
           />
         </label>
-        <button type="button" :disabled="!selectedMatchupId || isRequesting" @click="runMatchupBattle">
+        <button type="button" class="btn btn-primary" :disabled="!selectedMatchupId || isRequesting" @click="runMatchupBattle">
           {{ isRequesting ? 'Running…' : 'Run battle' }}
         </button>
       </p>
@@ -422,7 +422,7 @@ onUnmounted(() => {
       <p v-if="unitsError" role="alert">Could not load units: {{ unitsError }}</p>
       <p v-if="enemySetupsError" role="alert">Could not load enemy setups: {{ enemySetupsError }}</p>
 
-      <section aria-label="Roster">
+      <section class="roster" aria-label="Roster">
         <span
           v-for="unit in units"
           :key="unit.id"
@@ -438,6 +438,7 @@ onUnmounted(() => {
       <p>
         <button
           type="button"
+          class="btn btn-ghost"
           :disabled="!canResetArmy(playerPlacements.length, hasFinished, canEditDeployment)"
           @click="resetArmy"
         >
@@ -456,7 +457,7 @@ onUnmounted(() => {
 
       <p v-if="placementError" role="alert">{{ placementError }}</p>
 
-      <p>
+      <p class="controls-row">
         <label>
           Enemy setup:
           <select v-model="selectedEnemySetupId" :disabled="isRequesting">
@@ -477,6 +478,7 @@ onUnmounted(() => {
         </label>
         <button
           type="button"
+          class="btn btn-primary"
           :disabled="playerPlacements.length === 0 || !selectedEnemySetupId || isRequesting"
           @click="runCompositionBattle"
         >
@@ -490,20 +492,21 @@ onUnmounted(() => {
     <template v-if="outcome && battleState">
       <p>Seed: {{ outcome.seed }}</p>
 
-      <p>
-        <button type="button" :disabled="isPlaying" @click="play">
+      <p class="transport-row">
+        <button type="button" class="btn btn-play" :disabled="isPlaying" @click="play">
           {{ hasFinished ? 'Play again' : currentTick > 0 ? 'Resume' : 'Play' }}
         </button>
-        <button type="button" :disabled="!isPlaying" @click="pause">Pause</button>
-        <button type="button" :disabled="currentTick <= 0" @click="jumpToStart">|&lt; Start</button>
-        <button type="button" :disabled="currentTick <= 0" @click="stepBack">&lt; Step</button>
-        <button type="button" :disabled="currentTick >= terminatingTick" @click="stepForward">Step &gt;</button>
-        <button type="button" :disabled="currentTick >= terminatingTick" @click="jumpToEnd">End &gt;|</button>
+        <button type="button" class="btn btn-play" :disabled="!isPlaying" @click="pause">Pause</button>
+        <button type="button" class="btn btn-transport" :disabled="currentTick <= 0" @click="jumpToStart">|&lt; Start</button>
+        <button type="button" class="btn btn-transport" :disabled="currentTick <= 0" @click="stepBack">&lt; Step</button>
+        <button type="button" class="btn btn-transport" :disabled="currentTick >= terminatingTick" @click="stepForward">Step &gt;</button>
+        <button type="button" class="btn btn-transport" :disabled="currentTick >= terminatingTick" @click="jumpToEnd">End &gt;|</button>
       </p>
 
-      <p>
+      <p class="scrub-row">
         <input
           type="range"
+          class="scrub"
           min="0"
           :max="terminatingTick"
           :value="currentTick"
@@ -538,18 +541,118 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.screen h1 {
+  font-size: 2rem;
+}
+
+.mode-row,
+.controls-row,
+.transport-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.scrub-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: var(--text-muted);
+}
+
+.scrub {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+input[type='radio'] {
+  accent-color: var(--accent);
+}
+
+input[type='text'],
+select {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+
+.btn {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn-ghost {
+  background: var(--panel);
+}
+
+.btn-primary,
+.btn-play {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.btn-transport {
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 0 14px;
+}
+
+[role='alert'] {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+section[aria-label='Roster'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 section[aria-label='Roster'] span {
   display: inline-block;
   cursor: pointer;
-  padding: 2px 6px;
-  margin: 2px;
-  border: 1px solid transparent;
+  padding: 10px 16px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--text);
+  font-family: var(--font-body);
   user-select: none;
+  clip-path: polygon(0 6px, 6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
 }
 
 section[aria-label='Roster'] span.selected {
-  border-color: #2e7d32;
-  background: #d1e7dd;
-  color: #1b1b1b;
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 </style>
