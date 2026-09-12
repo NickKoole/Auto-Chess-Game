@@ -80,7 +80,7 @@ The final response must satisfy `automation/settings/review.schema.json`; the ru
 
 ## Permissions and publishing
 
-Dev runs use `workspace-write` with on-request approvals and sandbox network access disabled. Review runs use `read-only` with no interactive escalation. Standing dev/reviewer instructions are supplied through Codex's developer instructions. `.codex/rules/pipeline.rules` adds command restrictions when the trusted project rules are loaded. These are Codex rules, not a translation of Claude's tool allow-list; user configuration, project trust, and available connectors can affect the broader tool surface.
+Dev runs use `workspace-write` with no per-command approvals and network access enabled, so dependency installation, tests and read-only GitHub inspection do not interrupt generation. Review runs use `read-only` with no interactive escalation. Direct pushes, destructive Git operations, GitHub writes and human approval actions remain forbidden by `.codex/rules/pipeline.rules`; publishing and ticket-state transitions stay in the pipeline. Standing dev/reviewer instructions are supplied through Codex's developer instructions. These are Codex rules, not a translation of Claude's tool allow-list; user configuration, project trust, and available connectors can affect the broader tool surface.
 
 The worktree pre-push hook requires `AGENT_PUSH_OK`, which the publishing runner supplies. It catches accidental direct pushes, including from sessions opened elsewhere; it is not a security boundary against code that can deliberately alter hooks or environment variables. Agents must not bypass it, invoke GitHub mutations during development/review, or change branches. The coordinator runs the authorized pipeline scripts.
 

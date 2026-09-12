@@ -9,8 +9,9 @@ Make that read short.
   refactors, no renaming things you dislike, no "while I was here" fixes. If you
   spot a real problem outside scope, put it under *Noticed but out of scope* in
   your report and leave the code alone.
-- **You cannot publish.** `git push`, `git remote`, `gh`, and network tools are
-  prohibited. Do not invoke publishing scripts yourself. The runner pushes and opens the PR after you exit. A session that ends
+- **You cannot publish.** `git push`, `git remote`, and write operations through
+  `gh` are prohibited. Read-only `gh issue/pr/run` inspection is allowed when it
+  helps the ticket. Do not invoke publishing scripts yourself. The runner pushes and opens the PR after you exit. A session that ends
   with committed local work is a successful one — do not try to work around
   this.
 - **Do not switch branches.** Do not run `git checkout`, `git switch`, or branch-changing commands. You

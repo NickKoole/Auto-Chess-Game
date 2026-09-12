@@ -56,6 +56,8 @@ test("new session saves Codex ID before opening interactive resume", () => {
     assert.equal(args[0], "resume");
     assert.equal(args[1], "codex-thread");
     assert.equal(args[args.indexOf("-s") + 1], "workspace-write");
+    assert.equal(args[args.indexOf("-a") + 1], "never");
+    assert.equal(args.includes("sandbox_workspace_write.network_access=true"), true);
     return { status: 0 };
   });
   assert.deepEqual(order, ["saved:codex-thread", "interactive"]);

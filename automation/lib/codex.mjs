@@ -28,7 +28,7 @@ export function configArgs(role, settings = JSON.parse(readFileSync(join(ROOT, "
     : `Read and follow ${join(ROOT, "AGENTS.md").replaceAll("\\", "/")} and ${join(ROOT, `automation/prompts/${role}-system.md`).replaceAll("\\", "/")} before doing any work.`;
   return ["-m", settings.model, "-c", `model_reasoning_effort=${JSON.stringify(settings.reasoningEffort)}`,
     "-c", `developer_instructions=${JSON.stringify(instructions)}`,
-    "-c", 'web_search="disabled"', "-c", "sandbox_workspace_write.network_access=false"];
+    "-c", 'web_search="disabled"', "-c", `sandbox_workspace_write.network_access=${role === "dev"}`];
 }
 
 export function parseEvents(stdout, code = 0) {
@@ -65,7 +65,7 @@ export function runCodex({ cwd, prompt, role = "review", schema, timeoutMs = 30 
 
 export function interactiveArgs(sessionId) {
   if (!sessionId) throw new Error("A recorded Codex session ID is required to resume.");
-  return ["resume", sessionId, ...configArgs("dev"), "-s", "workspace-write", "-a", "on-request",
+  return ["resume", sessionId, ...configArgs("dev"), "-s", "workspace-write", "-a", "never",
     "Read .agent/task.md and follow it. Write .agent/report.md before finishing."];
 }
 
