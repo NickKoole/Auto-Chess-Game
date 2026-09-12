@@ -166,3 +166,11 @@ adjacent code, don't add NuGet or npm packages, and don't touch `.github/` or
 `automation/` unless the ticket carries `area:infra`.
 
 Full pipeline: [docs/PIPELINE.md](docs/PIPELINE.md).
+
+## Working with Nick
+
+- Use a ticket with concrete acceptance criteria for nontrivial work unless Nick explicitly authorizes an exception.
+- Only the human chooses `state:ready` and `state:approved`. Never promote either autonomously.
+- For UI work, present mockup options and get an explicit pick before implementation. Nick reviews visuals in the running dev server; do not use browser tools to self-verify visual changes.
+- Read `docs/PIPELINE.md` for ticket work. In an existing Codex conversation, use the claim/finish path; do not open another interactive CLI inside this session.
+- Claude's private design artifacts are historical references; exported files are needed to reuse them here.

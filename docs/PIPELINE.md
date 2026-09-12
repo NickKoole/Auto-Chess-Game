@@ -1,214 +1,96 @@
-# The pipeline
+# Ticket pipeline
 
-Tickets live on GitHub. Agents run on your machine. **Nothing polls, and nothing
-runs in the background** — you start every run yourself, and the reviewer is
-spawned directly by the dev session as it exits.
-
-You build **with** the dev agent, not by dispatching it: `dev.mjs` opens a Claude
-session in your terminal and gets out of the way until you exit. Everything
-around that session is automated — worktree, commit sweep, push, draft PR, and
-the review that follows.
-
-## The loop
-
-```
-  you file a ticket ──────────────► GitHub  (forms + readiness gate)
-                                       │
-              you pick one, state:ready │
-                                       ▼
-  $ node automation/dev.mjs 42     ┌─────────────┐
-                                   │ dev session │  Claude in your terminal
-                                   │  (worktree) │  you steer it, it asks you
-                                   └──────┬──────┘
-                                          │ commits locally; you exit
-                                          │ runner pushes + opens DRAFT PR
-                                          ▼
-                                   ┌─────────────┐
-                                   │  reviewer   │  spawned directly — this is
-                                   │ (read-only) │  the whole "auto review"
-                                   └──────┬──────┘
-                                          │ posts findings to the PR
-                                          ▼
-                              ╔═══════════════════════╗
-                              ║      state:needs-you  ║ ◄── you read the diff
-                              ║  draft PR + findings  ║     and the findings
-                              ╚═══════════╦═══════════╝
-                                          │
-                    ┌─────────────────────┴──────────────────┐
-                    │                                        │
-        comment what you want changed              happy with it
-                    │                                        │
-        $ node automation/dev.mjs 42                  approve.mjs 42,
-        (resumes the same session,                    then ship.mjs 42
-         re-reviews automatically)                          │
-                    │                                        ▼
-                    └────────────► back to needs-you      state:done
-```
-
-## Why there's no watcher
-
-Polling exists to answer *"is there work for me?"* — a question that only
-matters when a process is already running, idle, and can't see where work comes
-from. Starting the dev agent by hand removes the first condition, and that
-removes the second: the only remaining hand-off is dev → review, and both are in
-the same process tree. `finish.mjs` just spawns `review.mjs`.
-
-So GitHub is the ticket store, the diff host, and the record. It never tells
-your machine to do anything.
+GitHub stores tickets and PRs. Local Node scripts start Codex on demand; nothing polls in the background. `AGENTS.md` contains the project conventions.
 
 ## Commands
 
-```bash
-node automation/dev.mjs           # list the ready pool, pick one
-node automation/dev.mjs 42        # build ticket 42 (or continue it)
-node automation/dev.mjs 42 --fresh      # discard the agent's memory, start cold
-node automation/dev.mjs 42 --no-review  # stop after the PR
+Run from the main checkout in a normal terminal:
 
-node automation/review.mjs 42     # re-review by hand
-
-node automation/approve.mjs 42    # show the PR + findings, then set state:approved
-node automation/approve.mjs 42 --dry-run  # show the PR + findings, change nothing
-
-node automation/ship.mjs 42       # merge an approved ticket and clean up after it
-node automation/ship.mjs 42 --dry-run   # check the preconditions, change nothing
+```powershell
+node automation/dev.mjs 42
+node automation/dev.mjs 42 --fresh
+node automation/dev.mjs 42 --no-review
+node automation/review.mjs 42
+node automation/approve.mjs 42 --dry-run
+node automation/approve.mjs 42
+node automation/ship.mjs 42 --dry-run
+node automation/ship.mjs 42
 ```
 
-Re-running `dev.mjs 42` on a ticket that already has a PR is a **revision run**:
-it collects every comment you have left since the last session, resumes that same
-session so the agent still has its context, and puts you back in front of it.
-Exiting pushes and re-reviews as before.
+Omit the number from `dev.mjs` to choose from the ready pool interactively. `--fresh` starts new Codex memory while preserving the recorded branch, PR, review history, and feedback. `--no-review` publishes a draft PR and stops at `state:needs-you`.
 
-## Reading the result
+The attached dev session claims a worktree, opens Codex, and waits for you to exit. A successful exit invokes `finish.mjs`, which commits remaining edits, pushes, creates or updates the draft PR, and starts a fresh reviewer. A failed session leaves work local and skips publishing. To publish later, run `finish.mjs` explicitly.
 
-The PR body opens with **Summary** then **Approach** — the shape the agent
-settled on before writing code, and where implementing it changed its mind. Read
-those two before the diff. A design you disagree with is much cheaper to catch
-there than three hundred lines later, and the reviewer checks the diff against
-that stated approach, so an unexplained mismatch comes back as a finding.
+## Working in an existing Codex conversation
 
-## The dev session
+Ask for `ready`, `build 42`, `approve 42`, or `ship 42` in plain language. These are workflow requests, not installed slash commands. The old `.claude/commands` files are compatibility pointers.
 
-`dev.mjs` does the setup — worktree, branch, the ticket and any new comments
-written to `.agent/task.md` — and then hands you a Claude session attached to
-your terminal, in that worktree. You are in the loop for the whole build: it
-states its approach before writing code, asks you when a guess would be
-expensive to undo, and you steer it.
+- **Ready:** list open `state:ready` issues with `gh issue list`; exclude epics. If empty, summarize in-flight work and backlog. Change no labels.
+- **Build:** use the named ticket; if missing, list the ready pool and ask which one. Run `node automation/claim.mjs 42`, read its printed worktree path, then read `automation/prompts/dev-system.md` and the worktree's `.agent/task.md`. Perform all edits and tests in that worktree. State the approach, meet the acceptance criteria, commit locally, and write `.agent/report.md`. Use `finish.mjs 42` to publish and review once publication is authorized by the user's request; do not request the same authorization again. If publication was not requested, prepare the completed report and commits before asking. Summarize the actual reviewer findings and link the draft PR. Do not start `dev.mjs` inside an already-running agent session.
+- **Approve:** only on the human's explicit request naming a ticket. First run `approve.mjs 42 --dry-run` and show its findings; then run the real command unless the user requested dry-run only. Never infer approval from a clean automated review. This records the human's decision, not the agent's.
+- **Ship:** require an explicit ticket number and an existing `state:approved` label. Run the dry-run first; on success, execute `ship.mjs` unless the request was dry-run only. Preserve requested `--keep` and `--timeout` options. Report CI failures or cleanup problems accurately; never force-remove unexpected work. Do not add an approval label to get past a refusal.
 
-Exit when you are happy. The runner takes over again from there: it sweeps any
-uncommitted work into a commit, pushes, opens the draft PR, and starts the
-reviewer.
+The split command path is also available:
 
-The PR body comes from `.agent/report.md`, which the agent writes before
-finishing, and a revision run refreshes it — so the description always describes
-the commits actually on the branch rather than the first round. Both files live
-in a gitignored `.agent/` directory inside the worktree, so nothing about the
-plumbing reaches a commit. If the session ends without a report — you quit
-early, or it forgot — a new PR gets a placeholder body and an existing one keeps
-the description it already has, rather than losing a good one to the
-placeholder. Either way the runner says so on the way out.
+```powershell
+node automation/claim.mjs 42
+# Run the absolute automation/session.mjs command printed by claim.
+# Or build in an existing Codex conversation using the task and standing rules.
+node automation/finish.mjs 42
+```
 
-## Giving feedback
+`session.mjs` saves the Codex thread ID before opening the interactive UI, so this path supports resume too. An externally managed conversation has its own memory; the ticket's files, commits, feedback, and report remain the handover between sessions.
 
-Just comment on the PR normally. There are no slash commands — nothing is
-listening for them, and a plain comment is what you'd write anyway. The next
-`dev.mjs` session picks up everything newer than the last one.
+## States and human gates
 
-## States
+Exactly one `state:*` label belongs on each issue:
 
-One `state:*` label per issue, enforced by `ticket-guard.yml`.
-
-| Label | Meaning |
+| State | Meaning |
 | --- | --- |
-| `state:backlog` | Captured, not groomed. |
-| `state:ready` | Your shortlist when you sit down to work. |
-| `state:building` | A dev session is open. |
-| `state:reviewing` | A review run is in progress. |
-| `state:needs-you` | Machine's done. Your turn. |
-| `state:approved` | You approved — by hand on GitHub, or with `approve.mjs`. `ship.mjs` refuses to merge without it. |
-| `state:done` | Merged. Set by the `pr-closed` workflow, never by a script. |
-| `state:blocked` | Needs a decision or something external. Set automatically if a run crashes. |
+| `state:backlog` | Captured, not yet selected. |
+| `state:ready` | Human-selected work with checkable acceptance criteria. |
+| `state:building` | A build has been claimed. |
+| `state:reviewing` | Validation and independent review are running. |
+| `state:needs-you` | Draft PR/findings or a failed session need attention. |
+| `state:approved` | The human approved this ticket. |
+| `state:done` | GitHub's PR-closed workflow confirmed the merge. |
+| `state:blocked` | A runner failed or an external decision is needed. |
 
-Nothing on your machine watches these. They're for *you* — a filter for "what
-should I start?" and "what's waiting on me?"
+Agents never choose `ready` or `approved` themselves. `approve.mjs` is a separate human-triggered action. `ship.mjs` requires that approval; no unattended step chains approval into shipping. Only the GitHub workflow sets `done`.
 
-## What GitHub Actions does
+## Codex configuration and sessions
 
-Coordination only. It dispatches nothing.
+Install Codex CLI and authenticate with `codex login`; `gh auth login` supplies GitHub access to the Node runner. This migration was checked against Codex CLI 0.154.0. Both dev and reviewer use the explicit model and reasoning effort in `automation/settings/codex.json`. Model failures are reported; there is no silent fallback to a different model.
 
-- **`ticket-guard`** — one state label at a time, and refuses `state:ready` for
-  a ticket with no checkable acceptance criteria. The highest-value automation
-  here. The agent can ask you what you meant now, but a ticket too vague to have
-  acceptance criteria is one you have not finished thinking about — and the
-  session is a bad place to discover that.
-- **`epic-split`** — label an epic `split` and each Breakdown checkbox becomes a
-  real child ticket. Deterministic parsing, not a model inventing work.
-- **`bootstrap-labels`** — reconciles labels from `.github/labels.yml`.
-- **`pr-closed`** — settles the state label when a PR merges or is abandoned.
-- **`ci`** — two independent jobs. **server**: `dotnet restore/build/test`,
-  skipped until a `.csproj` exists under `server/`. **client**: typecheck, lint,
-  Vitest, build, skipped until `client/package.json` exists. Each half can go
-  green on its own while the project is still being scaffolded.
+A new attached session first runs a minimal read-only initialization turn, captures Codex's `thread.started` ID, saves it as `codexSessionId`, then opens `codex resume` with workspace-write permissions. This extra turn exists because the interactive CLI does not accept a caller-assigned session ID. It consumes a small model request. Resumes use the exact stored ID, never `--last`.
 
-## Safety
+Legacy `sessionId` values remain historical Claude IDs and are never passed to Codex. Existing issue state is retained. If Codex memory is unavailable, use `--fresh`.
 
-The dev agent is denied `git push`, `git remote`, `gh`, branch switching, and
-every form of `rm` and `git clean` (`automation/settings/dev.json`). It writes
-code and commits; **only `finish.mjs`
-publishes.** Watching the session is not what keeps that true, which is the
-point: even with you at the keyboard, work can only land on a draft PR on the
-ticket's own branch — never on `main`, and never on a remote you did not intend.
+On Windows the runner launches Codex's npm JavaScript entry point through Node without a shell, preserving arguments and paths with spaces. A native installation can be selected using `AUTO_CHESS_CODEX_BIN` (absolute executable path). The runner strips `AGENT_PUSH_OK` from Codex's environment.
 
-The permission list binds a session launched with `--settings dev.json`, which
-is not every session that could open in that worktree. So `claim.mjs` also
-installs a `pre-push` hook that refuses any push without `AGENT_PUSH_OK` — set
-only by `finish.mjs`. That one binds the checkout instead of the session, so it
-survives an agent started by something else. It is scoped to the worktree with
-`extensions.worktreeConfig` and a per-worktree `core.hooksPath`, so pushes from
-your main checkout are unaffected.
+## Review and validation
 
-The reviewer is denied `Write`, `Edit`, and `gh`. A reviewer that could quietly
-fix what it finds would produce a clean report hiding its own work, and its
-approval would stop distinguishing "this was correct" from "this was made
-correct". It also runs in a **fresh session**, so it has no memory of writing the
-code and no investment in defending it.
+Before starting the reviewer, `review.mjs` requires a clean worktree whose HEAD equals the published branch. It refuses local changes or unpublished commits rather than resetting them.
 
-Neither agent can approve a PR. GitHub review state stays yours, so an approval
-always means a human approved.
+The Node runner builds/tests the server, installs locked client dependencies and runs client typecheck/tests/build, and runs automation tests where present. Commands stop at the first failure; full output is stored under `.agent/validation/`. Validation has a 15-minute timeout per command. It does not run the client lint script because that script applies fixes. CI remains the required merge gate for lint and generated-contract drift.
 
-Both agents are pinned to `claude-opus-5` in their settings files, alongside the
-permissions. Left unset, the model follows the CLI default, which moves on
-upgrade — and for the attached dev run it would also inherit whatever `/model`
-you last picked, so two runs of the same ticket a week apart would not be the
-same experiment. The reviewer additionally carries a `--fallback-model`: it runs
-unattended, and an overloaded model should degrade the review, not skip it.
+Codex then audits in a fresh ephemeral read-only session with approval requests disabled. It reads the diff, ticket, PR report, and independent validation logs. It does not run builds or tests itself. `--timeout 40` controls the model review timeout in minutes, separately from validation. A failed validation forces a `changes` verdict; a failed model run or malformed verdict is reported as an incomplete review, never as evidence that code is correct.
 
-## Worktrees
+The final response must satisfy `automation/settings/review.schema.json`; the runner also validates severity and verdict consistency before posting findings. Automated `approve` means no blocking findings, not a GitHub approval. Subsequent passes may focus on commits since `reviewedSha`, while validation still covers the whole branch.
 
-Each ticket builds in `../Auto-Chess-Game-work/issue-<n>/` on branch
-`agent/<n>-<slug>`, so your main checkout stays free while a session is open.
+## Permissions and publishing
 
-```bash
-git worktree list
-git worktree remove ../Auto-Chess-Game-work/issue-42
-git worktree prune
-```
+Dev runs use `workspace-write` with on-request approvals and sandbox network access disabled. Review runs use `read-only` with no interactive escalation. Standing dev/reviewer instructions are supplied through Codex's developer instructions. `.codex/rules/pipeline.rules` adds command restrictions when the trusted project rules are loaded. These are Codex rules, not a translation of Claude's tool allow-list; user configuration, project trust, and available connectors can affect the broader tool surface.
 
-`dev.mjs` is one blocking terminal, so it builds one ticket at a time. To run
-several at once, use its two halves directly and let anything you like own the
-sessions in between:
+The worktree pre-push hook requires `AGENT_PUSH_OK`, which the publishing runner supplies. It catches accidental direct pushes, including from sessions opened elsewhere; it is not a security boundary against code that can deliberately alter hooks or environment variables. Agents must not bypass it, invoke GitHub mutations during development/review, or change branches. The coordinator runs the authorized pipeline scripts.
 
-```bash
-node automation/claim.mjs 42   # worktree, branch, task file, push guard
-node automation/finish.mjs 42  # sweep → push → draft PR → reviewer
-```
+## Files and recovery
 
-Session state is keyed by issue number, and so are the state labels, so parallel
-tickets do not collide. What the split gives up is session resume: `--fresh` and
-`--resume` need the Claude session id, which only the attached path gets back.
+- `.agent-state/issue-42.json`: branch, worktree, PR, feedback timestamps, Codex thread ID, and review history. Gitignored in the main checkout.
+- `.agent/task.md`: ticket and new human feedback, refreshed on claim.
+- `.agent/report.md`: dev report used as the PR body; revisions refresh it. Without a report, an existing PR retains its description and a new PR gets a placeholder.
+- `.agent/validation/`: full independent validation output.
 
-## Session state
+Ticket worktrees live in `../Auto-Chess-Game-work/issue-42/` on `agent/42-<slug>`. Use the pipeline scripts for their lifecycle. When using Orca-managed worktrees or terminals, follow the Orca CLI skill for that managed state rather than creating a second competing worktree.
 
-`.agent-state/issue-<n>.json` (gitignored) holds the Claude session id, PR
-number, branch, and when feedback was last swept. Deleting one, or passing
-`--fresh`, makes the next session start cold against the same branch — useful
-when an agent has talked itself into a bad approach.
+A failed build or reviewer can be retried explicitly; nothing watches for it. A merge can succeed while cleanup fails: inspect the remaining worktree before any forced removal. `ship.mjs` can finish cleanup for an already-merged ticket without a now-consumed approval label.

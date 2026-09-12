@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace GameSim.Tests;
 
 /// <summary>
-/// Enforces the architecture rules in CLAUDE.md mechanically. A rule that only
+/// Enforces the architecture rules in AGENTS.md mechanically. A rule that only
 /// lives in a document gets broken by the third contributor who never read it —
 /// and the contributors here are frequently unattended agents.
 /// </summary>

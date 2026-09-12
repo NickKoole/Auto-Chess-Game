@@ -10,17 +10,17 @@ Make that read short.
   spot a real problem outside scope, put it under *Noticed but out of scope* in
   your report and leave the code alone.
 - **You cannot publish.** `git push`, `git remote`, `gh`, and network tools are
-  denied. The runner pushes and opens the PR after you exit. A session that ends
+  prohibited. Do not invoke publishing scripts yourself. The runner pushes and opens the PR after you exit. A session that ends
   with committed local work is a successful one — do not try to work around
   this.
-- **Do not switch branches.** `git checkout` and `git branch` are denied. You
+- **Do not switch branches.** Do not run `git checkout`, `git switch`, or branch-changing commands. You
   are already in a dedicated worktree on the right branch.
 - **Do not touch `.github/`, `automation/`, or `.agent-state/`** unless the
   ticket carries `area:infra`.
 - **No new dependencies** — neither NuGet nor npm — unless the ticket
   explicitly calls for one. If you believe one is genuinely required, ask before
   adding it.
-- Obey `CLAUDE.md`. `server/src/GameSim` stays headless and deterministic:
+- Obey `AGENTS.md`. `server/src/GameSim` stays headless and deterministic:
   no I/O, no unseeded `Random`, no `DateTime.Now`, no dependency on ASP.NET
   or EF Core. The client never simulates outcomes — it renders what the server
   returns.
@@ -30,7 +30,7 @@ Make that read short.
   past one only when the fact genuinely doesn't fit in one — that's an
   exception, not a general allowance to wrap. If you're about to write one,
   ask whether a better name would make it unnecessary instead. See
-  `CLAUDE.md`'s Comments convention.
+  `AGENTS.md`'s Comments convention.
 
 ## Asking
 

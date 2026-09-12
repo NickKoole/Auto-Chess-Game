@@ -12,48 +12,25 @@
 // rather than a matter of prompting:
 //   * it runs in a FRESH session, so it has no memory of writing the code and
 //     no investment in defending it;
-//   * it is denied Write, Edit and gh (settings/review.json), so it cannot
+//   * it runs with the read-only Codex sandbox, so it cannot
 //     quietly fix what it finds, and cannot approve its own subject.
 
-import { randomUUID } from "node:crypto";
+import { runCodex } from "./lib/codex.mjs";
+import { parseVerdict } from "./lib/verdict.mjs";
+import { validate, validationSummary } from "./lib/validation.mjs";
 import { join } from "node:path";
 import {
   MARK_REVIEW, ROOT, args, assertGh, comment, ensureWorktree, fmtDuration,
-  getIssue, ghJson, loadSession, must, prComment, run, runClaude, saveSession,
-  setState, template,
+  getIssue, ghJson, loadSession, must, prComment, run, saveSession,
+  setState, template, isDirty, isEntrypoint,
 } from "./lib/core.mjs";
 
 const PROMPTS = join(ROOT, "automation", "prompts");
-const SETTINGS = join(ROOT, "automation", "settings", "review.json");
-// The model itself is pinned in review.json. This is only where to land if it
-// is overloaded: an unattended run has no one to retry it, and a review that
-// never ran leaves the ticket sitting in state:needs-you for the wrong reason.
-//
-// Haiku rather than an Opus, now that the pinned model is Sonnet: an Opus
-// fallback would quietly reintroduce the cost this pinning exists to avoid, on
-// a path nobody is watching. The trade is real and worth knowing — a fallback
-// review is materially weaker than the one you asked for, and it is trusted the
-// same way. If a verdict ever looks thin, check whether it ran here.
-const FALLBACK_MODEL = "claude-haiku-4-5-20251001";
 const DIFF_BUDGET = 120_000; // characters of diff sent inline
 const a = args();
 
 const ICON = { blocker: "🛑", major: "⚠️", minor: "🔸", nit: "💬" };
 const ORDER = ["blocker", "major", "minor", "nit"];
-
-/** Pull the trailing ```json fence out of the reviewer's final message. */
-function parseVerdict(text) {
-  const fences = [...text.matchAll(/```json\s*([\s\S]*?)```/gi)];
-  for (let i = fences.length - 1; i >= 0; i--) {
-    try {
-      const v = JSON.parse(fences[i][1]);
-      if (v.verdict !== "approve" && v.verdict !== "changes") continue;
-      v.findings = (Array.isArray(v.findings) ? v.findings : []).filter((f) => f && f.issue);
-      return v;
-    } catch { /* try the fence before it */ }
-  }
-  return null;
-}
 
 function renderFindings(findings) {
   if (!findings.length) return "_Nothing to report._";
@@ -92,12 +69,16 @@ async function main() {
   setState(n, "state:reviewing");
 
   try {
+    if (session.dir && isDirty(session.dir)) throw new Error("Review requires a clean worktree. Save local changes before retrying.");
     const wt = ensureWorktree(issue);
 
     // Review exactly what is on the remote branch, not whatever the local
     // worktree happens to be holding.
     must("git", ["fetch", "origin", wt.branch], { cwd: wt.dir });
-    must("git", ["reset", "--hard", `origin/${wt.branch}`], { cwd: wt.dir });
+    if (isDirty(wt.dir)) throw new Error("Review requires a clean worktree. Save local changes before retrying.");
+    const head = must("git", ["rev-parse", "HEAD"], { cwd: wt.dir });
+    const remote = must("git", ["rev-parse", `origin/${wt.branch}`], { cwd: wt.dir });
+    if (head !== remote) throw new Error("Local HEAD differs from the published branch. Publish or reconcile it before reviewing.");
     must("git", ["fetch", "origin", wt.base], { cwd: wt.dir });
 
     // What a re-review is actually for. The first pass audits the whole branch;
@@ -142,6 +123,9 @@ async function main() {
 
     const pr = ghJson(["pr", "view", String(session.pr), "--json", "body,url"]);
 
+    const validation = validate(wt.dir);
+    if (isDirty(wt.dir)) throw new Error("Validation changed tracked files. Inspect the worktree before retrying review.");
+
     const prompt = template(join(PROMPTS, "review.md"), {
       PR: String(session.pr),
       NUMBER: String(n),
@@ -151,6 +135,7 @@ async function main() {
       BODY: issue.body || "(the ticket body is empty)",
       DEV_REPORT: (pr?.body ?? "").slice(0, 20_000) || "(none)",
       FILES: stat || "(none)",
+      VALIDATION: validationSummary(validation),
       DIFF: diff + (truncated ? "\n\n[diff truncated — read the changed files directly for the rest]" : ""),
       SCOPE: incremental
         ? "**This is a re-review.** You already reviewed this branch up to `" +
@@ -162,23 +147,20 @@ async function main() {
           "narrowed diff is where to start, not the limit of what you may look at. " +
           "Do not re-litigate settled code, and do not re-raise a finding the author " +
           "consciously declined and recorded in the report; say so once if you still " +
-          "disagree.\n\nRun the suite as usual. It covers the whole branch, not the delta."
+          "disagree.\n\nInspect the runner validation logs; they cover the whole branch."
         : "This is the first review of this branch. The diff below is everything it " +
           "changes against `" + wt.base + "`.",
     });
 
-    console.log("running claude (fresh session, read-only)…\n");
-    const result = runClaude({
+    console.log("running codex (fresh session, read-only)…\n");
+    const result = runCodex({
       cwd: wt.dir,
       prompt,
-      settings: SETTINGS,
-      systemPromptFile: join(PROMPTS, "review-system.md"),
-      fallbackModel: FALLBACK_MODEL,
-      sessionId: randomUUID(), // always cold — never resumed
+      schema: join(ROOT, "automation/settings/review.schema.json"),
       timeoutMs: Number(a.get("--timeout", 30)) * 60_000,
     });
 
-    console.log(`claude finished in ${fmtDuration(result.seconds)} (ok=${result.ok})`);
+    console.log(`codex finished in ${fmtDuration(result.seconds)} (ok=${result.ok})`);
 
     if (!result.ok) {
       setState(n, "state:needs-you");
@@ -200,8 +182,12 @@ async function main() {
       return 1;
     }
 
+    if (!validation.ok) {
+      verdict.verdict = "changes";
+      verdict.findings.push({ severity: "major", file: "", line: null, issue: "Runner validation did not pass.", fix: "Resolve the failing command or missing validation, then rerun review." });
+    }
     const blocking = verdict.findings.filter((f) => f.severity === "blocker" || f.severity === "major");
-    const notes = result.text.replace(/```json[\s\S]*?```/gi, "").trim();
+    const notes = `${verdict.notes}\n\nRunner validation:\n${validationSummary(validation)}`;
 
     prComment(session.pr, [
       MARK_REVIEW,
@@ -253,6 +239,7 @@ async function main() {
   }
 }
 
+if (isEntrypoint(import.meta.url)) {
 try {
   process.exit(await main());
 } catch (err) {
@@ -261,4 +248,6 @@ try {
   console.error("");
   console.error(err?.message ?? err);
   process.exit(1);
+}
+
 }

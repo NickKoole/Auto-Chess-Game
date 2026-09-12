@@ -21,5 +21,5 @@ criterion above, with tests that would actually fail if the logic were wrong.
 Ask me whenever a guess would be expensive to undo — I am here for the whole
 session. Commit your work locally: you cannot push, and you do not need to.
 
-When you are done, write the report from your system prompt to
+When you are done, write the report from automation/prompts/dev-system.md to
 `.agent/report.md`. It becomes the PR body.

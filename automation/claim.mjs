@@ -6,7 +6,7 @@
 //   node automation/claim.mjs             list the ready pool and pick one
 //   node automation/claim.mjs 42 --fresh  discard the agent's memory, start cold
 //
-// `dev.mjs` imports this, runs Claude, then imports `finish.mjs`. Use the two
+// `dev.mjs` imports this, runs Codex, then imports `finish.mjs`. Use the two
 // halves directly when something else owns the session — an Orca terminal, a
 // second machine, or a run you drive by hand. The session is deliberately not
 // this script's business: what matters is that the worktree is set up the same
@@ -15,12 +15,11 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  AGENT_DIR, DEV_SETTINGS, MARK_DEV, MARK_REVIEW, PROMPTS, areaOf, args, assertGh,
-  chooseIssue, clearSession, comment, ensureWorktree, ghJson, installPushGuard,
-  interactiveCommand, isEntrypoint, labelNames, loadSession, saveSession, setState,
+  AGENT_DIR, ROOT, MARK_DEV, MARK_REVIEW, PROMPTS, areaOf, args, assertGh,
+  chooseIssue, comment, ensureWorktree, ghJson, installPushGuard,
+  isEntrypoint, labelNames, loadSession, saveSession, setState,
   stateOf, template, timeOf,
 } from "./lib/core.mjs";
-import { randomUUID } from "node:crypto";
 
 /** Everything you've said since the agent last ran, from the issue and the PR. */
 function gatherFeedback(issue, session) {
@@ -56,20 +55,6 @@ function gatherFeedback(issue, session) {
 }
 
 /**
- * The exact session dev.mjs would run, as a line you can paste. It carries the
- * permission file, the pinned model, the standing dev-agent rules and the
- * session id — drop any of them and you get a different agent than the one the
- * pipeline is built around.
- */
-export const devCommand = (sessionId, resuming) => interactiveCommand({
-  initialPrompt: `Read ${AGENT_DIR}/task.md and follow it.`,
-  settings: DEV_SETTINGS,
-  systemPromptFile: join(PROMPTS, "dev-system.md"),
-  sessionId: resuming ? null : sessionId,
-  resume: resuming ? sessionId : null,
-});
-
-/**
  * Set up the ticket's worktree and return what the caller needs to run an agent
  * in it. Throws on anything that leaves the ticket unbuildable; the CLI wrapper
  * below turns that into `state:blocked` and a comment on the issue.
@@ -94,7 +79,7 @@ export async function claim({ number = null, fresh = false } = {}) {
   console.log(`state: ${stateOf(issue) ?? "none"} · mode: ${startFresh ? "fresh build" : "continuing"}\n`);
 
   setState(n, "state:building");
-  if (fresh) clearSession(n);
+  if (fresh) saveSession(n, { codexSessionId: null });
 
   const wt = ensureWorktree(issue);
   installPushGuard(wt.dir);
@@ -111,31 +96,31 @@ export async function claim({ number = null, fresh = false } = {}) {
   rmSync(join(agentDir, "report.md"), { force: true });
 
   const session = loadSession(n);
-  const resuming = !startFresh && Boolean(session?.sessionId) && session.runs > 0;
-  const sessionId = session?.sessionId ?? randomUUID();
+  const resuming = !fresh && Boolean(session?.codexSessionId);
+  const codexSessionId = resuming ? session.codexSessionId : null;
 
   writeFileSync(join(agentDir, "task.md"), template(join(PROMPTS, "dev.md"), {
-    MODE: resuming
+    MODE: Boolean(session?.runs || session?.pr)
       ? "You have worked on this ticket before and your commits are already on the branch."
-      : "You are starting this ticket from scratch.",
+      : "Read the current branch before starting; it may contain earlier work.",
     NUMBER: String(n),
     TITLE: issue.title,
     AREA: areaOf(issue),
     BRANCH: wt.branch,
     BASE: wt.base,
     BODY: issue.body || "(the ticket body is empty)",
-    FEEDBACK: resuming ? gatherFeedback(issue, session) : "",
+    FEEDBACK: gatherFeedback(issue, fresh ? { ...session, lastSyncAt: null } : session),
   }));
 
   saveSession(n, {
-    sessionId,
+    codexSessionId,
     runs: session?.runs ?? 0,
     branch: wt.branch,
     base: wt.base,
     dir: wt.dir,
   });
 
-  return { issue, wt, sessionId, resuming };
+  return { issue, wt, codexSessionId, resuming };
 }
 
 async function main() {
@@ -145,17 +130,17 @@ async function main() {
   const claimed = await claim({ number: a.number(), fresh: a.has("--fresh") });
   if (!claimed) return 0;
 
-  const { issue, wt, sessionId, resuming } = claimed;
+  const { issue, wt } = claimed;
   console.log(`worktree: ${wt.dir}`);
   console.log(`branch:   ${wt.branch} (from ${wt.base})`);
 
   console.log("\nStart the agent from that directory:\n");
   console.log(`  cd ${wt.dir}`);
-  console.log(`  ${devCommand(sessionId, resuming)}\n`);
+  console.log(`  node "${join(ROOT, "automation/session.mjs")}" ${issue.number}\n`);
   console.log("Then, back here, when the session ends:\n");
   console.log(`  node automation/finish.mjs ${issue.number}\n`);
   console.log("The worktree refuses any push that does not come from finish.mjs,");
-  console.log("so a session started some other way still cannot publish.");
+  console.log("which catches accidental direct pushes from sessions opened elsewhere.");
   return 0;
 }
 

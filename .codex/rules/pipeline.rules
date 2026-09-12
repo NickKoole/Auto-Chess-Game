@@ -1,0 +1,5 @@
+prefix_rule(pattern = ["git", "push"], decision = "forbidden", justification = "Publish through automation/finish.mjs.")
+prefix_rule(pattern = ["git", "remote"], decision = "forbidden")
+prefix_rule(pattern = ["git", "reset", "--hard"], decision = "forbidden")
+prefix_rule(pattern = ["git", "clean"], decision = "forbidden")
+prefix_rule(pattern = ["gh", "pr", "review", "--approve"], decision = "forbidden", justification = "Only the human approves.")

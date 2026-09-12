@@ -1,5 +1,4 @@
-// Shared plumbing for the local agents: gh CLI, git worktrees, and both ways of
-// running Claude — interactive for the dev session, headless for the reviewer.
+// Shared plumbing for the local agents: gh CLI, git worktrees, and session state for the pipeline — interactive for the dev session, headless for the reviewer.
 // Zero dependencies by design — this must run from a bare checkout.
 
 import { spawnSync } from "node:child_process";
@@ -7,14 +6,12 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, w
 import { createInterface } from "node:readline/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { randomUUID } from "node:crypto";
 
 const IS_WIN = process.platform === "win32";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const STATE_DIR = join(ROOT, ".agent-state");
 export const PROMPTS = join(ROOT, "automation", "prompts");
-export const DEV_SETTINGS = join(ROOT, "automation", "settings", "dev.json");
 // Scratch space inside a worktree: the task going in, the report coming out.
 // Gitignored, so the commit sweep never picks it up.
 export const AGENT_DIR = ".agent";
@@ -173,7 +170,7 @@ export function loadSession(n) {
 
 export function saveSession(n, patch) {
   mkdirSync(STATE_DIR, { recursive: true });
-  const prev = loadSession(n) ?? { issue: n, sessionId: randomUUID(), runs: 0 };
+  const prev = loadSession(n) ?? { issue: n, runs: 0 };
   const next = { ...prev, ...patch, updatedAt: new Date().toISOString() };
   writeFileSync(sessionPath(n), JSON.stringify(next, null, 2));
   return next;
@@ -238,10 +235,9 @@ export const PUSH_ENV = { ...process.env, AGENT_PUSH_OK: "1" };
 /**
  * Refuse any push out of this worktree that did not come from finish.mjs.
  *
- * The permission file already denies the dev agent `git push`, but that only
- * binds a session someone launched with `--settings dev.json`. This binds the
- * worktree itself, so it holds whatever opened the session — dev.mjs, an Orca
- * terminal, or you typing `claude` by hand.
+ * The hook catches accidental pushes regardless of which launcher opened the
+ * session — dev.mjs, an Orca
+ * terminal, or you typing `codex` by hand.
  *
  * Worktrees share `.git/hooks` with the main checkout, so a plain hook here
  * would also block your own pushes from the main tree. `extensions.worktreeConfig`
@@ -265,106 +261,6 @@ export function installPushGuard(dir) {
 
   must("git", ["config", "extensions.worktreeConfig", "true"], { cwd: dir });
   must("git", ["config", "--worktree", "core.hooksPath", hooks], { cwd: dir });
-}
-
-// --- claude ------------------------------------------------------------------
-
-/**
- * Run Claude Code headless.
- *
- * The prompt goes in on stdin so it never has to survive shell quoting, and
- * permissions come from a checked-in settings file rather than a flag soup —
- * which also means the deny list is reviewable in git. The model is pinned in
- * that same file. `fallbackModel` is the one thing that stays a flag — it is
- * not a property of the run, only of what to do when the pinned model is
- * unavailable, and this run has nobody sitting on it to retry by hand.
- */
-export function runClaude({
-  cwd, prompt, settings, systemPromptFile, sessionId, resume, fallbackModel,
-  timeoutMs = 45 * 60_000,
-}) {
-  const args = ["-p", "--output-format", "json", "--permission-mode", "acceptEdits"];
-  if (settings) args.push("--settings", settings);
-  if (fallbackModel) args.push("--fallback-model", fallbackModel);
-  if (systemPromptFile) args.push("--append-system-prompt-file", systemPromptFile);
-  if (resume) args.push("--resume", resume);
-  else if (sessionId) args.push("--session-id", sessionId);
-
-  const started = Date.now();
-  const res = run("claude", args, { cwd, input: prompt, timeout: timeoutMs });
-  const seconds = Math.round((Date.now() - started) / 1000);
-
-  if (res.timedOut) {
-    return { ok: false, text: `Timed out after ${Math.round(timeoutMs / 60000)} minutes.`, sessionId: sessionId ?? resume, seconds };
-  }
-
-  let parsed = null;
-  try {
-    parsed = JSON.parse(res.stdout);
-  } catch { /* fall through */ }
-
-  if (!parsed) {
-    return {
-      ok: res.code === 0,
-      text: res.stdout || res.stderr || "(no output)",
-      sessionId: sessionId ?? resume ?? null,
-      seconds,
-    };
-  }
-
-  return {
-    ok: res.code === 0 && parsed.is_error !== true,
-    text: parsed.result ?? "(no result field in Claude output)",
-    sessionId: parsed.session_id ?? sessionId ?? resume ?? null,
-    cost: parsed.total_cost_usd ?? null,
-    turns: parsed.num_turns ?? null,
-    seconds,
-  };
-}
-
-/**
- * The argv for an attached dev session. Shared so that the line claim.mjs
- * prints for you to run by hand is the same one dev.mjs runs itself — a
- * printed command that quietly drops the system prompt or the permission mode
- * would be worse than none at all.
- */
-export function interactiveArgs({ initialPrompt, settings, systemPromptFile, sessionId, resume }) {
-  const args = ["--permission-mode", "acceptEdits"];
-  if (settings) args.push("--settings", settings);
-  if (systemPromptFile) args.push("--append-system-prompt-file", systemPromptFile);
-  if (resume) args.push("--resume", resume);
-  else if (sessionId) args.push("--session-id", sessionId);
-  if (initialPrompt) args.push(initialPrompt);
-  return args;
-}
-
-/** The same session, as something you can paste into a terminal. */
-export const interactiveCommand = (opts) =>
-  ["claude", ...interactiveArgs(opts).map((a) => (/[\s&|<>^"]/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a))].join(" ");
-
-/**
- * Claude attached to your terminal, for the dev run. There is no captured output
- * to parse here — you are the one reading it — so the agent leaves its report in
- * a file and the runner picks that up after you exit. No timeout either: the
- * session lasts as long as you sit with it.
- */
-export function runClaudeInteractive(opts) {
-  const args = interactiveArgs(opts);
-  const { cwd, sessionId, resume } = opts;
-
-  const started = Date.now();
-  const res = spawnSync("claude", IS_WIN ? args.map(quote) : args, {
-    cwd,
-    stdio: "inherit",
-    shell: IS_WIN,
-  });
-  if (res.error) throw res.error;
-
-  return {
-    code: res.status ?? 1,
-    sessionId: resume ?? sessionId ?? null,
-    seconds: Math.round((Date.now() - started) / 1000),
-  };
 }
 
 export function template(file, vars) {

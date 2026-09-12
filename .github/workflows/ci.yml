@@ -35,7 +35,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         if: steps.probe.outputs.exists == 'true'
         with:
-          dotnet-version: "10.0.x"   # must match the local SDK — see CLAUDE.md
+          dotnet-version: "10.0.x"   # must match the local SDK — see AGENTS.md
 
       - name: Restore
         if: steps.probe.outputs.exists == 'true'
@@ -144,7 +144,7 @@ jobs:
 
       # Building the API re-emits the OpenAPI document; regenerating the client
       # types from it must then be a no-op. If either produces a diff, the
-      # committed contract is stale — which is exactly the drift CLAUDE.md says
+      # committed contract is stale — which is exactly the drift AGENTS.md says
       # should be a build error rather than a runtime surprise.
       - name: Rebuild contract and regenerate types
         if: steps.probe.outputs.exists == 'true'

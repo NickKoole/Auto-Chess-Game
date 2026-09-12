@@ -12,7 +12,7 @@ namespace GameSim.Tests;
 /// since "the losing side has no survivors, the winning side has at least one"
 /// is a hard acceptance criterion, not a usual case. A one-sided army built
 /// from the same catalog gives a decisive winner with no observed exceptions
-/// and stays well inside CLAUDE.md's "balance tuning is out of scope" line:
+/// and stays well inside AGENTS.md's "balance tuning is out of scope" line:
 /// nothing here asserts anything about which composition is stronger, only
 /// that combat converges and the log matches what happened.
 /// </summary>

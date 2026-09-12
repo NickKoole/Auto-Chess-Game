@@ -1,8 +1,7 @@
 # Review PR #{{PR}} — ticket #{{NUMBER}}: {{TITLE}}
 
 Branch `{{BRANCH}}` against `{{BASE}}`. The branch is checked out in this
-worktree, so read any file in full where the diff alone lacks context — and run
-the test suite rather than trusting the report below.
+worktree, so read any file in full where the diff alone lacks context — and inspect the independent validation logs rather than trusting the report below.
 
 ## Scope of this pass
 
@@ -19,6 +18,12 @@ line by line. Treat the claims below as unverified.
 
 {{DEV_REPORT}}
 
+## Runner validation
+
+{{VALIDATION}}
+
+Read these logs. They are evidence from the runner, not claims from the author.
+
 ## Changed files
 
 ```
@@ -34,5 +39,4 @@ line by line. Treat the claims below as unverified.
 ## Your task
 
 Audit the diff against the ticket. Check that each acceptance criterion is
-genuinely met and genuinely tested. Then produce your markdown review, ending
-with the JSON verdict block.
+genuinely met and genuinely tested. Then return the JSON review required by the output schema.

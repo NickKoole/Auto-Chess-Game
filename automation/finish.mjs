@@ -113,7 +113,7 @@ function handOffToReview(issueNumber) {
 
 /**
  * `session` is what a session runner knows and this script cannot find out for
- * itself: how long it took and which Claude session id it was. Both are absent
+ * itself: how long it took and which Codex session id it was. Both are absent
  * when something other than dev.mjs ran the agent, and nothing here needs them.
  */
 export function finish(n, { review = true, session: sessionResult = null } = {}) {
@@ -169,7 +169,7 @@ export function finish(n, { review = true, session: sessionResult = null } = {})
   if (pr) console.log(`PR: ${pr.url}`);
 
   saveSession(n, {
-    sessionId: sessionResult?.sessionId ?? stored.sessionId,
+    codexSessionId: sessionResult?.codexSessionId ?? stored.codexSessionId ?? null,
     runs: (stored.runs ?? 0) + 1,
     pr: pr?.number ?? stored.pr ?? null,
     lastSyncAt: new Date().toISOString(),
