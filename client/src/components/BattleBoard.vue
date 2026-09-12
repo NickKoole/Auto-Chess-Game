@@ -5,15 +5,20 @@ import { currentTargetOf, SIDE_PLAYER, unitLabel } from '@/battle/battleState'
 import { isInPlayerBand } from '@/battle/composition'
 import { gridDimensions, hexPolygonPoints, hexToPixel } from '@/battle/hexCoords'
 import { PROJECTILE_VISIBLE_MS, type TimedProjectile } from '@/battle/projectiles'
+import { facingTarget, type SpriteAttack } from '@/battle/spriteAttacks'
+import { attackDuration, poseAtElapsed } from '@/sprites/spriteAnimation'
+import { spriteForUnit } from '@/sprites/spriteCatalog'
+import UnitSprite from './UnitSprite.vue'
 
 const props = withDefaults(
   defineProps<{
     state: BattleState
     interactive?: boolean
     projectiles?: TimedProjectile[]
+    attacks?: SpriteAttack[]
     selectedUnitId?: string | null
   }>(),
-  { projectiles: () => [], selectedUnitId: null },
+  { projectiles: () => [], attacks: () => [], selectedUnitId: null },
 )
 
 const emit = defineEmits<{
@@ -106,12 +111,28 @@ function tick(): void {
   animationFrame = requestAnimationFrame(tick)
 }
 
+const hasAnimatingSprites = computed(() => props.attacks.some((attack) => {
+  const unit = props.state.units.find((candidate) => candidate.id === attack.unitId)
+  const sprite = unit && spriteForUnit(unit.definitionId)
+  return sprite && now.value - attack.startedAt < attackDuration(sprite)
+}))
+
+const unitVisuals = computed(() => props.state.units.map((unit) => {
+  const sprite = spriteForUnit(unit.definitionId)
+  const attack = props.attacks.find((candidate) => candidate.unitId === unit.id)
+  const target = currentTargetOf(props.state, unit)
+  const fallback = unit.side === SIDE_PLAYER ? 'right' : 'left'
+  const facing = attack?.facing ?? (target ? facingTarget(unit.position, target.position, fallback) : fallback)
+  const pose = sprite ? poseAtElapsed(sprite, attack ? now.value - attack.startedAt : null) : 'idle'
+  return { unit, sprite, pose, facing }
+}))
+
 watch(
-  () => props.projectiles.length > 0,
-  (hasProjectiles) => {
-    if (hasProjectiles && animationFrame === undefined) {
+  () => props.projectiles.length > 0 || hasAnimatingSprites.value,
+  (hasAnimation) => {
+    if (hasAnimation && animationFrame === undefined) {
       animationFrame = requestAnimationFrame(tick)
-    } else if (!hasProjectiles && animationFrame !== undefined) {
+    } else if (!hasAnimation && animationFrame !== undefined) {
       cancelAnimationFrame(animationFrame)
       animationFrame = undefined
     }
@@ -178,7 +199,7 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 </script>
 
 <template>
-  <svg class="battle-board" :viewBox="`0 0 ${dims.width} ${dims.height}`" role="img" aria-label="Battle grid">
+  <svg class="battle-board" :viewBox="`0 -32 ${dims.width} ${dims.height + 32}`" role="img" aria-label="Battle grid">
     <polygon
       v-for="hex in hexes"
       :key="`${hex.row}-${hex.col}`"
@@ -198,18 +219,19 @@ const targetMarkers = computed<TargetMarker[]>(() =>
       class="target-marker"
     />
 
-    <g v-for="unit in props.state.units" :key="unit.id" :data-unit-id="unit.id" class="unit-group">
+    <g v-for="{ unit, sprite, pose, facing } in unitVisuals" :key="unit.id" :data-unit-id="unit.id" class="unit-group">
       <circle :cx="unitCenter(unit).x" :cy="unitCenter(unit).y" :r="HEX_SIZE * 0.62" :class="sideClass(unit)" />
-      <text :x="unitCenter(unit).x" :y="unitCenter(unit).y - 9" text-anchor="middle" class="unit-label">
+      <UnitSprite v-if="sprite" :sprite="sprite" :pose="pose" :facing="facing" :x="unitCenter(unit).x" :y="unitCenter(unit).y + 8" />
+      <text :x="unitCenter(unit).x" :y="unitCenter(unit).y + (sprite ? -52 : -9)" text-anchor="middle" class="unit-label">
         {{ label(unit) }}
       </text>
-      <text :x="unitCenter(unit).x" :y="unitCenter(unit).y + 3" text-anchor="middle" class="unit-hp">
+      <text :x="unitCenter(unit).x" :y="unitCenter(unit).y + (sprite ? 20 : 3)" text-anchor="middle" class="unit-hp">
         {{ unit.hp }}
       </text>
       <text
         v-if="targetLabel(unit)"
         :x="unitCenter(unit).x"
-        :y="unitCenter(unit).y + 14"
+        :y="unitCenter(unit).y + (sprite ? 30 : 14)"
         text-anchor="middle"
         class="unit-target-label"
       >
