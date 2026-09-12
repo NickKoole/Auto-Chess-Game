@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { crc32, inflateSync } from 'node:zlib'
 import { compressedPng, decodeSprite, encodeSprite, spriteAlphabet } from '../../../scripts/pack-sprite.mjs'
 
@@ -42,5 +43,15 @@ describe('standalone sprite packing', () => {
 
   it('rejects a non-PNG input', () => {
     expect(() => compressedPng(Buffer.from('not an image'))).toThrow('Expected a PNG sprite')
+  })
+
+  it('exports a standalone preview without external assets', () => {
+    execFileSync(process.execPath, ['scripts/export-sprite-preview.mjs'], { cwd: process.cwd() })
+    const html = readFileSync('dist/sprite-preview.html', 'utf8')
+
+    expect(html).toContain('<script type="module">')
+    expect(html).not.toMatch(/<script[^>]+src=/i)
+    expect(html).not.toMatch(/<link[^>]+href=/i)
+    expect(html).not.toMatch(/(?:src|href)=["'](?:\.\/|https?:\/\/)/i)
   })
 })

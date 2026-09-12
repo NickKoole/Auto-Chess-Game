@@ -57,7 +57,7 @@ The knight sequence is wind-up 100 ms, strike 80 ms, recovery 140 ms, then idle.
 ## Verify
 
 ```powershell
-npm run typecheck
+npm run type-check
 npm run test -- --run
 npm run lint
 npm run build
