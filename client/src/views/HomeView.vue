@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import {
   listEnemySetups,
   listMatchups,
@@ -28,6 +29,9 @@ import { endingLabel, survivorsBySide } from '@/battle/outcome'
 import { seekTo, terminatingTickOf } from '@/battle/playback'
 import { projectilesForTick, PROJECTILE_VISIBLE_MS, type Projectile, type TimedProjectile } from '@/battle/projectiles'
 import BattleBoard from '@/components/BattleBoard.vue'
+import { mergeSpriteAttacks, spriteAttacksAfterSeek, spriteAttacksForTick, type SpriteAttack } from '@/battle/spriteAttacks'
+import { attackDuration } from '@/sprites/spriteAnimation'
+import { knightSpriteData } from '@/sprites/knight'
 
 // A 150-350 tick battle at 30ms/tick is a 5-10 second playback - watchable,
 // not instant, not a slog.
@@ -68,6 +72,7 @@ const terminatingTick = ref(0)
 const isPlaying = ref(false)
 const hasFinished = ref(false)
 const activeProjectiles = ref<TimedProjectile[]>([])
+const activeSpriteAttacks = ref<SpriteAttack[]>([])
 const projectileTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 let timer: ReturnType<typeof setInterval> | undefined
@@ -158,7 +163,8 @@ function seek(tick: number): void {
     return
   }
 
-  const isForwardStep = tick === currentTick.value + 1
+  const previousTick = currentTick.value
+  const isForwardStep = tick === previousTick + 1
   // seekTo builds a fresh state rather than mutating this one, so it is a
   // genuine pre-tick snapshot - no cloning needed, unlike play()'s loop.
   const preTickState = battleState.value
@@ -168,6 +174,9 @@ function seek(tick: number): void {
   battleState.value = result.state
   currentTick.value = result.tick
   hasFinished.value = result.tick >= terminatingTick.value
+  activeSpriteAttacks.value = spriteAttacksAfterSeek(
+    preTickState, result.state, previousTick, tick, result.tick, response.events as BattleEvent[], performance.now(),
+  )
   clearProjectiles()
   if (isForwardStep && result.tick === tick && preTickState) {
     showProjectiles(projectilesForTick(preTickState, result.state, tick, response.events as BattleEvent[]))
@@ -209,6 +218,7 @@ function play(): void {
     const result = seekTo(response, 0)
     battleState.value = result.state
     currentTick.value = result.tick
+    activeSpriteAttacks.value = []
     clearProjectiles()
   }
   hasFinished.value = false
@@ -225,6 +235,13 @@ function play(): void {
     // pre-tick state to fall back on for a target this tick kills.
     const preTickState = cloneBattleState(battleState.value!)
     applyTick(battleState.value!, currentTick.value, log)
+    const now = performance.now()
+    activeSpriteAttacks.value = mergeSpriteAttacks(
+      activeSpriteAttacks.value,
+      spriteAttacksForTick(preTickState, battleState.value!, currentTick.value, log, now),
+      now,
+      attackDuration(knightSpriteData),
+    )
     showProjectiles(projectilesForTick(preTickState, battleState.value!, currentTick.value, log))
     if (currentTick.value >= terminatingTick.value) {
       stopPlayback()
@@ -300,6 +317,7 @@ function clearBattleResult(): void {
   currentTick.value = 0
   terminatingTick.value = 0
   hasFinished.value = false
+  activeSpriteAttacks.value = []
   clearProjectiles()
 }
 
@@ -378,6 +396,7 @@ onUnmounted(() => {
 <template>
   <main class="screen">
     <h1>Battle playback</h1>
+    <RouterLink to="/sprites">Preview knight sprites</RouterLink>
 
     <p class="mode-row">
       <label>
@@ -449,7 +468,7 @@ onUnmounted(() => {
       <BattleBoard
         :state="compositionBoardState"
         :interactive="canEditDeployment"
-        :projectiles="activeProjectiles"
+        :projectiles="activeProjectiles" :attacks="activeSpriteAttacks"
         :selected-unit-id="selectedUnitId"
         @tile-drop="onTileDrop"
         @unit-delete="onUnitDelete"
@@ -516,7 +535,7 @@ onUnmounted(() => {
         · Tick: {{ currentTick }} / {{ terminatingTick }}
       </p>
 
-      <BattleBoard v-if="mode === 'matchup'" :state="battleState" :projectiles="activeProjectiles" />
+      <BattleBoard v-if="mode === 'matchup'" :state="battleState" :projectiles="activeProjectiles" :attacks="activeSpriteAttacks" />
 
       <section v-if="hasFinished" aria-label="Outcome">
         <p role="status">
