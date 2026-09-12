@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Auto Chess — arena studies</title>
+    <style>
+      :root { color-scheme: dark; font-family: Georgia, serif; color: #e4ded0; background: #1b1b19; }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 36px 20px; }
+      main { max-width: 1040px; margin: auto; }
+      .eyebrow { color: #b19b72; font: 11px system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; }
+      h1 { font-size: clamp(28px, 5vw, 42px); font-weight: normal; margin: 10px 0; }
+      .intro { color: #a9a69e; line-height: 1.6; margin: 0 0 24px; }
+      .options { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+      button { padding: 12px 17px; border: 1px solid #514b40; background: #262622; color: #c8c1b3; cursor: pointer; font: 13px system-ui, sans-serif; }
+      button[aria-pressed="true"] { background: #ded0ad; color: #28251e; border-color: #ded0ad; }
+      button:hover { border-color: #d0bc8c; }
+      button:focus-visible, input:focus-visible { outline: 2px solid #e0c88e; outline-offset: 4px; }
+      .layout { display: grid; grid-template-columns: minmax(0, 700px) 230px; gap: 36px; align-items: start; }
+      .arena { background: var(--frame); border: 2px solid var(--frame-light); padding: 14px; box-shadow: inset 0 0 0 5px var(--frame-dark), 0 16px 30px #0005; }
+      .arena-header, .arena-footer { display: flex; justify-content: space-between; gap: 12px; padding: 8px 6px 14px; color: var(--inscription); font: 10px system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+      .arena-footer { padding: 14px 6px 6px; }
+      svg.board { display: block; width: 100%; background: var(--grout); border: 1px solid var(--frame-dark); }
+      .tile { stroke: var(--grout); stroke-width: 2; }
+      .tile-face { fill: var(--tile); }
+      .tile-face.variant { fill: var(--tile-alt); }
+      .tile-edge { fill: var(--tile-dark); }
+      .tile-light { fill: none; stroke: var(--tile-light); stroke-width: 1.4; }
+      .seam { fill: none; stroke: var(--detail); stroke-width: 1; opacity: .55; }
+      .deployment { fill: none; stroke-width: 2; opacity: .65; }
+      .enemy-mark { stroke: #ba6660; }
+      .ally-mark { stroke: #769fac; }
+      .team-ring { stroke-width: 2.5; }
+      .ally { fill: #364e5c; stroke: #9cc7d7; }
+      .enemy { fill: #61342f; stroke: #e19b89; }
+      .unit-name { fill: #f0eadc; stroke: #17191b; stroke-width: 2.5; paint-order: stroke; text-anchor: middle; font: 8px Georgia, serif; }
+      .hp-track { fill: #171a18; }
+      .hp-fill { fill: #aaa987; }
+      .selection { fill: none; stroke: #e2c37b; stroke-width: 2; }
+      aside { padding-top: 12px; }
+      aside h2 { font-size: 25px; font-weight: normal; margin: 10px 0; }
+      aside p { color: #aaa69b; font-size: 15px; line-height: 1.65; }
+      .swatches { display: flex; gap: 6px; margin: 22px 0; }
+      .swatches span { width: 30px; height: 30px; border: 1px solid #ffffff20; }
+      .legend { border-top: 1px solid #454237; padding-top: 20px; font: 12px system-ui, sans-serif; color: #c4beb0; }
+      .legend p { display: flex; align-items: center; gap: 10px; font: inherit; }
+      .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid; }
+      .dot.ally { background: #364e5c; border-color: #9cc7d7; }
+      .dot.enemy { background: #61342f; border-color: #e19b89; }
+      label { display: flex; align-items: center; gap: 8px; margin-top: 24px; font: 12px system-ui, sans-serif; color: #bcb5a8; }
+      input { accent-color: #b9a67c; }
+      .note { font: 12px/1.6 system-ui, sans-serif; color: #8f8b81; margin-top: 22px; }
+      .hide-units .units { display: none; }
+      @media (max-width: 760px) { body { padding: 24px 12px; } .layout { grid-template-columns: 1fr; gap: 12px; } aside { max-width: 580px; } .arena { padding: 7px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">Auto Chess / art direction study</div>
+      <h1>A home for the knight.</h1>
+      <p class="intro">Three arena treatments. The same units, positions and team colours in every option.</p>
+      <nav class="options" aria-label="Arena treatment">
+        <button type="button" data-theme="stone" aria-pressed="true">A · Warm stone</button>
+        <button type="button" data-theme="slate" aria-pressed="false">B · Dark slate</button>
+        <button type="button" data-theme="earth" aria-pressed="false">C · Weathered earth</button>
+      </nav>
+      <div class="layout">
+        <section class="arena" aria-label="Board mockup">
+          <div class="arena-header"><span>The proving grounds</span><span>Preparation · Round 04</span></div>
+          <svg class="board" viewBox="-12 -32 613 548" role="img" aria-label="Eight by eight hex arena with six knights and blue and red team circles"></svg>
+          <div class="arena-footer"><span>Your deployment</span><span>8 × 8 arena</span></div>
+        </section>
+        <aside aria-live="polite">
+          <div class="eyebrow" id="theme-label"></div>
+          <h2 id="theme-title"></h2>
+          <p id="theme-description"></p>
+          <div class="swatches" aria-label="Board palette"></div>
+          <div class="legend">
+            <p><span class="dot ally"></span>Your team</p>
+            <p><span class="dot enemy"></span>Opponent</p>
+            <p>Identical blue knight sprites on both teams.</p>
+          </div>
+          <label><input id="show-units" type="checkbox" checked /> Show units</label>
+          <p class="note">Visual mockup only. Stone bevels, sparse surface marks and team rings are proposed styling. Gameplay is not connected.</p>
+        </aside>
+      </div>
+    </main>
+    <script>
+      const themes = {
+        stone: { label: 'A / Recommended', title: 'Warm stone', description: 'A quiet sandstone arena with cut edges and a worn masonry frame. Warm neutrals support the blue cloth and bright steel; colour stays concentrated on the units.', colours: { frame: '#494337', 'frame-light': '#756953', 'frame-dark': '#292923', inscription: '#c3b393', grout: '#292c28', tile: '#535449', 'tile-alt': '#57574b', 'tile-dark': '#363b33', 'tile-light': '#747362', detail: '#383e35' } },
+        slate: { label: 'B / Cooler and darker', title: 'Dark slate', description: 'An austere fortress floor with cool grey slabs and a charcoal frame. The steel and cloth feel sharper against it, while dark boots and outlines have less separation.', colours: { frame: '#30373b', 'frame-light': '#56636b', 'frame-dark': '#1e252a', inscription: '#a6b5ba', grout: '#20282c', tile: '#414e55', 'tile-alt': '#455159', 'tile-dark': '#29353d', 'tile-light': '#60727b', detail: '#28363d' } },
+        earth: { label: 'C / Softer and more natural', title: 'Weathered earth', description: 'Dusty flagstones in an olive-brown courtyard. Irregular surface marks suggest age without filling the board with texture. Leather sits closer to the ground colours.', colours: { frame: '#493e2f', 'frame-light': '#75634a', 'frame-dark': '#2c291f', inscription: '#c7b28a', grout: '#302f24', tile: '#5b5840', 'tile-alt': '#605b42', 'tile-dark': '#3e402e', 'tile-light': '#7c7757', detail: '#414731' } },
+      }
+      const board = document.querySelector('.board')
+      const arena = document.querySelector('.arena')
+      const hexWidth = Math.sqrt(3) * 40
+      function center(row, col) { return { x: hexWidth / 2 + col * hexWidth + (row % 2 ? hexWidth / 2 : 0), y: 40 + row * 60 } }
+      function corners(x, y, radius) { return Array.from({ length: 6 }, (_, index) => { const angle = (60 * index - 30) * Math.PI / 180; return [x + radius * Math.cos(angle), y + radius * Math.sin(angle)] }) }
+      function points(vertices) { return vertices.map(pair => pair.join(',')).join(' ') }
+      let markup = ''
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          const { x, y } = center(row, col)
+          const top = corners(x, y - 2, 37.5)
+          markup += `<polygon class="tile tile-edge" points="${points(corners(x, y + 1, 39))}" />`
+          markup += `<polygon class="tile-face ${(row + col * 3) % 4 === 0 ? 'variant' : ''}" points="${points(top)}" />`
+          markup += `<polyline class="tile-light" points="${points([top[3], top[4], top[5], top[0]])}" />`
+          if ((row * 7 + col * 3) % 5 === 0) markup += `<path class="seam" d="M ${x - 22},${y + 10} l 7,-4 5,2 m 8,-22 l 5,4" />`
+          if (row === 2 || row === 5) markup += `<path class="deployment ${row === 2 ? 'enemy-mark' : 'ally-mark'}" d="M ${x - 9},${y + (row === 2 ? 29 : -31)} h 18" />`
+        }
+      }
+      const selected = center(6, 3)
+      markup += `<polygon class="selection" points="${points(corners(selected.x, selected.y - 2, 37))}" />`
+      markup += '<g class="units">'
+      const units = [{ row: 1, col: 3, side: 'enemy' }, { row: 2, col: 2, side: 'enemy' }, { row: 2, col: 5, side: 'enemy' }, { row: 5, col: 2, side: 'ally' }, { row: 5, col: 5, side: 'ally' }, { row: 6, col: 3, side: 'ally' }]
+      for (const unit of units) {
+        const { x, y } = center(unit.row, unit.col)
+        markup += `<circle class="team-ring ${unit.side}" cx="${x}" cy="${y}" r="24.8" />`
+        markup += `<g transform="translate(${x},${y + 8}) scale(${unit.side === 'enemy' ? -1 : 1},1)"><svg x="-44.8" y="-83.72" width="95.2" height="87.78" viewBox="0 0 680 627" overflow="hidden"><image href="./src/assets/sprites/knight/knight.png" width="1254" height="1254" style="image-rendering:pixelated" /></svg></g>`
+        markup += `<text class="unit-name" x="${x}" y="${y - 52}">Knight</text><rect class="hp-track" x="${x - 15}" y="${y + 20}" width="30" height="4" /><rect class="hp-fill" x="${x - 14}" y="${y + 21}" width="28" height="2" />`
+      }
+      board.innerHTML = markup + '</g>'
+      function selectTheme(name) {
+        const theme = themes[name]
+        for (const [key, value] of Object.entries(theme.colours)) arena.style.setProperty(`--${key}`, value)
+        document.querySelector('#theme-label').textContent = theme.label
+        document.querySelector('#theme-title').textContent = theme.title
+        document.querySelector('#theme-description').textContent = theme.description
+        document.querySelector('.swatches').innerHTML = ['frame', 'grout', 'tile', 'tile-light'].map(key => `<span style="background:${theme.colours[key]}" title="${key}: ${theme.colours[key]}"></span>`).join('')
+        document.querySelectorAll('[data-theme]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.theme === name)))
+      }
+      document.querySelectorAll('[data-theme]').forEach(button => button.addEventListener('click', () => selectTheme(button.dataset.theme)))
+      document.querySelector('#show-units').addEventListener('change', event => {
+        board.classList.toggle('hide-units', !event.target.checked)
+        board.setAttribute('aria-label', event.target.checked ? 'Eight by eight hex arena with six knights and blue and red team circles' : 'Empty eight by eight hex arena')
+      })
+      selectTheme('stone')
+    </script>
+  </body>
+</html>

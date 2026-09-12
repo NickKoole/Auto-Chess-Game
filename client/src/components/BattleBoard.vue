@@ -34,6 +34,10 @@ const COLS = 8
 const NEUTRAL_FIRST_ROW = 3
 const NEUTRAL_LAST_ROW = 4
 const HEX_SIZE = 40
+const tileEdgePoints = hexPolygonPoints(0, 1, 39)
+const tileFacePoints = hexPolygonPoints(0, -2, 37.5)
+const tileCorners = tileFacePoints.split(' ')
+const tileHighlightPoints = [...tileCorners.slice(3), ...tileCorners.slice(0, 1)].join(' ')
 
 const dims = computed(() => gridDimensions(ROWS, COLS, HEX_SIZE))
 
@@ -41,6 +45,8 @@ interface HexTile {
   row: number
   col: number
   points: string
+  x: number
+  y: number
 }
 
 const hexes = computed<HexTile[]>(() => {
@@ -52,6 +58,8 @@ const hexes = computed<HexTile[]>(() => {
         row,
         col,
         points: hexPolygonPoints(x + dims.value.originX, y + dims.value.originY, HEX_SIZE),
+        x: x + dims.value.originX,
+        y: y + dims.value.originY,
       })
     }
   }
@@ -200,15 +208,29 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 
 <template>
   <svg class="battle-board" :viewBox="`0 -32 ${dims.width} ${dims.height + 32}`" role="img" aria-label="Battle grid">
-    <polygon
+    <rect class="arena-ground" x="0" y="-32" :width="dims.width" :height="dims.height + 32" />
+    <g
       v-for="hex in hexes"
       :key="`${hex.row}-${hex.col}`"
-      :points="hex.points"
       :class="bandClass(hex.row)"
       @dragover.prevent
       @drop="onDrop($event, hex.row, hex.col)"
       @click="onTileClick(hex.row, hex.col)"
-    />
+    >
+      <polygon class="hex-hit-area" :points="hex.points" />
+      <g class="tile-decoration" :transform="`translate(${hex.x}, ${hex.y})`" aria-hidden="true">
+        <polygon class="tile-edge" :points="tileEdgePoints" />
+        <polygon
+          class="tile-face"
+          :class="{ 'tile-variant': (hex.row + hex.col * 3) % 4 === 0 }"
+          :points="tileFacePoints"
+        />
+        <polyline class="tile-light" :points="tileHighlightPoints" />
+        <path v-if="(hex.row * 7 + hex.col * 3) % 5 === 0" class="tile-seam" d="M -22,10 l 7,-4 5,2 m 8,-22 l 5,4" />
+        <path v-if="hex.row === 2" class="deployment-marker enemy-marker" d="M -9,29 h 18" />
+        <path v-if="hex.row === 5" class="deployment-marker player-marker" d="M -9,-31 h 18" />
+      </g>
+    </g>
 
     <circle
       v-for="marker in targetMarkers"
@@ -254,33 +276,68 @@ const targetMarkers = computed<TargetMarker[]>(() =>
   height: auto;
   margin: 0 auto;
   padding: 16px;
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
-  box-shadow: 0 14px 30px oklch(0 0 0 / 0.5);
-  clip-path: polygon(0 10px, 10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  background: var(--arena-frame);
+  border: 2px solid var(--arena-frame-light);
+  box-shadow: inset 0 0 0 5px var(--arena-frame-dark), 0 14px 30px oklch(0 0 0 / 0.5);
 }
 
-.hex {
+.arena-ground,
+.hex-hit-area {
+  fill: var(--arena-grout);
+}
+
+.tile-decoration {
+  pointer-events: none;
+}
+
+.tile-edge {
+  fill: var(--arena-tile-dark);
+  stroke: var(--arena-grout);
+  stroke-width: 2;
+}
+
+.tile-face {
+  fill: var(--arena-tile);
+}
+
+.tile-variant {
+  fill: var(--arena-tile-alt);
+}
+
+.tile-light {
+  fill: none;
+  stroke: var(--arena-tile-light);
   stroke-width: 1.4;
 }
 
-.opponent-band {
-  fill: var(--opp-fill);
-  stroke: var(--opp-stroke);
+.tile-seam {
+  fill: none;
+  stroke: var(--arena-detail);
+  stroke-width: 1;
+  opacity: 0.55;
 }
 
-.neutral-band {
-  fill: var(--neu-fill);
-  stroke: var(--neu-stroke);
+.deployment-marker {
+  fill: none;
+  stroke-width: 2;
+  opacity: 0.65;
 }
 
-.player-band {
-  fill: var(--ply-fill);
-  stroke: var(--ply-stroke);
+.enemy-marker {
+  stroke: var(--unit-enemy-ring);
+}
+
+.player-marker {
+  stroke: var(--unit-player-ring);
 }
 
 .droppable {
   cursor: copy;
+}
+
+.droppable:hover .tile-face {
+  stroke: var(--arena-highlight);
+  stroke-width: 2;
 }
 
 .unit-group {
@@ -291,50 +348,47 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 
 .unit.player {
   fill: var(--unit-player);
-  stroke: oklch(0.1 0 0);
-  stroke-width: 1.5;
+  stroke: var(--unit-player-ring);
+  stroke-width: 2.5;
 }
 
 .unit.opponent {
   fill: var(--unit-enemy);
-  stroke: oklch(0.1 0 0);
-  stroke-width: 1.5;
+  stroke: var(--unit-enemy-ring);
+  stroke-width: 2.5;
 }
 
 .target-marker {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--arena-highlight);
   stroke-width: 2;
   pointer-events: none;
 }
 
 .projectile-shaft {
-  stroke: var(--panel-border);
+  stroke: var(--arena-label);
   stroke-width: 1.5;
   pointer-events: none;
 }
 
 .projectile-head {
-  fill: var(--accent);
-  stroke: var(--panel-border);
+  fill: var(--arena-highlight);
+  stroke: var(--arena-label-outline);
   stroke-width: 1;
   pointer-events: none;
 }
 
 .unit-label,
-.unit-hp {
+.unit-hp,
+.unit-target-label {
   font-family: var(--font-body);
   font-size: 8px;
-  fill: var(--text);
+  fill: var(--arena-label);
+  stroke: var(--arena-label-outline);
+  stroke-width: 2.5;
+  paint-order: stroke;
   pointer-events: none;
   user-select: none;
 }
 
-.unit-target-label {
-  font-family: var(--font-body);
-  font-size: 8px;
-  fill: var(--text);
-  pointer-events: none;
-  user-select: none;
-}
 </style>

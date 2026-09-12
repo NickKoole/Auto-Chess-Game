@@ -8,15 +8,23 @@
   --accent-hover: oklch(0.52 0.19 25);
   --accent-contrast: oklch(0.95 0.01 90);
 
-  --opp-fill: oklch(0.28 0.10 25);
-  --opp-stroke: oklch(0.42 0.17 25);
-  --ply-fill: oklch(0.24 0.015 240);
-  --ply-stroke: oklch(0.44 0.03 240);
-  --neu-fill: oklch(0.21 0.005 95);
-  --neu-stroke: oklch(0.32 0.01 90);
+  --arena-frame: #494337;
+  --arena-frame-light: #756953;
+  --arena-frame-dark: #292923;
+  --arena-grout: #292c28;
+  --arena-tile: #535449;
+  --arena-tile-alt: #57574b;
+  --arena-tile-dark: #363b33;
+  --arena-tile-light: #747362;
+  --arena-detail: #383e35;
+  --arena-highlight: #e2c37b;
+  --arena-label: #f0eadc;
+  --arena-label-outline: #17191b;
 
-  --unit-player: oklch(0.48 0.03 240);
-  --unit-enemy: oklch(0.42 0.17 25);
+  --unit-player: #364e5c;
+  --unit-player-ring: #9cc7d7;
+  --unit-enemy: #61342f;
+  --unit-enemy-ring: #e19b89;
   --bar-bg: oklch(0.15 0.005 95);
   --bar-hp: oklch(0.45 0.17 25);
 
