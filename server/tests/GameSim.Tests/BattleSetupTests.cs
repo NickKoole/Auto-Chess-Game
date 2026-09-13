@@ -13,7 +13,9 @@ public sealed class BattleSetupTests
         movementTicksPerHex: 6,
         attackRangeHexes: 1);
 
-    private static UnitPlacement At(int row, int col) => new(Militia, new HexCoord(row, col));
+    private static UnitPlacement At(int row, int col) => new(Militia, Horizontal(row, col));
+
+    private static HexCoord Horizontal(int row, int col) => new(col, Battlefield.Rows - 1 - row);
 
     /// <summary>One legal unit per side, for tests about something else.</summary>
     private static UnitPlacement[] Player => [At(7, 0)];
@@ -82,12 +84,12 @@ public sealed class BattleSetupTests
         // the player's front line and row 2 is the opponent's.
         (BattleSide, HexCoord)[] expected =
         [
-            (BattleSide.Player, new HexCoord(5, 1)),
-            (BattleSide.Player, new HexCoord(5, 4)),
-            (BattleSide.Player, new HexCoord(7, 3)),
-            (BattleSide.Opponent, new HexCoord(2, 6)),
-            (BattleSide.Opponent, new HexCoord(0, 0)),
-            (BattleSide.Opponent, new HexCoord(0, 5)),
+            (BattleSide.Player, Horizontal(5, 1)),
+            (BattleSide.Player, Horizontal(5, 4)),
+            (BattleSide.Player, Horizontal(7, 3)),
+            (BattleSide.Opponent, Horizontal(2, 6)),
+            (BattleSide.Opponent, Horizontal(0, 0)),
+            (BattleSide.Opponent, Horizontal(0, 5)),
         ];
 
         Assert.Equal(expected, setup.Units.Select(u => (u.Side, u.Position)));
@@ -101,7 +103,7 @@ public sealed class BattleSetupTests
         // ascending row pulls this pairing apart — the player acts front rank
         // first and the opponent rear rank first — so a mirror match resolves
         // its two sides' internal contention in opposite orders.
-        HexCoord[] army = [new(5, 1), new(6, 4), new(7, 0), new(5, 6)];
+        HexCoord[] army = [Horizontal(5, 1), Horizontal(6, 4), Horizontal(7, 0), Horizontal(5, 6)];
 
         Assert.True(BattleSetup.TryCreate(
             [.. army.Select(c => new UnitPlacement(Militia, c))],
@@ -117,7 +119,7 @@ public sealed class BattleSetupTests
         // Symmetry alone would also hold if both armies were ordered
         // back-to-front, so pin down which end of each army comes first.
         Assert.Equal(
-            [new HexCoord(5, 1), new HexCoord(5, 6), new HexCoord(6, 4), new HexCoord(7, 0)],
+            [Horizontal(5, 1), Horizontal(5, 6), Horizontal(6, 4), Horizontal(7, 0)],
             player);
     }
 
@@ -144,7 +146,7 @@ public sealed class BattleSetupTests
 
     /// <summary>The tile a coordinate reflects onto across the halfway line.</summary>
     private static HexCoord Mirror(HexCoord coord) =>
-        new(Battlefield.Rows - 1 - coord.Row, coord.Col);
+        new(coord.Row, Battlefield.Columns - 1 - coord.Col);
 
     private static IEnumerable<HexCoord> PositionsOf(BattleSetup setup, BattleSide side) =>
         setup.Units.Where(u => u.Side == side).Select(u => u.Position);
@@ -156,7 +158,7 @@ public sealed class BattleSetupTests
 
         Assert.Equal(PlacementErrorKind.OutOfBounds, error.Kind);
         Assert.Equal(BattleSide.Player, error.Side);
-        Assert.Equal(new HexCoord(7, 8), error.Coord);
+        Assert.Equal(Horizontal(7, 8), error.Coord);
     }
 
     [Theory]
@@ -167,7 +169,7 @@ public sealed class BattleSetupTests
         PlacementError error = SingleError([At(row, 2)], Opponent);
 
         Assert.Equal(PlacementErrorKind.NeutralBand, error.Kind);
-        Assert.Equal(new HexCoord(row, 2), error.Coord);
+        Assert.Equal(Horizontal(row, 2), error.Coord);
     }
 
     [Fact]
@@ -195,7 +197,7 @@ public sealed class BattleSetupTests
 
         Assert.Equal(PlacementErrorKind.DuplicateCoordinate, error.Kind);
         Assert.Equal(BattleSide.Player, error.Side);
-        Assert.Equal(new HexCoord(6, 2), error.Coord);
+        Assert.Equal(Horizontal(6, 2), error.Coord);
     }
 
     [Fact]

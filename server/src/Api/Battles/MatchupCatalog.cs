@@ -5,7 +5,7 @@ namespace Api.Battles;
 
 /// <summary>
 /// The small set of named matchups a battle can be requested for. Each
-/// deploys the player in rows 5-7 and the opponent in rows 0-2 of the 8x8
+/// deploys the player in columns 0-2 and the opponent in columns 5-7 of the 8x8
 /// board - <see cref="Battlefield.DeploymentBand"/> for each side.
 /// </summary>
 public sealed class MatchupCatalog
@@ -47,27 +47,27 @@ public sealed class MatchupCatalog
         yield return new Matchup(
             "melee-mirror",
             DisplayName: "Melee Mirror",
-            PlayerPlacements: FrontLine(units.Get("knight"), row: 5, cols: [2, 3, 4]),
-            OpponentPlacements: FrontLine(units.Get("knight"), row: 2, cols: [2, 3, 4]));
+            PlayerPlacements: FrontLine(units.Get("knight"), col: 2, rows: [2, 3, 4]),
+            OpponentPlacements: FrontLine(units.Get("knight"), col: 5, rows: [2, 3, 4]));
 
         yield return new Matchup(
             "archers-vs-melee",
             DisplayName: "Archers vs Melee",
-            PlayerPlacements: FrontLine(units.Get("archer"), row: 5, cols: [2, 3, 4]),
-            OpponentPlacements: FrontLine(units.Get("militia"), row: 2, cols: [2, 3, 4]));
+            PlayerPlacements: FrontLine(units.Get("archer"), col: 2, rows: [2, 3, 4]),
+            OpponentPlacements: FrontLine(units.Get("militia"), col: 5, rows: [2, 3, 4]));
 
         yield return new Matchup(
             "knights-and-archers",
             DisplayName: "Knights and Archers",
             PlayerPlacements:
             [
-                .. FrontLine(units.Get("knight"), row: 5, cols: [2, 3, 4]),
-                .. FrontLine(units.Get("archer"), row: 6, cols: [2, 3, 4]),
+                .. FrontLine(units.Get("knight"), col: 2, rows: [2, 3, 4]),
+                .. FrontLine(units.Get("archer"), col: 1, rows: [2, 3, 4]),
             ],
             OpponentPlacements:
             [
-                .. FrontLine(units.Get("knight"), row: 2, cols: [2, 3, 4]),
-                .. FrontLine(units.Get("archer"), row: 1, cols: [2, 3, 4]),
+                .. FrontLine(units.Get("knight"), col: 5, rows: [2, 3, 4]),
+                .. FrontLine(units.Get("archer"), col: 6, rows: [2, 3, 4]),
             ]);
 
         yield return new Matchup(
@@ -75,29 +75,29 @@ public sealed class MatchupCatalog
             DisplayName: "All Varieties",
             PlayerPlacements:
             [
-                .. Row(row: 5, cols: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("berserker")),
-                .. Row(row: 6, cols: [2, 3, 4], units.Get("archer"), units.Get("crossbowman"), units.Get("mage")),
+                .. Column(col: 2, rows: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("berserker")),
+                .. Column(col: 1, rows: [2, 3, 4], units.Get("archer"), units.Get("crossbowman"), units.Get("mage")),
             ],
             OpponentPlacements:
             [
-                .. Row(row: 2, cols: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("berserker")),
-                .. Row(row: 1, cols: [2, 3, 4], units.Get("archer"), units.Get("crossbowman"), units.Get("mage")),
+                .. Column(col: 5, rows: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("berserker")),
+                .. Column(col: 6, rows: [2, 3, 4], units.Get("archer"), units.Get("crossbowman"), units.Get("mage")),
             ]);
     }
 
-    private static IReadOnlyList<UnitPlacement> FrontLine(UnitDefinition definition, int row, int[] cols) =>
-        [.. cols.Select(col => new UnitPlacement(definition, new HexCoord(row, col)))];
+    private static IReadOnlyList<UnitPlacement> FrontLine(UnitDefinition definition, int col, int[] rows) =>
+        [.. rows.Select(row => new UnitPlacement(definition, new HexCoord(row, col)))];
 
-    /// <summary>One definition per column, paired in order - unlike <see cref="FrontLine"/>, a mixed row rather than one unit repeated.</summary>
-    private static IReadOnlyList<UnitPlacement> Row(int row, int[] cols, params UnitDefinition[] definitions)
+    /// <summary>One definition per row, paired in order - unlike <see cref="FrontLine"/>, a mixed column rather than one unit repeated.</summary>
+    private static IReadOnlyList<UnitPlacement> Column(int col, int[] rows, params UnitDefinition[] definitions)
     {
-        if (cols.Length != definitions.Length)
+        if (rows.Length != definitions.Length)
         {
             throw new ArgumentException(
-                $"Row for row {row}: {cols.Length} columns but {definitions.Length} definitions - Zip would silently drop one.",
+                $"Column for column {col}: {rows.Length} rows but {definitions.Length} definitions - Zip would silently drop one.",
                 nameof(definitions));
         }
 
-        return [.. cols.Zip(definitions, (col, definition) => new UnitPlacement(definition, new HexCoord(row, col)))];
+        return [.. rows.Zip(definitions, (row, definition) => new UnitPlacement(definition, new HexCoord(row, col)))];
     }
 }

@@ -407,9 +407,9 @@ public sealed class BattleSimulation
     /// The hex this unit should step onto to close on <paramref name="target"/>,
     /// or null if nothing reachable shortens the route. Routes around
     /// occupied tiles, allies included, rather than waiting on a blocked
-    /// front rank. Ties break on the smallest column gap to the target, then
-    /// the lowest row, then the lowest column - column gap first, so the
-    /// zigzag a pointy-top grid forces stays centred on the target's column
+    /// front rank. Ties break on the smallest row gap to the target, then
+    /// the lowest row, then the lowest column - row gap first, so the
+    /// zigzag a pointy-top grid forces stays centred on the target's row
     /// instead of drifting. The route targets where the enemy stood this
     /// tick only, so a unit can revisit a tile it left as the target moves.
     /// </summary>
@@ -460,8 +460,8 @@ public sealed class BattleSimulation
                 return steps < bestSteps;
             }
 
-            int gap = Math.Abs(step.Col - goal.Col);
-            int bestGap = Math.Abs(best.Col - goal.Col);
+            int gap = Math.Abs(step.Row - goal.Row);
+            int bestGap = Math.Abs(best.Row - goal.Row);
             if (gap != bestGap)
             {
                 return gap < bestGap;

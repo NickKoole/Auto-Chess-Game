@@ -24,10 +24,12 @@ public sealed class BattleIntegrationTests
     private static readonly ulong[] Seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 42, 1337, 90210, 271828, 314159];
 
     private static UnitPlacement At(UnitDefinition definition, int row, int col) =>
-        new(definition, new HexCoord(row, col));
+        new(definition, Horizontal(row, col));
+
+    private static HexCoord Horizontal(int row, int col) => new(col, Battlefield.Rows - 1 - row);
 
     /// <summary>
-    /// A fresh 6v6, legally deployed: player in rows 5-7, opponent in rows 0-2.
+    /// A fresh 6v6, legally deployed: player in columns 0-2, opponent in columns 5-7.
     /// Built anew per call, since a battle consumes the setup it runs on.
     /// </summary>
     private static BattleSetup Setup()

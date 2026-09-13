@@ -48,7 +48,9 @@ public sealed class BattleCombatTests
         damageVariance: 0.0);
 
     private static UnitPlacement At(UnitDefinition definition, int row, int col) =>
-        new(definition, new HexCoord(row, col));
+        new(definition, Horizontal(row, col));
+
+    private static HexCoord Horizontal(int row, int col) => new(col, Battlefield.Rows - 1 - row);
 
     private static BattleSetup Setup(
         IReadOnlyList<UnitPlacement> player,
@@ -60,7 +62,7 @@ public sealed class BattleCombatTests
 
     /// <summary>The unit that started on a tile. Call before running; see the equivalent helper in BattleTargetingAndMovementTests.</summary>
     private static BattleUnit From(BattleSetup setup, int row, int col) =>
-        setup.Units.Single(u => u.Position == new HexCoord(row, col));
+        setup.Units.Single(u => u.Position == Horizontal(row, col));
 
     // --- attacking, cooldown, and the roll ------------------------------------
 

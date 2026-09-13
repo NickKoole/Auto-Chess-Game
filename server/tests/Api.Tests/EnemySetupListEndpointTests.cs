@@ -108,7 +108,7 @@ public sealed class EnemySetupListEndpointTests(ApiFactory factory) : IClassFixt
     }
 
     [Fact]
-    public void Guarded_archers_places_two_knights_at_the_front_row_and_two_archers_behind_them()
+    public void Guarded_archers_places_two_knights_at_the_front_column_and_two_archers_behind_them()
     {
         var catalog = new EnemySetupCatalog(new StaticUnitCatalog());
         EnemySetup setup = catalog.All.Single(s => s.Id == "guarded-archers");
@@ -120,8 +120,7 @@ public sealed class EnemySetupListEndpointTests(ApiFactory factory) : IClassFixt
         Assert.Equal(2, archerCoords.Count);
         Assert.Equal(setup.Placements.Count, knightCoords.Count + archerCoords.Count);
 
-        // Row 2 is the opponent's front row (adjacent to the neutral band); row 0 is furthest from the player.
-        Assert.All(knightCoords, c => Assert.Equal(2, c.Row));
-        Assert.All(archerCoords, c => Assert.Equal(0, c.Row));
+        Assert.All(knightCoords, c => Assert.Equal(5, c.Col));
+        Assert.All(archerCoords, c => Assert.Equal(7, c.Col));
     }
 }

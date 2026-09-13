@@ -5,7 +5,7 @@ namespace Api.Battles;
 
 /// <summary>
 /// The small set of hand-authored enemy armies a player-built composition
-/// can be run against. Each deploys in the opponent's rows 0-2 of the 8x8
+/// can be run against. Each deploys in the opponent's columns 5-7 of the 8x8
 /// board - <see cref="Battlefield.DeploymentBand"/>.
 /// </summary>
 public sealed class EnemySetupCatalog
@@ -46,41 +46,41 @@ public sealed class EnemySetupCatalog
         yield return new EnemySetup(
             "elite-line",
             DisplayName: "Elite Line",
-            Placements: FrontLine(units.Get("knight"), row: 2, cols: [3, 4]));
+            Placements: FrontLine(units.Get("knight"), col: 5, rows: [3, 4]));
 
         yield return new EnemySetup(
             "mixed-line",
             DisplayName: "Mixed Line",
-            Placements: Row(row: 2, cols: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("archer")));
+            Placements: Column(col: 5, rows: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("archer")));
 
         yield return new EnemySetup(
             "swarm",
             DisplayName: "Swarm",
-            Placements: FrontLine(units.Get("militia"), row: 2, cols: [1, 2, 3, 4, 5, 6]));
+            Placements: FrontLine(units.Get("militia"), col: 5, rows: [1, 2, 3, 4, 5, 6]));
 
         yield return new EnemySetup(
             "guarded-archers",
             DisplayName: "Guarded Archers",
             Placements:
             [
-                .. FrontLine(units.Get("knight"), row: 2, cols: [3, 4]),
-                .. FrontLine(units.Get("archer"), row: 0, cols: [3, 4]),
+                .. FrontLine(units.Get("knight"), col: 5, rows: [3, 4]),
+                .. FrontLine(units.Get("archer"), col: 7, rows: [3, 4]),
             ]);
     }
 
-    private static IReadOnlyList<UnitPlacement> FrontLine(UnitDefinition definition, int row, int[] cols) =>
-        [.. cols.Select(col => new UnitPlacement(definition, new HexCoord(row, col)))];
+    private static IReadOnlyList<UnitPlacement> FrontLine(UnitDefinition definition, int col, int[] rows) =>
+        [.. rows.Select(row => new UnitPlacement(definition, new HexCoord(row, col)))];
 
-    /// <summary>One definition per column, paired in order - unlike <see cref="FrontLine"/>, a mixed row rather than one unit repeated.</summary>
-    private static IReadOnlyList<UnitPlacement> Row(int row, int[] cols, params UnitDefinition[] definitions)
+    /// <summary>One definition per row, paired in order - unlike <see cref="FrontLine"/>, a mixed column rather than one unit repeated.</summary>
+    private static IReadOnlyList<UnitPlacement> Column(int col, int[] rows, params UnitDefinition[] definitions)
     {
-        if (cols.Length != definitions.Length)
+        if (rows.Length != definitions.Length)
         {
             throw new ArgumentException(
-                $"Row for row {row}: {cols.Length} columns but {definitions.Length} definitions - Zip would silently drop one.",
+                $"Column for column {col}: {rows.Length} rows but {definitions.Length} definitions - Zip would silently drop one.",
                 nameof(definitions));
         }
 
-        return [.. cols.Zip(definitions, (col, definition) => new UnitPlacement(definition, new HexCoord(row, col)))];
+        return [.. rows.Zip(definitions, (row, definition) => new UnitPlacement(definition, new HexCoord(row, col)))];
     }
 }

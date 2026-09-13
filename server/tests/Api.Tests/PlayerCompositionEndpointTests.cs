@@ -16,8 +16,8 @@ public sealed class PlayerCompositionEndpointTests(ApiFactory factory) : IClassF
             EnemySetupId = "elite-line",
             PlayerPlacements =
             [
-                new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 5, Col = 3 } },
-                new PlayerPlacementDto { UnitId = "archer", Position = new HexCoordDto { Row = 6, Col = 4 } },
+                new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 3, Col = 2 } },
+                new PlayerPlacementDto { UnitId = "archer", Position = new HexCoordDto { Row = 4, Col = 1 } },
             ],
             Seed = "24680",
         });
@@ -42,7 +42,7 @@ public sealed class PlayerCompositionEndpointTests(ApiFactory factory) : IClassF
         HttpResponseMessage response = await client.PostAsJsonAsync("/battles/simulate", new SimulateBattleRequest
         {
             EnemySetupId = "swarm",
-            PlayerPlacements = [new PlayerPlacementDto { UnitId = "ghost", Position = new HexCoordDto { Row = 5, Col = 2 } }],
+            PlayerPlacements = [new PlayerPlacementDto { UnitId = "ghost", Position = new HexCoordDto { Row = 2, Col = 1 } }],
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -78,7 +78,7 @@ public sealed class PlayerCompositionEndpointTests(ApiFactory factory) : IClassF
         HttpResponseMessage response = await client.PostAsJsonAsync("/battles/simulate", new SimulateBattleRequest
         {
             EnemySetupId = "swarm",
-            PlayerPlacements = [new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 99, Col = 2 } }],
+            PlayerPlacements = [new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 2, Col = 99 } }],
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -96,7 +96,7 @@ public sealed class PlayerCompositionEndpointTests(ApiFactory factory) : IClassF
         HttpResponseMessage response = await client.PostAsJsonAsync("/battles/simulate", new SimulateBattleRequest
         {
             EnemySetupId = "swarm",
-            PlayerPlacements = [new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 3, Col = 2 } }],
+            PlayerPlacements = [new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 2, Col = 3 } }],
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -114,7 +114,7 @@ public sealed class PlayerCompositionEndpointTests(ApiFactory factory) : IClassF
         HttpResponseMessage response = await client.PostAsJsonAsync("/battles/simulate", new SimulateBattleRequest
         {
             EnemySetupId = "swarm",
-            PlayerPlacements = [new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 0, Col = 2 } }],
+            PlayerPlacements = [new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 2, Col = 5 } }],
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -134,8 +134,8 @@ public sealed class PlayerCompositionEndpointTests(ApiFactory factory) : IClassF
             EnemySetupId = "swarm",
             PlayerPlacements =
             [
-                new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 5, Col = 2 } },
-                new PlayerPlacementDto { UnitId = "archer", Position = new HexCoordDto { Row = 5, Col = 2 } },
+                new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 2, Col = 1 } },
+                new PlayerPlacementDto { UnitId = "archer", Position = new HexCoordDto { Row = 2, Col = 1 } },
             ],
         });
 
@@ -154,7 +154,7 @@ public sealed class PlayerCompositionEndpointTests(ApiFactory factory) : IClassF
         HttpResponseMessage response = await client.PostAsJsonAsync("/battles/simulate", new SimulateBattleRequest
         {
             EnemySetupId = "does-not-exist",
-            PlayerPlacements = [new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 5, Col = 2 } }],
+            PlayerPlacements = [new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 2, Col = 1 } }],
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

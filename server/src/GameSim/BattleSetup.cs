@@ -19,8 +19,8 @@ public sealed class BattleSetup
 
     /// <summary>
     /// Every unit in both armies: by side, then front-to-back
-    /// (<see cref="Battlefield.RowsToEnemyBackLine"/>, not raw row - the two
-    /// sides advance in opposite directions), then by column. Part of the
+    /// (<see cref="Battlefield.ColumnsToEnemyBackLine"/>, not raw column - the two
+    /// sides advance in opposite directions), then by row. Part of the
     /// contract, not an implementation detail: tick order decides a mutual
     /// kill, so a replay is only byte-identical if units start in this order.
     /// </summary>
@@ -111,13 +111,13 @@ public sealed class BattleSetup
         ];
 
         // A total order: duplicates are already rejected, so no two units of a
-        // side can tie on (rows-to-cross, column).
+        // side can tie on (columns-to-cross, row).
         BattleUnit[] ordered =
         [
             .. units
                 .OrderBy(u => (int)u.Side)
-                .ThenBy(u => Battlefield.RowsToEnemyBackLine(u.Side, u.Position))
-                .ThenBy(u => u.Position.Col)
+                .ThenBy(u => Battlefield.ColumnsToEnemyBackLine(u.Side, u.Position))
+                .ThenBy(u => u.Position.Row)
         ];
 
         var battlefield = new Battlefield();

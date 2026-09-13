@@ -4,8 +4,8 @@ namespace GameSim;
 
 /// <summary>
 /// The 8x8 pointy-top hex board a battle is fought on. The player deploys
-/// along rows 5-7 and advances north; the opponent deploys along rows 0-2 and
-/// advances south; rows 3-4 are a neutral band nobody may deploy into but
+/// along columns 0-2 and advances east; the opponent deploys along columns 5-7 and
+/// advances west; columns 3-4 are a neutral band nobody may deploy into but
 /// everybody may walk through.
 /// </summary>
 public sealed class Battlefield
@@ -16,9 +16,9 @@ public sealed class Battlefield
     /// <summary>Indexed 0 (west) to 7 (east).</summary>
     public const int Columns = 8;
 
-    public const int NeutralFirstRow = 3;
+    public const int NeutralFirstColumn = 3;
 
-    public const int NeutralLastRow = 4;
+    public const int NeutralLastColumn = 4;
 
     // One slot per tile, row-major. A flat array rather than a dictionary: the
     // board is a fixed 64 tiles, and nothing that decides an outcome may depend
@@ -30,29 +30,29 @@ public sealed class Battlefield
 
     /// <summary>False off the board.</summary>
     public static bool IsNeutralBand(HexCoord coord) =>
-        IsInBounds(coord) && coord.Row >= NeutralFirstRow && coord.Row <= NeutralLastRow;
+        IsInBounds(coord) && coord.Col >= NeutralFirstColumn && coord.Col <= NeutralLastColumn;
 
     /// <summary>
-    /// The rows a side may deploy in, inclusive: the player holds 5-7, the
-    /// opponent holds 0-2.
+    /// The columns a side may deploy in, inclusive: the player holds 0-2, the
+    /// opponent holds 5-7.
     /// </summary>
-    public static (int FirstRow, int LastRow) DeploymentBand(BattleSide side) => side switch
+    public static (int FirstColumn, int LastColumn) DeploymentBand(BattleSide side) => side switch
     {
-        BattleSide.Player => (NeutralLastRow + 1, Rows - 1),
-        BattleSide.Opponent => (0, NeutralFirstRow - 1),
+        BattleSide.Player => (0, NeutralFirstColumn - 1),
+        BattleSide.Opponent => (NeutralLastColumn + 1, Columns - 1),
         _ => throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown side."),
     };
 
     /// <summary>
-    /// Row 0 for the player, row <see cref="Rows"/> - 1 for the opponent - the
-    /// front-to-back sort key for a side's own units, since raw row order runs
+    /// Column <see cref="Columns"/> - 1 for the player, column 0 for the opponent - the
+    /// front-to-back sort key for a side's own units, since raw column order runs
     /// backward for one side. No bounds check: callers already hold accepted
     /// coordinates.
     /// </summary>
-    public static int RowsToEnemyBackLine(BattleSide side, HexCoord coord) => side switch
+    public static int ColumnsToEnemyBackLine(BattleSide side, HexCoord coord) => side switch
     {
-        BattleSide.Player => coord.Row,
-        BattleSide.Opponent => (Rows - 1) - coord.Row,
+        BattleSide.Player => (Columns - 1) - coord.Col,
+        BattleSide.Opponent => coord.Col,
         _ => throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown side."),
     };
 
@@ -67,8 +67,8 @@ public sealed class Battlefield
             return false;
         }
 
-        (int firstRow, int lastRow) = DeploymentBand(side);
-        return coord.Row >= firstRow && coord.Row <= lastRow;
+        (int firstColumn, int lastColumn) = DeploymentBand(side);
+        return coord.Col >= firstColumn && coord.Col <= lastColumn;
     }
 
     /// <summary>
@@ -93,18 +93,18 @@ public sealed class Battlefield
                 PlacementErrorKind.NeutralBand,
                 side,
                 coord,
-                $"{coord} is in the neutral band (rows {NeutralFirstRow}-{NeutralLastRow}), " +
+                $"{coord} is in the neutral band (columns {NeutralFirstColumn}-{NeutralLastColumn}), " +
                 "where neither side may deploy.");
         }
 
         if (!IsDeploymentBandOf(side, coord))
         {
-            (int firstRow, int lastRow) = DeploymentBand(side);
+            (int firstColumn, int lastColumn) = DeploymentBand(side);
             return new PlacementError(
                 PlacementErrorKind.OpposingDeploymentBand,
                 side,
                 coord,
-                $"{coord} is in the opposing deployment band: {side} deploys in rows {firstRow}-{lastRow}.");
+                $"{coord} is in the opposing deployment band: {side} deploys in columns {firstColumn}-{lastColumn}.");
         }
 
         return null;

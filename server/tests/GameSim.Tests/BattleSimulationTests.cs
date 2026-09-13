@@ -36,9 +36,11 @@ public sealed class BattleSimulationTests
         movementTicksPerHex: 10_000,
         attackRangeHexes: 1);
 
-    private static UnitPlacement At(int row, int col) => new(Militia, new HexCoord(row, col));
+    private static UnitPlacement At(int row, int col) => new(Militia, Horizontal(row, col));
 
-    private static UnitPlacement SnailAt(int row, int col) => new(Snail, new HexCoord(row, col));
+    private static UnitPlacement SnailAt(int row, int col) => new(Snail, Horizontal(row, col));
+
+    private static HexCoord Horizontal(int row, int col) => new(col, Battlefield.Rows - 1 - row);
 
     /// <summary>
     /// A fresh two-a-side setup. Built on every call rather than shared, because
@@ -248,13 +250,13 @@ public sealed class BattleSimulationTests
 
         Assert.Equal(
             [
-                (BattleSide.Player, new HexCoord(5, 0)),
-                (BattleSide.Player, new HexCoord(7, 1)),
-                (BattleSide.Player, new HexCoord(7, 4)),
+                (BattleSide.Player, Horizontal(5, 0)),
+                (BattleSide.Player, Horizontal(7, 1)),
+                (BattleSide.Player, Horizontal(7, 4)),
                 // Front-to-back for the opponent too, which is descending row:
                 // row 2 is its front line, row 0 its back line.
-                (BattleSide.Opponent, new HexCoord(2, 3)),
-                (BattleSide.Opponent, new HexCoord(0, 5)),
+                (BattleSide.Opponent, Horizontal(2, 3)),
+                (BattleSide.Opponent, Horizontal(0, 5)),
             ],
             battle.LivingUnits().Select(u => (u.Side, u.Position)));
 

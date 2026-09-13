@@ -45,7 +45,9 @@ public sealed class BattleEventLogTests
         damageVariance: 0.0);
 
     private static UnitPlacement At(UnitDefinition definition, int row, int col) =>
-        new(definition, new HexCoord(row, col));
+        new(definition, Horizontal(row, col));
+
+    private static HexCoord Horizontal(int row, int col) => new(col, Battlefield.Rows - 1 - row);
 
     private static BattleSetup Setup(
         IReadOnlyList<UnitPlacement> player,
@@ -105,12 +107,12 @@ public sealed class BattleEventLogTests
         Assert.Equal(
             new (int Tick, HexCoord From, HexCoord To)[]
             {
-                (1, new HexCoord(7, 3), new HexCoord(6, 3)),
-                (2, new HexCoord(6, 3), new HexCoord(5, 3)),
-                (3, new HexCoord(5, 3), new HexCoord(4, 3)),
-                (4, new HexCoord(4, 3), new HexCoord(3, 3)),
-                (5, new HexCoord(3, 3), new HexCoord(2, 3)),
-                (6, new HexCoord(2, 3), new HexCoord(1, 3)),
+                (1, Horizontal(7, 3), Horizontal(6, 3)),
+                (2, Horizontal(6, 3), Horizontal(5, 3)),
+                (3, Horizontal(5, 3), Horizontal(4, 3)),
+                (4, Horizontal(4, 3), Horizontal(3, 3)),
+                (5, Horizontal(3, 3), Horizontal(2, 3)),
+                (6, Horizontal(2, 3), Horizontal(1, 3)),
             },
             moves.Select(m => (m.Tick, m.From, m.To)));
 
