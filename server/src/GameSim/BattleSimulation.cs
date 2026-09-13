@@ -409,7 +409,7 @@ public sealed class BattleSimulation
     /// occupied tiles, allies included, rather than waiting on a blocked
     /// front rank. Ties break on the smallest row gap to the target, then
     /// the lowest row, then the lowest column - row gap first, so the
-    /// zigzag a pointy-top grid forces stays centred on the target's row
+    /// offset-grid diagonal routes stay centred on the target's row
     /// instead of drifting. The route targets where the enemy stood this
     /// tick only, so a unit can revisit a tile it left as the target moves.
     /// </summary>
