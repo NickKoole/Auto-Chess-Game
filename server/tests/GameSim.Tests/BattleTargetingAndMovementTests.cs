@@ -85,6 +85,9 @@ public sealed class BattleTargetingAndMovementTests
     private static UnitPlacement At(UnitDefinition definition, int row, int col) =>
         new(definition, Horizontal(row, col));
 
+    private static UnitPlacement AtHorizontal(UnitDefinition definition, int row, int col) =>
+        new(definition, new HexCoord(row, col));
+
     private static HexCoord Horizontal(int row, int col) => new(col, Battlefield.Rows - 1 - row);
 
     private static BattleSetup Setup(
@@ -603,15 +606,17 @@ public sealed class BattleTargetingAndMovementTests
         // it needs every neighbour held, not merely the closing ones.
         BattleSetup setup = Setup(
             [
-                At(Militia, 7, 3),
-                At(Sentinel, 6, 3), At(Sentinel, 6, 4), At(Sentinel, 7, 2), At(Sentinel, 7, 4),
+                AtHorizontal(Militia, 3, 0),
+                AtHorizontal(Sentinel, 2, 0), AtHorizontal(Sentinel, 2, 1), AtHorizontal(Sentinel, 3, 1),
+                AtHorizontal(Sentinel, 4, 0), AtHorizontal(Sentinel, 4, 1),
             ],
-            [At(Sentinel, 0, 3)]);
+            [AtHorizontal(Sentinel, 3, 7)]);
 
-        BattleUnit stuck = From(setup, 7, 3);
+        BattleUnit stuck = setup.Units.Single(unit => unit.Position == new HexCoord(3, 0));
 
         Assert.Equal(BattleEnding.TickCapDraw, Run(setup, BattleOptions.DefaultMaxTicks).Ending);
-        Assert.True(Battlefield.IsInBounds(stuck.Position));
+        Assert.Equal(new HexCoord(3, 0), stuck.Position);
+        Assert.Equal(0, stuck.MovementCooldownTicks);
     }
 
     [Fact]
@@ -627,10 +632,11 @@ public sealed class BattleTargetingAndMovementTests
         // clean read on the two-phase rule.
         BattleSetup setup = Setup(
             [
-                At(Runner, 7, 3), At(Runner, 6, 3),
-                At(Sentinel, 6, 4), At(Sentinel, 7, 2), At(Sentinel, 7, 4),
+                AtHorizontal(Runner, 3, 0), AtHorizontal(Runner, 3, 1),
+                AtHorizontal(Sentinel, 2, 0), AtHorizontal(Sentinel, 2, 1),
+                AtHorizontal(Sentinel, 4, 0), AtHorizontal(Sentinel, 4, 1),
             ],
-            [At(Sentinel, 0, 3)]);
+            [AtHorizontal(Sentinel, 3, 7)]);
 
         HexCoord[] before = [.. setup.Units.Select(u => u.Position)];
 
@@ -638,7 +644,7 @@ public sealed class BattleTargetingAndMovementTests
 
         HexCoord[] after = [.. setup.Units.Select(u => u.Position)];
 
-        Assert.Equal(before.Length, after.Distinct().Count());
+        Assert.Equal(1, before.Zip(after).Count(pair => pair.First != pair.Second));
     }
 
     // --- routing around an obstruction ---------------------------------------
