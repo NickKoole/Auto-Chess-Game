@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace GameSim;
 
 /// <summary>
-/// The 8x8 pointy-top hex board a battle is fought on. The player deploys
+/// The 8x8 flat-top hex board a battle is fought on. The player deploys
 /// along columns 0-2 and advances east; the opponent deploys along columns 5-7 and
 /// advances west; columns 3-4 are a neutral band nobody may deploy into but
 /// everybody may walk through.

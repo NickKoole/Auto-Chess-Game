@@ -127,7 +127,7 @@ public sealed class BattleTargetingAndMovementTests
     [Fact]
     public void Breaks_a_distance_tie_on_the_lowest_row()
     {
-        // Both enemies are 4 hexes from (5, 0). The one in row 2 is in the
+        // Both enemies are 4 hexes from the hunter. The one in row 2 is in the
         // nearer rank and comes first in BattleSetup.Units order, so this fails
         // both for an implementation that keeps whichever it saw first and for
         // one that reaches for the nearest row instead of the nearest hex.
@@ -138,8 +138,8 @@ public sealed class BattleTargetingAndMovementTests
         BattleUnit hunter = From(setup, 1, 2);
         BattleUnit lowestRow = From(setup, 2, 6);
 
-        Assert.Equal(4, new HexCoord(5, 0).DistanceTo(new HexCoord(1, 2)));
-        Assert.Equal(4, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 3)));
+        Assert.Equal(4, new HexCoord(1, 2).DistanceTo(new HexCoord(2, 6)));
+        Assert.Equal(4, new HexCoord(1, 2).DistanceTo(new HexCoord(3, 5)));
 
         Run(setup, 1);
 
@@ -214,7 +214,7 @@ public sealed class BattleTargetingAndMovementTests
     {
         // Targets are re-chosen every tick. Sentinels throughout, so nothing
         // moves and the distances the choice was made on stay on the board: the
-        // hunter is handed a target 9 hexes away while a living enemy stands at
+        // hunter is handed a target 10 hexes away while a living enemy stands at
         // 3, and must come off it.
         BattleSetup setup = Setup(
             [At(Sentinel, 0, 2)],
@@ -224,8 +224,8 @@ public sealed class BattleTargetingAndMovementTests
         BattleUnit near = From(setup, 0, 5);
         BattleUnit far = From(setup, 7, 7);
 
-        Assert.Equal(3, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 0)));
-        Assert.Equal(9, new HexCoord(5, 0).DistanceTo(new HexCoord(0, 7)));
+        Assert.Equal(3, new HexCoord(0, 2).DistanceTo(new HexCoord(0, 5)));
+        Assert.Equal(10, new HexCoord(0, 2).DistanceTo(new HexCoord(7, 7)));
 
         hunter.Target = far;
 
@@ -283,8 +283,8 @@ public sealed class BattleTargetingAndMovementTests
         BattleUnit near = From(setup, 0, 5);
         BattleUnit far = From(setup, 7, 7);
 
-        Assert.Equal(3, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 0)));
-        Assert.Equal(9, new HexCoord(5, 0).DistanceTo(new HexCoord(0, 7)));
+        Assert.Equal(3, new HexCoord(0, 2).DistanceTo(new HexCoord(0, 5)));
+        Assert.Equal(10, new HexCoord(0, 2).DistanceTo(new HexCoord(7, 7)));
 
         hunter.Target = far;
 
@@ -455,15 +455,15 @@ public sealed class BattleTargetingAndMovementTests
         // to the target. (7, 3) comes first in BattleSetup.Units order — same
         // row, lower column — so it takes the tile.
         BattleSetup setup = Setup(
-            [At(Runner, 3, 0), At(Runner, 4, 0)],
-            [At(Sentinel, 4, 7)]);
+            [At(Runner, 4, 0), At(Runner, 4, 1)],
+            [At(Sentinel, 0, 7)]);
 
-        BattleUnit first = From(setup, 3, 0);
+        BattleUnit first = From(setup, 4, 1);
         BattleUnit second = From(setup, 4, 0);
 
         Run(setup, 1);
 
-        Assert.Equal(new HexCoord(4, 1), first.Position);
+        Assert.Equal(new HexCoord(3, 1), first.Position);
         Assert.Equal(new HexCoord(4, 0), second.Position);
 
         // Losing a contested tile is not an attempt it gets charged for.
@@ -480,7 +480,7 @@ public sealed class BattleTargetingAndMovementTests
     /// </summary>
     private static BattleSetup Pocket(bool sealIt) => Setup(
         sealIt
-            ? [At(Runner, 0, 0), At(Runner, 0, 1), At(Sentinel, 0, 2), At(Sentinel, 1, 1), At(Sentinel, 1, 0)]
+            ? [At(Runner, 0, 0), At(Runner, 0, 1), At(Sentinel, 0, 2), At(Sentinel, 1, 2), At(Sentinel, 1, 1), At(Sentinel, 1, 0)]
             : [At(Runner, 0, 0), At(Runner, 0, 1), At(Sentinel, 0, 2), At(Sentinel, 1, 0)],
         [At(Sentinel, 3, 7)]);
 
@@ -686,18 +686,18 @@ public sealed class BattleTargetingAndMovementTests
         // implementation that took whichever tied neighbour the array happened to
         // list first would answer (6, 3), which is what makes this test worth
         // having.
-        BattleSetup setup = Setup([At(Runner, 3, 0)], [At(Sentinel, 4, 7)]);
+        BattleSetup setup = Setup([At(Runner, 3, 0)], [At(Sentinel, 1, 7)]);
 
         BattleUnit mover = From(setup, 3, 0);
 
-        Assert.Equal(6, new HexCoord(6, 3).DistanceTo(new HexCoord(0, 4)));
-        Assert.Equal(6, new HexCoord(6, 4).DistanceTo(new HexCoord(0, 4)));
-        Assert.Equal(new HexCoord(2, 0), mover.Position.Neighbours()[0]);
-        Assert.Equal(new HexCoord(2, 1), mover.Position.Neighbours()[1]);
+        Assert.Equal(6, new HexCoord(3, 1).DistanceTo(new HexCoord(1, 7)));
+        Assert.Equal(6, new HexCoord(2, 1).DistanceTo(new HexCoord(1, 7)));
+        Assert.Equal(new HexCoord(3, 1), mover.Position.Neighbours()[4]);
+        Assert.Equal(new HexCoord(2, 1), mover.Position.Neighbours()[5]);
 
         Run(setup, 1);
 
-        Assert.Equal(new HexCoord(4, 1), mover.Position);
+        Assert.Equal(new HexCoord(2, 1), mover.Position);
     }
 
     [Fact]

@@ -45,14 +45,13 @@ public sealed class HexCoordTests
     }
 
     [Theory]
-    // Hand-computed from the odd-r formula x = col - (row - (row & 1)) / 2,
-    // z = row, y = -x - z. Independent of the implementation, so a wrong shift
-    // fails here rather than being confirmed by it.
+    // Hand-computed from the flat-top odd-q formula x = col,
+    // z = row - (col - (col & 1)) / 2, y = -x - z.
     [InlineData(0, 0, 0, 0, 0)]
-    [InlineData(0, 7, 7, -7, 0)]
-    [InlineData(3, 3, 2, -5, 3)]
-    [InlineData(4, 3, 1, -5, 4)]
-    [InlineData(7, 7, 4, -11, 7)]
+    [InlineData(0, 7, 7, -4, -3)]
+    [InlineData(3, 3, 3, -5, 2)]
+    [InlineData(4, 3, 3, -6, 3)]
+    [InlineData(7, 7, 7, -11, 4)]
     public void Converts_to_the_expected_cube_coordinate(int row, int col, int x, int y, int z)
     {
         Assert.Equal(new CubeCoord(x, y, z), new HexCoord(row, col).ToCube());
@@ -75,19 +74,16 @@ public sealed class HexCoordTests
     }
 
     [Theory]
-    // Within a row, neighbours are due east and west.
-    [InlineData(3, 3, 3, 4)]
+    // An odd column leans south.
     [InlineData(3, 3, 3, 2)]
-    // An odd row is shifted right, so its northern neighbours are (row-1, col)
-    // and (row-1, col+1).
+    [InlineData(3, 3, 4, 2)]
     [InlineData(3, 3, 2, 3)]
-    [InlineData(3, 3, 2, 4)]
     [InlineData(3, 3, 4, 3)]
+    [InlineData(3, 3, 3, 4)]
     [InlineData(3, 3, 4, 4)]
-    // An even row is shifted left, so its northern neighbours are (row-1, col-1)
-    // and (row-1, col).
-    [InlineData(4, 3, 3, 2)]
-    [InlineData(4, 3, 3, 3)]
+    // An even column leans north.
+    [InlineData(3, 4, 3, 3)]
+    [InlineData(3, 4, 2, 3)]
     public void Adjacent_hexes_are_one_apart(int aRow, int aCol, int bRow, int bCol)
     {
         var a = new HexCoord(aRow, aCol);
@@ -98,16 +94,14 @@ public sealed class HexCoordTests
     }
 
     [Theory]
-    // The other three tiles in the 2x2 block around (3,3) that are NOT
-    // neighbours, because odd-r shifts alternate rows in one direction only.
+    // The other corners around an odd-column tile are two steps away.
     [InlineData(3, 3, 2, 2)]
-    [InlineData(3, 3, 4, 2)]
-    [InlineData(4, 3, 3, 4)]
+    [InlineData(3, 3, 2, 4)]
+    [InlineData(3, 3, 5, 3)]
     public void Diagonally_offset_hexes_are_two_apart(int aRow, int aCol, int bRow, int bCol)
     {
-        // Guards the odd-r choice specifically: under even-r these three would
-        // be the neighbours and the ones above would be two apart, so a flipped
-        // parity cannot slip through as "still roughly right".
+        // Guards the odd-q choice specifically: reversing the column parity
+        // turns these into neighbours.
         var a = new HexCoord(aRow, aCol);
         var b = new HexCoord(bRow, bCol);
 
@@ -124,7 +118,7 @@ public sealed class HexCoordTests
     // Straight along a row.
     [InlineData(0, 0, 0, 7, 7)]
     // Across the neutral band, the shortest a battle line ever has to close.
-    [InlineData(5, 4, 2, 4, 3)]
+    [InlineData(5, 2, 5, 5, 3)]
     public void Distance_matches_known_cases(int aRow, int aCol, int bRow, int bCol, int expected)
     {
         var a = new HexCoord(aRow, aCol);
@@ -170,12 +164,11 @@ public sealed class HexCoordTests
     }
 
     [Theory]
-    // An odd row leans east: its diagonal neighbours are this column and the one
-    // to the east.
-    [InlineData(3, 3, new[] { 2, 3, 2, 4, 3, 2, 3, 4, 4, 3, 4, 4 })]
-    // An even row leans west.
-    [InlineData(4, 3, new[] { 3, 2, 3, 3, 4, 2, 4, 4, 5, 2, 5, 3 })]
-    public void Neighbours_follow_the_odd_r_lean(int row, int col, int[] expected)
+    // An odd column leans south.
+    [InlineData(3, 3, new[] { 2, 3, 3, 2, 3, 4, 4, 2, 4, 3, 4, 4 })]
+    // An even column leans north.
+    [InlineData(4, 4, new[] { 3, 3, 3, 4, 3, 5, 4, 3, 4, 5, 5, 4 })]
+    public void Neighbours_follow_the_odd_q_lean(int row, int col, int[] expected)
     {
         // Stated as literal coordinates rather than recomputed from the lean, so
         // a flipped parity fails here instead of being confirmed by the same
@@ -193,8 +186,8 @@ public sealed class HexCoordTests
     [Fact]
     public void Every_tile_has_exactly_six_neighbours_one_hex_away()
     {
-        // The odd-r neighbour rule stated independently of the conversion: odd
-        // rows lean right, even rows lean left. Checking it on every tile of the
+        // The odd-q neighbour rule stated independently of the conversion: odd
+        // columns lean south, even columns lean north. Checking it on every tile of the
         // board catches a parity mistake that a single hand-picked example would
         // sail past.
         var wrong = new List<string>();
@@ -204,16 +197,16 @@ public sealed class HexCoordTests
             for (int col = -4; col < Battlefield.Columns + 4; col++)
             {
                 var centre = new HexCoord(row, col);
-                int lean = (row & 1) == 1 ? 1 : -1;
+                int lean = (col & 1) == 1 ? 1 : -1;
 
                 HexCoord[] neighbours =
                 [
                     new(row, col - 1),
-                    new(row, col + 1),
+                    new(row + lean, col - 1),
                     new(row - 1, col),
-                    new(row - 1, col + lean),
                     new(row + 1, col),
-                    new(row + 1, col + lean),
+                    new(row, col + 1),
+                    new(row + lean, col + 1),
                 ];
 
                 foreach (HexCoord neighbour in neighbours)

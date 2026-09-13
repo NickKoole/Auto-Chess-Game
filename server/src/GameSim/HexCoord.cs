@@ -1,38 +1,32 @@
 namespace GameSim;
 
 /// <summary>
-/// A hex on a pointy-top grid, in offset coordinates: zero-indexed row and
-/// column, rows running top to bottom. Layout is odd-r - odd rows sit half a
-/// hex to the right - which every formula here assumes. Board size and
-/// occupancy are <see cref="Battlefield"/>'s business, not this type's. No
-/// direct north or south neighbour, so closing vertical distance means
-/// alternating NE/NW - that still costs one hex per row, not two.
+/// A flat-top hex in offset coordinates: zero-indexed row and column, with
+/// odd columns shifted half a hex south. Board size and occupancy are
+/// <see cref="Battlefield"/>'s business, not this type's.
 /// </summary>
 /// <param name="Row">Row index, increasing southwards.</param>
 /// <param name="Col">Column index, increasing eastwards.</param>
 public readonly record struct HexCoord(int Row, int Col)
 {
     /// <summary>
-    /// <c>(Row - (Row &amp; 1)) / 2</c> rather than <c>Row / 2</c>, so it stays
-    /// exact for negative rows - the numerator is always even, so nothing is
-    /// lost on either side of the origin.
+    /// <c>(Col - (Col &amp; 1)) / 2</c> keeps the offset exact for negative
+    /// columns, where a plain <c>Col / 2</c> would truncate toward zero.
     /// </summary>
     public CubeCoord ToCube()
     {
-        int x = Col - ((Row - (Row & 1)) / 2);
-        int z = Row;
+        int x = Col;
+        int z = Row - ((Col - (Col & 1)) / 2);
         return new CubeCoord(x, -x - z, z);
     }
 
     /// <summary>Exactly inverts <see cref="ToCube"/>.</summary>
     public static HexCoord FromCube(CubeCoord cube) =>
-        new(cube.Z, cube.X + ((cube.Z - (cube.Z & 1)) / 2));
+        new(cube.Z + ((cube.X - (cube.X & 1)) / 2), cube.X);
 
     /// <summary>
-    /// The six adjacent hexes. Odd rows lean east, even rows lean west, so the
-    /// two northern neighbours are <c>(Row - 1, Col)</c> and
-    /// <c>(Row - 1, Col + lean)</c>, mirrored to the south; east and west are
-    /// always <c>Col - 1</c> or <c>Col + 1</c>. Order is fixed but arbitrary -
+    /// The six adjacent hexes. Odd columns lean south and even columns lean
+    /// north. Order is fixed but arbitrary -
     /// no caller may let it decide anything; a mover choosing between two
     /// equally good steps must break the tie on the coordinates themselves.
     /// Not bounds-checked: an edge hex still returns six neighbours, some off
@@ -40,16 +34,16 @@ public readonly record struct HexCoord(int Row, int Col)
     /// </summary>
     public HexCoord[] Neighbours()
     {
-        int lean = (Row & 1) == 1 ? 1 : -1;
+        int lean = (Col & 1) == 1 ? 1 : -1;
 
         return
         [
-            new(Row - 1, Col),
-            new(Row - 1, Col + lean),
             new(Row, Col - 1),
-            new(Row, Col + 1),
+            new(Row + lean, Col - 1),
+            new(Row - 1, Col),
             new(Row + 1, Col),
-            new(Row + 1, Col + lean),
+            new(Row, Col + 1),
+            new(Row + lean, Col + 1),
         ];
     }
 
