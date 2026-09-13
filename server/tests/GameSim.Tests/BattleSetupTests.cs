@@ -13,14 +13,13 @@ public sealed class BattleSetupTests
         movementTicksPerHex: 6,
         attackRangeHexes: 1);
 
-    private static UnitPlacement At(int row, int col) => new(Militia, Horizontal(row, col));
+    private static UnitPlacement At(int row, int col) => new(Militia, new HexCoord(row, col));
 
-    private static HexCoord Horizontal(int row, int col) => new(col, Battlefield.Rows - 1 - row);
 
     /// <summary>One legal unit per side, for tests about something else.</summary>
-    private static UnitPlacement[] Player => [At(7, 0)];
+    private static UnitPlacement[] Player => [At(0, 0)];
 
-    private static UnitPlacement[] Opponent => [At(0, 0)];
+    private static UnitPlacement[] Opponent => [At(0, 7)];
 
     private static PlacementError SingleError(
         IReadOnlyList<UnitPlacement> player,
@@ -35,8 +34,8 @@ public sealed class BattleSetupTests
     public void Builds_a_setup_from_two_legal_armies()
     {
         Assert.True(BattleSetup.TryCreate(
-            [At(5, 0), At(7, 7)],
-            [At(0, 0), At(2, 7)],
+            [At(0, 2), At(7, 0)],
+            [At(0, 7), At(7, 5)],
             out BattleSetup? setup,
             out var errors));
 
@@ -60,7 +59,7 @@ public sealed class BattleSetupTests
     [Fact]
     public void Stands_every_unit_on_the_battlefield()
     {
-        Assert.True(BattleSetup.TryCreate([At(5, 0), At(7, 7)], [At(0, 3)], out BattleSetup? setup, out _));
+        Assert.True(BattleSetup.TryCreate([At(0, 2), At(7, 0)], [At(3, 7)], out BattleSetup? setup, out _));
 
         foreach (BattleUnit unit in setup.Units)
         {
@@ -74,8 +73,8 @@ public sealed class BattleSetupTests
         // Deliberately listed out of order, and the opponent listed first, so a
         // setup that simply concatenated the caller's lists would fail here.
         Assert.True(BattleSetup.TryCreate(
-            [At(7, 3), At(5, 4), At(5, 1)],
-            [At(2, 6), At(0, 0), At(0, 5)],
+            [At(3, 0), At(4, 2), At(1, 2)],
+            [At(6, 5), At(0, 7), At(5, 7)],
             out BattleSetup? setup,
             out _));
 
@@ -84,12 +83,12 @@ public sealed class BattleSetupTests
         // the player's front line and row 2 is the opponent's.
         (BattleSide, HexCoord)[] expected =
         [
-            (BattleSide.Player, Horizontal(5, 1)),
-            (BattleSide.Player, Horizontal(5, 4)),
-            (BattleSide.Player, Horizontal(7, 3)),
-            (BattleSide.Opponent, Horizontal(2, 6)),
-            (BattleSide.Opponent, Horizontal(0, 0)),
-            (BattleSide.Opponent, Horizontal(0, 5)),
+            (BattleSide.Player, new HexCoord(1, 2)),
+            (BattleSide.Player, new HexCoord(4, 2)),
+            (BattleSide.Player, new HexCoord(3, 0)),
+            (BattleSide.Opponent, new HexCoord(6, 5)),
+            (BattleSide.Opponent, new HexCoord(0, 7)),
+            (BattleSide.Opponent, new HexCoord(5, 7)),
         ];
 
         Assert.Equal(expected, setup.Units.Select(u => (u.Side, u.Position)));
@@ -103,7 +102,7 @@ public sealed class BattleSetupTests
         // ascending row pulls this pairing apart — the player acts front rank
         // first and the opponent rear rank first — so a mirror match resolves
         // its two sides' internal contention in opposite orders.
-        HexCoord[] army = [Horizontal(5, 1), Horizontal(6, 4), Horizontal(7, 0), Horizontal(5, 6)];
+        HexCoord[] army = [new HexCoord(1, 2), new HexCoord(4, 1), new HexCoord(0, 0), new HexCoord(6, 2)];
 
         Assert.True(BattleSetup.TryCreate(
             [.. army.Select(c => new UnitPlacement(Militia, c))],
@@ -119,7 +118,7 @@ public sealed class BattleSetupTests
         // Symmetry alone would also hold if both armies were ordered
         // back-to-front, so pin down which end of each army comes first.
         Assert.Equal(
-            [Horizontal(5, 1), Horizontal(5, 6), Horizontal(6, 4), Horizontal(7, 0)],
+            [new HexCoord(1, 2), new HexCoord(6, 2), new HexCoord(4, 1), new HexCoord(0, 0)],
             player);
     }
 
@@ -129,8 +128,8 @@ public sealed class BattleSetupTests
         // The order is a total order, so it cannot fall back on the incoming
         // list to break a tie: two callers describing the same two armies get
         // the same sequence out.
-        UnitPlacement[] player = [At(5, 1), At(7, 3), At(5, 4), At(6, 0)];
-        UnitPlacement[] opponent = [At(0, 2), At(2, 6), At(1, 1)];
+        UnitPlacement[] player = [At(1, 2), At(3, 0), At(4, 2), At(0, 1)];
+        UnitPlacement[] opponent = [At(2, 7), At(6, 5), At(1, 6)];
 
         Assert.True(BattleSetup.TryCreate(player, opponent, out BattleSetup? asListed, out _));
         Assert.True(BattleSetup.TryCreate(
@@ -154,11 +153,11 @@ public sealed class BattleSetupTests
     [Fact]
     public void Rejects_a_placement_off_the_board()
     {
-        PlacementError error = SingleError([At(7, 8)], Opponent);
+        PlacementError error = SingleError([At(8, 0)], Opponent);
 
         Assert.Equal(PlacementErrorKind.OutOfBounds, error.Kind);
         Assert.Equal(BattleSide.Player, error.Side);
-        Assert.Equal(Horizontal(7, 8), error.Coord);
+        Assert.Equal(new HexCoord(8, 0), error.Coord);
     }
 
     [Theory]
@@ -166,16 +165,16 @@ public sealed class BattleSetupTests
     [InlineData(4)]
     public void Rejects_a_placement_in_the_neutral_band(int row)
     {
-        PlacementError error = SingleError([At(row, 2)], Opponent);
+        PlacementError error = SingleError([At(2, row)], Opponent);
 
         Assert.Equal(PlacementErrorKind.NeutralBand, error.Kind);
-        Assert.Equal(Horizontal(row, 2), error.Coord);
+        Assert.Equal(new HexCoord(2, row), error.Coord);
     }
 
     [Fact]
     public void Rejects_a_player_placement_in_the_opponents_band()
     {
-        PlacementError error = SingleError([At(1, 2)], Opponent);
+        PlacementError error = SingleError([At(2, 6)], Opponent);
 
         Assert.Equal(PlacementErrorKind.OpposingDeploymentBand, error.Kind);
         Assert.Equal(BattleSide.Player, error.Side);
@@ -184,7 +183,7 @@ public sealed class BattleSetupTests
     [Fact]
     public void Rejects_an_opponent_placement_in_the_players_band()
     {
-        PlacementError error = SingleError(Player, [At(6, 2)]);
+        PlacementError error = SingleError(Player, [At(2, 1)]);
 
         Assert.Equal(PlacementErrorKind.OpposingDeploymentBand, error.Kind);
         Assert.Equal(BattleSide.Opponent, error.Side);
@@ -193,11 +192,11 @@ public sealed class BattleSetupTests
     [Fact]
     public void Rejects_two_units_of_one_side_on_the_same_tile()
     {
-        PlacementError error = SingleError([At(6, 2), At(6, 2)], Opponent);
+        PlacementError error = SingleError([At(2, 1), At(2, 1)], Opponent);
 
         Assert.Equal(PlacementErrorKind.DuplicateCoordinate, error.Kind);
         Assert.Equal(BattleSide.Player, error.Side);
-        Assert.Equal(Horizontal(6, 2), error.Coord);
+        Assert.Equal(new HexCoord(2, 1), error.Coord);
     }
 
     [Fact]
@@ -207,7 +206,7 @@ public sealed class BattleSetupTests
         // these are two different tiles and must both stand. ("The same tile
         // used by both sides" is not testable — the bands are disjoint, so the
         // second side is rejected for the band before any duplicate check.)
-        Assert.True(BattleSetup.TryCreate([At(5, 4)], [At(2, 4)], out BattleSetup? setup, out _));
+        Assert.True(BattleSetup.TryCreate([At(4, 2)], [At(4, 5)], out BattleSetup? setup, out _));
 
         Assert.Equal(2, setup.Units.Count);
     }
@@ -237,8 +236,8 @@ public sealed class BattleSetupTests
         // Four different mistakes across both armies. Someone fixing a layout
         // should see all of them, not discover them one submission at a time.
         Assert.False(BattleSetup.TryCreate(
-            [At(7, 0), At(4, 1), At(7, 0), At(0, 0)],
-            [At(2, 9)],
+            [At(0, 0), At(1, 3), At(0, 0), At(0, 7)],
+            [At(9, 5)],
             out BattleSetup? setup,
             out var errors));
 
@@ -256,7 +255,7 @@ public sealed class BattleSetupTests
     [Fact]
     public void Every_error_explains_itself()
     {
-        Assert.False(BattleSetup.TryCreate([At(4, 1)], [], out _, out var errors));
+        Assert.False(BattleSetup.TryCreate([At(1, 3)], [], out _, out var errors));
 
         foreach (PlacementError error in errors)
         {
