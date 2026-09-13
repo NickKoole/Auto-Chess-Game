@@ -16,9 +16,9 @@ function state(): BattleState {
 const attack: BattleEvent = { type: 'unitAttacked', tick: 5, attackerId: 1, targetId: 2 }
 
 describe('sprite facing', () => {
-  it('uses screen position including staggered hex rows', () => {
-    expect(facingTarget({ row: 4, col: 3 }, { row: 5, col: 3 }, 'left')).toBe('right')
-    expect(facingTarget({ row: 5, col: 3 }, { row: 4, col: 3 }, 'right')).toBe('left')
+  it('uses screen position including staggered hex columns', () => {
+    expect(facingTarget({ row: 4, col: 2 }, { row: 5, col: 3 }, 'left')).toBe('right')
+    expect(facingTarget({ row: 5, col: 3 }, { row: 4, col: 2 }, 'right')).toBe('left')
     expect(facingTarget({ row: 4, col: 3 }, { row: 2, col: 3 }, 'left')).toBe('left')
   })
 })

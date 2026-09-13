@@ -2,35 +2,35 @@ import { describe, expect, it } from 'vitest'
 import { gridDimensions, hexPolygonPoints, hexToPixel } from '../hexCoords'
 
 describe('hexToPixel', () => {
-  it('places an even row with no horizontal offset', () => {
+  it('places an even column with no vertical offset', () => {
     expect(hexToPixel(0, 0, 10)).toEqual({ x: 0, y: 0 })
 
-    const { x, y } = hexToPixel(0, 3, 10)
-    expect(x).toBeCloseTo(51.9615) // 3 hexes across at sqrt(3) * 10 apart, no row shift
-    expect(y).toBe(0)
+    const { x, y } = hexToPixel(3, 2, 10)
+    expect(x).toBeCloseTo(30)
+    expect(y).toBeCloseTo(51.9615)
   })
 
-  it('shifts an odd row right by half a hex width', () => {
-    const first = hexToPixel(1, 0, 10)
-    expect(first.x).toBeCloseTo(8.6603) // half of sqrt(3) * 10
-    expect(first.y).toBeCloseTo(15)
+  it('shifts an odd column south by half a hex height', () => {
+    const first = hexToPixel(1, 1, 10)
+    expect(first.x).toBeCloseTo(15)
+    expect(first.y).toBeCloseTo(25.9808)
 
-    const second = hexToPixel(3, 2, 10)
-    expect(second.x).toBeCloseTo(43.3013) // 2 hexes across, plus the odd-row half-width shift
-    expect(second.y).toBeCloseTo(45)
+    const second = hexToPixel(3, 3, 10)
+    expect(second.x).toBeCloseTo(45)
+    expect(second.y).toBeCloseTo(60.6218)
   })
 
-  it('stacks rows 1.5x the hex size apart vertically, regardless of column', () => {
-    expect(hexToPixel(2, 5, 10).y).toBeCloseTo(30)
-    expect(hexToPixel(4, 0, 10).y).toBeCloseTo(60)
+  it('advances columns by 1.5x the hex radius', () => {
+    expect(hexToPixel(2, 5, 10).x).toBeCloseTo(75)
+    expect(hexToPixel(4, 0, 10).x).toBe(0)
   })
 })
 
 describe('gridDimensions', () => {
   it('sizes an 8x8 board with room for every hex edge', () => {
     const dims = gridDimensions(8, 8, 10)
-    expect(dims.width).toBeCloseTo(147.2243) // 8.5 hex-widths, for the widest odd-row shift
-    expect(dims.height).toBeCloseTo(125) // 7 row-spacings plus a full hex height top and bottom
+    expect(dims.width).toBeCloseTo(125)
+    expect(dims.height).toBeCloseTo(147.2243)
 
     // No hex center, once shifted by the origin, should ever go negative.
     for (let row = 0; row < 8; row++) {
@@ -44,11 +44,12 @@ describe('gridDimensions', () => {
 })
 
 describe('hexPolygonPoints', () => {
-  it('returns six vertices with a point at the top, not a flat edge', () => {
+  it('returns six vertices with points at the left and right', () => {
     const points = hexPolygonPoints(0, 0, 10)
       .split(' ')
       .map((pair) => pair.split(',').map(Number))
     expect(points).toHaveLength(6)
-    expect(points.some(([x, y]) => Math.abs(x!) < 1e-9 && y! < 0)).toBe(true)
+    expect(points.some(([x, y]) => Math.abs(x! - 10) < 1e-9 && Math.abs(y!) < 1e-9)).toBe(true)
+    expect(points.some(([x, y]) => Math.abs(x! + 10) < 1e-9 && Math.abs(y!) < 1e-9)).toBe(true)
   })
 })
