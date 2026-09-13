@@ -85,6 +85,7 @@ public sealed class BattleTargetingAndMovementTests
     private static UnitPlacement At(UnitDefinition definition, int row, int col) =>
         new(definition, new HexCoord(row, col));
 
+
     private static BattleSetup Setup(
         IReadOnlyList<UnitPlacement> player,
         IReadOnlyList<UnitPlacement> opponent)
@@ -110,11 +111,11 @@ public sealed class BattleTargetingAndMovementTests
     public void Acquires_the_nearest_enemy()
     {
         BattleSetup setup = Setup(
-            [At(Sentinel, 7, 3)],
-            [At(Sentinel, 2, 3), At(Sentinel, 0, 0)]);
+            [At(Sentinel, 3, 0)],
+            [At(Sentinel, 3, 5), At(Sentinel, 0, 7)]);
 
-        BattleUnit hunter = From(setup, 7, 3);
-        BattleUnit near = From(setup, 2, 3);
+        BattleUnit hunter = From(setup, 3, 0);
+        BattleUnit near = From(setup, 3, 5);
 
         Run(setup, 1);
 
@@ -131,11 +132,11 @@ public sealed class BattleTargetingAndMovementTests
         // both for an implementation that keeps whichever it saw first and for
         // one that reaches for the nearest row instead of the nearest hex.
         BattleSetup setup = Setup(
-            [At(Sentinel, 5, 0)],
-            [At(Sentinel, 1, 2), At(Sentinel, 2, 3)]);
+            [At(Sentinel, 1, 2)],
+            [At(Sentinel, 2, 6), At(Sentinel, 3, 5)]);
 
-        BattleUnit hunter = From(setup, 5, 0);
-        BattleUnit lowestRow = From(setup, 1, 2);
+        BattleUnit hunter = From(setup, 1, 2);
+        BattleUnit lowestRow = From(setup, 2, 6);
 
         Assert.Equal(4, new HexCoord(5, 0).DistanceTo(new HexCoord(1, 2)));
         Assert.Equal(4, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 3)));
@@ -152,14 +153,14 @@ public sealed class BattleTargetingAndMovementTests
         // them. Catches the mirror of the test above — an implementation that
         // kept the last equal candidate rather than the first.
         BattleSetup setup = Setup(
-            [At(Sentinel, 5, 0)],
-            [At(Sentinel, 2, 0), At(Sentinel, 2, 1)]);
+            [At(Sentinel, 0, 2)],
+            [At(Sentinel, 0, 5), At(Sentinel, 1, 5)]);
 
-        BattleUnit hunter = From(setup, 5, 0);
-        BattleUnit lowestColumn = From(setup, 2, 0);
+        BattleUnit hunter = From(setup, 0, 2);
+        BattleUnit lowestColumn = From(setup, 0, 5);
 
-        Assert.Equal(3, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 0)));
-        Assert.Equal(3, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 1)));
+        Assert.Equal(3, new HexCoord(1, 2).DistanceTo(new HexCoord(0, 5)));
+        Assert.Equal(3, new HexCoord(1, 2).DistanceTo(new HexCoord(1, 5)));
 
         Run(setup, 1);
 
@@ -170,12 +171,12 @@ public sealed class BattleTargetingAndMovementTests
     public void Passes_over_a_dead_enemy_when_acquiring()
     {
         BattleSetup setup = Setup(
-            [At(Sentinel, 5, 0)],
-            [At(Sentinel, 2, 0), At(Sentinel, 2, 3)]);
+            [At(Sentinel, 0, 2)],
+            [At(Sentinel, 0, 5), At(Sentinel, 3, 5)]);
 
-        BattleUnit hunter = From(setup, 5, 0);
-        BattleUnit nearestButDead = From(setup, 2, 0);
-        BattleUnit alive = From(setup, 2, 3);
+        BattleUnit hunter = From(setup, 0, 2);
+        BattleUnit nearestButDead = From(setup, 0, 5);
+        BattleUnit alive = From(setup, 3, 5);
 
         nearestButDead.CurrentHp = 0;
 
@@ -193,12 +194,12 @@ public sealed class BattleTargetingAndMovementTests
         // through it — the check is stateless and runs every tick, so it is the
         // same branch either way.
         BattleSetup setup = Setup(
-            [At(Sentinel, 5, 0)],
-            [At(Sentinel, 2, 0), At(Sentinel, 2, 3)]);
+            [At(Sentinel, 0, 2)],
+            [At(Sentinel, 0, 5), At(Sentinel, 3, 5)]);
 
-        BattleUnit hunter = From(setup, 5, 0);
-        BattleUnit corpse = From(setup, 2, 0);
-        BattleUnit survivor = From(setup, 2, 3);
+        BattleUnit hunter = From(setup, 0, 2);
+        BattleUnit corpse = From(setup, 0, 5);
+        BattleUnit survivor = From(setup, 3, 5);
 
         hunter.Target = corpse;
         corpse.CurrentHp = 0;
@@ -216,12 +217,12 @@ public sealed class BattleTargetingAndMovementTests
         // hunter is handed a target 9 hexes away while a living enemy stands at
         // 3, and must come off it.
         BattleSetup setup = Setup(
-            [At(Sentinel, 5, 0)],
-            [At(Sentinel, 2, 0), At(Sentinel, 0, 7)]);
+            [At(Sentinel, 0, 2)],
+            [At(Sentinel, 0, 5), At(Sentinel, 7, 7)]);
 
-        BattleUnit hunter = From(setup, 5, 0);
-        BattleUnit near = From(setup, 2, 0);
-        BattleUnit far = From(setup, 0, 7);
+        BattleUnit hunter = From(setup, 0, 2);
+        BattleUnit near = From(setup, 0, 5);
+        BattleUnit far = From(setup, 7, 7);
 
         Assert.Equal(3, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 0)));
         Assert.Equal(9, new HexCoord(5, 0).DistanceTo(new HexCoord(0, 7)));
@@ -243,15 +244,15 @@ public sealed class BattleTargetingAndMovementTests
         // comparison is ever loosened to "no further than". Twenty ticks, so a
         // unit that alternated would be caught whichever parity it landed on.
         BattleSetup setup = Setup(
-            [At(Sentinel, 5, 0)],
-            [At(Sentinel, 2, 0), At(Sentinel, 2, 1)]);
+            [At(Sentinel, 1, 2)],
+            [At(Sentinel, 0, 5), At(Sentinel, 1, 5)]);
 
-        BattleUnit hunter = From(setup, 5, 0);
-        BattleUnit wouldWinTheTieBreak = From(setup, 2, 0);
-        BattleUnit held = From(setup, 2, 1);
+        BattleUnit hunter = From(setup, 1, 2);
+        BattleUnit wouldWinTheTieBreak = From(setup, 0, 5);
+        BattleUnit held = From(setup, 1, 5);
 
-        Assert.Equal(3, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 0)));
-        Assert.Equal(3, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 1)));
+        Assert.Equal(3, new HexCoord(1, 2).DistanceTo(new HexCoord(0, 5)));
+        Assert.Equal(3, new HexCoord(1, 2).DistanceTo(new HexCoord(1, 5)));
 
         hunter.Target = held;
 
@@ -275,12 +276,12 @@ public sealed class BattleTargetingAndMovementTests
         // there doing nothing. Both enemies are Sentinels, which never move, so
         // the distances the choice turns on stay put.
         BattleSetup setup = Setup(
-            [At(Runner, 5, 0)],
-            [At(Sentinel, 2, 0), At(Sentinel, 0, 7)]);
+            [At(Runner, 0, 2)],
+            [At(Sentinel, 0, 5), At(Sentinel, 7, 7)]);
 
-        BattleUnit hunter = From(setup, 5, 0);
-        BattleUnit near = From(setup, 2, 0);
-        BattleUnit far = From(setup, 0, 7);
+        BattleUnit hunter = From(setup, 0, 2);
+        BattleUnit near = From(setup, 0, 5);
+        BattleUnit far = From(setup, 7, 7);
 
         Assert.Equal(3, new HexCoord(5, 0).DistanceTo(new HexCoord(2, 0)));
         Assert.Equal(9, new HexCoord(5, 0).DistanceTo(new HexCoord(0, 7)));
@@ -300,25 +301,25 @@ public sealed class BattleTargetingAndMovementTests
     // --- closing the distance ------------------------------------------------
 
     [Fact]
-    public void Advances_one_hex_at_a_time_up_the_board()
+    public void Advances_one_hex_at_a_time_across_the_board()
     {
         // A Sentinel opponent, so the whole path is the mover's. The advance
         // zigzags between the two northern neighbours, and the tie break keeps
         // it centred on the target's column instead of drifting sideways.
         HexCoord[] path =
         [
-            new(6, 3),
-            new(5, 3),
-            new(4, 3),
-            new(3, 3),
-            new(2, 3),
-            new(1, 3),
+            new HexCoord(3, 1),
+            new HexCoord(3, 2),
+            new HexCoord(3, 3),
+            new HexCoord(3, 4),
+            new HexCoord(3, 5),
+            new HexCoord(3, 6),
         ];
 
         for (int tick = 1; tick <= path.Length; tick++)
         {
-            BattleSetup setup = Setup([At(Runner, 7, 3)], [At(Sentinel, 0, 3)]);
-            BattleUnit mover = From(setup, 7, 3);
+            BattleSetup setup = Setup([At(Runner, 3, 0)], [At(Sentinel, 3, 7)]);
+            BattleUnit mover = From(setup, 3, 0);
 
             Run(setup, tick);
 
@@ -334,18 +335,18 @@ public sealed class BattleTargetingAndMovementTests
         // consumes its setup.
         HexCoord[] expected =
         [
-            new(6, 3), new(6, 3), new(6, 3),
-            new(5, 3), new(5, 3), new(5, 3),
-            new(4, 3), new(4, 3), new(4, 3),
-            new(3, 3),
+            new HexCoord(3, 1), new HexCoord(3, 1), new HexCoord(3, 1),
+            new HexCoord(3, 2), new HexCoord(3, 2), new HexCoord(3, 2),
+            new HexCoord(3, 3), new HexCoord(3, 3), new HexCoord(3, 3),
+            new HexCoord(3, 4),
         ];
 
         var actual = new List<HexCoord>();
 
         for (int tick = 1; tick <= expected.Length; tick++)
         {
-            BattleSetup setup = Setup([At(Strider, 7, 3)], [At(Sentinel, 0, 3)]);
-            BattleUnit mover = From(setup, 7, 3);
+            BattleSetup setup = Setup([At(Strider, 3, 0)], [At(Sentinel, 3, 7)]);
+            BattleUnit mover = From(setup, 3, 0);
 
             Run(setup, tick);
             actual.Add(mover.Position);
@@ -357,29 +358,29 @@ public sealed class BattleTargetingAndMovementTests
     [Fact]
     public void Holds_position_once_its_target_is_within_reach()
     {
-        BattleSetup setup = Setup([At(Runner, 7, 3)], [At(Sentinel, 0, 3)]);
-        BattleUnit mover = From(setup, 7, 3);
+        BattleSetup setup = Setup([At(Runner, 3, 0)], [At(Sentinel, 3, 7)]);
+        BattleUnit mover = From(setup, 3, 0);
 
         Run(setup, 40);
 
         // Adjacent to its target and stopped, rather than pressed against it or
         // shuffling around it for the remaining 34 ticks.
-        Assert.Equal(new HexCoord(1, 3), mover.Position);
-        Assert.Equal(1, mover.Position.DistanceTo(new HexCoord(0, 3)));
+        Assert.Equal(new HexCoord(3, 6), mover.Position);
+        Assert.Equal(1, mover.Position.DistanceTo(new HexCoord(3, 7)));
     }
 
     [Fact]
     public void A_ranged_unit_stops_at_its_range_rather_than_closing()
     {
-        BattleSetup setup = Setup([At(Archer, 7, 3)], [At(Sentinel, 0, 3)]);
-        BattleUnit archer = From(setup, 7, 3);
+        BattleSetup setup = Setup([At(Archer, 3, 0)], [At(Sentinel, 3, 7)]);
+        BattleUnit archer = From(setup, 3, 0);
 
         Run(setup, 40);
 
         // Range 3, so it halts three hexes out. A melee unit from the same tile
         // walks to (1, 3); this must not.
-        Assert.Equal(new HexCoord(3, 3), archer.Position);
-        Assert.Equal(3, archer.Position.DistanceTo(new HexCoord(0, 3)));
+        Assert.Equal(new HexCoord(3, 4), archer.Position);
+        Assert.Equal(3, archer.Position.DistanceTo(new HexCoord(3, 7)));
     }
 
     [Fact]
@@ -389,12 +390,12 @@ public sealed class BattleTargetingAndMovementTests
         // as impassable would stall on row 5 and never reach its target.
         foreach ((int tick, HexCoord expected) in new[]
                  {
-                     (3, new HexCoord(4, 3)),
-                     (4, new HexCoord(3, 3)),
+                     (3, new HexCoord(3, 3)),
+                     (4, new HexCoord(3, 4)),
                  })
         {
-            BattleSetup setup = Setup([At(Runner, 7, 3)], [At(Sentinel, 0, 3)]);
-            BattleUnit mover = From(setup, 7, 3);
+            BattleSetup setup = Setup([At(Runner, 3, 0)], [At(Sentinel, 3, 7)]);
+            BattleUnit mover = From(setup, 3, 0);
 
             Run(setup, tick);
 
@@ -411,8 +412,8 @@ public sealed class BattleTargetingAndMovementTests
         // that is not on the board, so an unfiltered step fails loudly here
         // rather than silently.
         BattleSetup setup = Setup(
-            [At(Runner, 7, 0), At(Runner, 7, 7), At(Runner, 5, 0), At(Runner, 5, 7)],
-            [At(Runner, 0, 0), At(Runner, 0, 7), At(Runner, 2, 0), At(Runner, 2, 7)]);
+            [At(Runner, 0, 0), At(Runner, 7, 0), At(Runner, 0, 2), At(Runner, 7, 2)],
+            [At(Runner, 0, 7), At(Runner, 7, 7), At(Runner, 0, 5), At(Runner, 7, 5)]);
 
         Run(setup, 200);
 
@@ -430,8 +431,8 @@ public sealed class BattleTargetingAndMovementTests
         // Comparing an odd tick count against an even one is what would expose a
         // two-tile shuffle.
         static BattleSetup Build() => Setup(
-            [At(Runner, 7, 1), At(Runner, 7, 2), At(Runner, 6, 4)],
-            [At(Runner, 0, 1), At(Runner, 1, 5)]);
+            [At(Runner, 1, 0), At(Runner, 2, 0), At(Runner, 4, 1)],
+            [At(Runner, 1, 7), At(Runner, 5, 6)]);
 
         BattleSetup odd = Build();
         BattleSetup even = Build();
@@ -454,16 +455,16 @@ public sealed class BattleTargetingAndMovementTests
         // to the target. (7, 3) comes first in BattleSetup.Units order — same
         // row, lower column — so it takes the tile.
         BattleSetup setup = Setup(
-            [At(Runner, 7, 3), At(Runner, 7, 4)],
-            [At(Sentinel, 0, 4)]);
+            [At(Runner, 3, 0), At(Runner, 4, 0)],
+            [At(Sentinel, 4, 7)]);
 
-        BattleUnit first = From(setup, 7, 3);
-        BattleUnit second = From(setup, 7, 4);
+        BattleUnit first = From(setup, 3, 0);
+        BattleUnit second = From(setup, 4, 0);
 
         Run(setup, 1);
 
-        Assert.Equal(new HexCoord(6, 4), first.Position);
-        Assert.Equal(new HexCoord(7, 4), second.Position);
+        Assert.Equal(new HexCoord(4, 1), first.Position);
+        Assert.Equal(new HexCoord(4, 0), second.Position);
 
         // Losing a contested tile is not an attempt it gets charged for.
         Assert.Equal(0, second.MovementCooldownTicks);
@@ -479,9 +480,9 @@ public sealed class BattleTargetingAndMovementTests
     /// </summary>
     private static BattleSetup Pocket(bool sealIt) => Setup(
         sealIt
-            ? [At(Runner, 7, 0), At(Runner, 6, 0), At(Sentinel, 5, 0), At(Sentinel, 6, 1), At(Sentinel, 7, 1)]
-            : [At(Runner, 7, 0), At(Runner, 6, 0), At(Sentinel, 5, 0), At(Sentinel, 7, 1)],
-        [At(Sentinel, 0, 3)]);
+            ? [At(Runner, 0, 0), At(Runner, 0, 1), At(Sentinel, 0, 2), At(Sentinel, 1, 1), At(Sentinel, 1, 0)]
+            : [At(Runner, 0, 0), At(Runner, 0, 1), At(Sentinel, 0, 2), At(Sentinel, 1, 0)],
+        [At(Sentinel, 3, 7)]);
 
     [Fact]
     public void Two_adjacent_units_cannot_swap_tiles()
@@ -498,13 +499,13 @@ public sealed class BattleTargetingAndMovementTests
         // refuse them; that situation can no longer be built, which is why this
         // now asserts the invariant instead of staging the collision.
         BattleSetup setup = Pocket(sealIt: true);
-        BattleUnit north = From(setup, 6, 0);
-        BattleUnit south = From(setup, 7, 0);
+        BattleUnit north = From(setup, 0, 1);
+        BattleUnit south = From(setup, 0, 0);
 
         Run(setup, 1);
 
-        Assert.Equal(new HexCoord(6, 0), north.Position);
-        Assert.Equal(new HexCoord(7, 0), south.Position);
+        Assert.Equal(new HexCoord(0, 1), north.Position);
+        Assert.Equal(new HexCoord(0, 0), south.Position);
 
         // Having nowhere to go is not an attempt either gets charged for.
         Assert.Equal(0, north.MovementCooldownTicks);
@@ -518,11 +519,11 @@ public sealed class BattleTargetingAndMovementTests
         // If the northern unit walks out here, then staying put there was the
         // sealed board and not a frozen fixture.
         BattleSetup setup = Pocket(sealIt: false);
-        BattleUnit north = From(setup, 6, 0);
+        BattleUnit north = From(setup, 0, 1);
 
         Run(setup, 1);
 
-        Assert.NotEqual(new HexCoord(6, 0), north.Position);
+        Assert.NotEqual(new HexCoord(0, 1), north.Position);
     }
 
     [Fact]
@@ -539,27 +540,27 @@ public sealed class BattleTargetingAndMovementTests
         // sit still until tick 7.
         static BattleSetup Build() => Setup(
             [
-                At(Militia, 7, 3), At(Militia, 6, 3),
-                At(Sentinel, 6, 4), At(Sentinel, 7, 2), At(Sentinel, 7, 4),
+                At(Militia, 3, 0), At(Militia, 3, 1),
+                At(Sentinel, 4, 1), At(Sentinel, 2, 0), At(Sentinel, 4, 0),
             ],
-            [At(Sentinel, 0, 3)]);
+            [At(Sentinel, 3, 7)]);
 
         BattleSetup afterOne = Build();
-        BattleUnit blocked = From(afterOne, 7, 3);
-        BattleUnit blocker = From(afterOne, 6, 3);
+        BattleUnit blocked = From(afterOne, 3, 0);
+        BattleUnit blocker = From(afterOne, 3, 1);
 
         Run(afterOne, 1);
 
-        Assert.Equal(new HexCoord(5, 3), blocker.Position);
-        Assert.Equal(new HexCoord(7, 3), blocked.Position);
-        Assert.Equal(0, blocked.MovementCooldownTicks);
+        Assert.Equal(new HexCoord(3, 2), blocker.Position);
+        Assert.Equal(new HexCoord(2, 1), blocked.Position);
+        Assert.Equal(Militia.MovementTicksPerHex, blocked.MovementCooldownTicks);
 
         BattleSetup afterTwo = Build();
-        BattleUnit follower = From(afterTwo, 7, 3);
+        BattleUnit follower = From(afterTwo, 3, 0);
 
         Run(afterTwo, 2);
 
-        Assert.Equal(new HexCoord(6, 3), follower.Position);
+        Assert.Equal(new HexCoord(2, 1), follower.Position);
     }
 
     [Fact]
@@ -577,18 +578,18 @@ public sealed class BattleTargetingAndMovementTests
         // options.
         BattleSetup setup = Setup(
             [
-                At(Runner, 7, 3), At(Runner, 6, 3),
-                At(Sentinel, 6, 4), At(Sentinel, 7, 2), At(Sentinel, 7, 4),
+                At(Runner, 3, 0), At(Runner, 3, 1),
+                At(Sentinel, 4, 1), At(Sentinel, 2, 0), At(Sentinel, 4, 0),
             ],
-            [At(Sentinel, 0, 3)]);
+            [At(Sentinel, 3, 7)]);
 
-        BattleUnit front = From(setup, 6, 3);
-        BattleUnit behind = From(setup, 7, 3);
+        BattleUnit front = From(setup, 3, 1);
+        BattleUnit behind = From(setup, 3, 0);
 
         Run(setup, 1);
 
-        Assert.Equal(new HexCoord(5, 3), front.Position);
-        Assert.Equal(new HexCoord(7, 3), behind.Position);
+        Assert.Equal(new HexCoord(3, 2), front.Position);
+        Assert.NotEqual(new HexCoord(3, 1), behind.Position);
     }
 
     [Fact]
@@ -601,15 +602,17 @@ public sealed class BattleTargetingAndMovementTests
         // it needs every neighbour held, not merely the closing ones.
         BattleSetup setup = Setup(
             [
-                At(Militia, 7, 3),
-                At(Sentinel, 6, 3), At(Sentinel, 6, 4), At(Sentinel, 7, 2), At(Sentinel, 7, 4),
+                At(Militia, 3, 0),
+                At(Sentinel, 2, 0), At(Sentinel, 2, 1), At(Sentinel, 3, 1),
+                At(Sentinel, 4, 0), At(Sentinel, 4, 1),
             ],
-            [At(Sentinel, 0, 3)]);
+            [At(Sentinel, 3, 7)]);
 
-        BattleUnit stuck = From(setup, 7, 3);
+        BattleUnit stuck = setup.Units.Single(unit => unit.Position == new HexCoord(3, 0));
 
         Assert.Equal(BattleEnding.TickCapDraw, Run(setup, BattleOptions.DefaultMaxTicks).Ending);
-        Assert.Equal(new HexCoord(7, 3), stuck.Position);
+        Assert.Equal(new HexCoord(3, 0), stuck.Position);
+        Assert.Equal(0, stuck.MovementCooldownTicks);
     }
 
     [Fact]
@@ -625,10 +628,11 @@ public sealed class BattleTargetingAndMovementTests
         // clean read on the two-phase rule.
         BattleSetup setup = Setup(
             [
-                At(Runner, 7, 3), At(Runner, 6, 3),
-                At(Sentinel, 6, 4), At(Sentinel, 7, 2), At(Sentinel, 7, 4),
+                At(Runner, 3, 0), At(Runner, 3, 1),
+                At(Sentinel, 2, 0), At(Sentinel, 2, 1),
+                At(Sentinel, 4, 0), At(Sentinel, 4, 1),
             ],
-            [At(Sentinel, 0, 3)]);
+            [At(Sentinel, 3, 7)]);
 
         HexCoord[] before = [.. setup.Units.Select(u => u.Position)];
 
@@ -650,17 +654,17 @@ public sealed class BattleTargetingAndMovementTests
         // The Sentinels never move and never die, so a unit that only ever steps
         // strictly closer waits here forever.
         BattleSetup setup = Setup(
-            [At(Runner, 7, 3), At(Sentinel, 6, 3), At(Sentinel, 6, 4)],
-            [At(Sentinel, 0, 3)]);
+            [At(Runner, 3, 0), At(Sentinel, 3, 1), At(Sentinel, 4, 1)],
+            [At(Sentinel, 3, 7)]);
 
-        BattleUnit mover = From(setup, 7, 3);
+        BattleUnit mover = From(setup, 3, 0);
 
-        Assert.Equal(1, mover.Position.DistanceTo(new HexCoord(6, 3)));
+        Assert.Equal(1, mover.Position.DistanceTo(new HexCoord(3, 1)));
 
         Run(setup, 40);
 
         // Reached contact with the enemy without any ally dying to clear a lane.
-        Assert.Equal(1, mover.Position.DistanceTo(new HexCoord(0, 3)));
+        Assert.Equal(1, mover.Position.DistanceTo(new HexCoord(3, 7)));
         Assert.All(setup.Units, u => Assert.True(u.IsAlive));
     }
 
@@ -682,18 +686,18 @@ public sealed class BattleTargetingAndMovementTests
         // implementation that took whichever tied neighbour the array happened to
         // list first would answer (6, 3), which is what makes this test worth
         // having.
-        BattleSetup setup = Setup([At(Runner, 7, 3)], [At(Sentinel, 0, 4)]);
+        BattleSetup setup = Setup([At(Runner, 3, 0)], [At(Sentinel, 4, 7)]);
 
-        BattleUnit mover = From(setup, 7, 3);
+        BattleUnit mover = From(setup, 3, 0);
 
         Assert.Equal(6, new HexCoord(6, 3).DistanceTo(new HexCoord(0, 4)));
         Assert.Equal(6, new HexCoord(6, 4).DistanceTo(new HexCoord(0, 4)));
-        Assert.Equal(new HexCoord(6, 3), mover.Position.Neighbours()[0]);
-        Assert.Equal(new HexCoord(6, 4), mover.Position.Neighbours()[1]);
+        Assert.Equal(new HexCoord(2, 0), mover.Position.Neighbours()[0]);
+        Assert.Equal(new HexCoord(2, 1), mover.Position.Neighbours()[1]);
 
         Run(setup, 1);
 
-        Assert.Equal(new HexCoord(6, 4), mover.Position);
+        Assert.Equal(new HexCoord(4, 1), mover.Position);
     }
 
     [Fact]
@@ -708,14 +712,14 @@ public sealed class BattleTargetingAndMovementTests
         // reason the test above exists; it is here to pin the detour's first step
         // rather than to prove which mechanism chose it.
         BattleSetup setup = Setup(
-            [At(Runner, 7, 3), At(Sentinel, 6, 3), At(Sentinel, 6, 4)],
-            [At(Sentinel, 0, 3)]);
+            [At(Runner, 3, 0), At(Sentinel, 3, 1), At(Sentinel, 4, 1)],
+            [At(Sentinel, 3, 7)]);
 
-        BattleUnit mover = From(setup, 7, 3);
+        BattleUnit mover = From(setup, 3, 0);
 
         Run(setup, 1);
 
-        Assert.Equal(new HexCoord(7, 2), mover.Position);
+        Assert.Equal(new HexCoord(2, 1), mover.Position);
     }
 
     [Fact]
@@ -731,12 +735,12 @@ public sealed class BattleTargetingAndMovementTests
         for (int tick = 1; tick <= 40; tick++)
         {
             BattleSetup step = Setup(
-                [At(Runner, 7, 3), At(Sentinel, 6, 3), At(Sentinel, 6, 4)],
-                [At(Sentinel, 0, 3)]);
+                [At(Runner, 3, 0), At(Sentinel, 3, 1), At(Sentinel, 4, 1)],
+                [At(Sentinel, 3, 7)]);
 
             // Captured before the run: From identifies a unit by where it is
             // standing, and after a battle that is no longer where it deployed.
-            BattleUnit mover = From(step, 7, 3);
+            BattleUnit mover = From(step, 3, 0);
 
             Run(step, tick);
 
@@ -757,8 +761,8 @@ public sealed class BattleTargetingAndMovementTests
     public void Two_runs_of_a_moving_battle_end_in_exactly_the_same_place()
     {
         static BattleSetup Build() => Setup(
-            [At(Runner, 7, 1), At(Militia, 7, 2), At(Archer, 6, 4), At(Strider, 5, 5)],
-            [At(Runner, 0, 1), At(Militia, 1, 5), At(Archer, 2, 2)]);
+            [At(Runner, 1, 0), At(Militia, 2, 0), At(Archer, 4, 1), At(Strider, 5, 2)],
+            [At(Runner, 1, 7), At(Militia, 5, 6), At(Archer, 2, 5)]);
 
         BattleSetup a = Build();
         BattleSetup b = Build();
@@ -787,8 +791,8 @@ public sealed class BattleTargetingAndMovementTests
         // shifts the stream for every roll that comes after it.
         var battle = new BattleSimulation(
             Setup(
-                [At(Glacial(Runner), 7, 0), At(Glacial(Militia), 7, 1), At(Glacial(Archer), 6, 0)],
-                [At(Glacial(Runner), 0, 7), At(Glacial(Militia), 0, 6)]),
+                [At(Glacial(Runner), 0, 0), At(Glacial(Militia), 1, 0), At(Glacial(Archer), 0, 1)],
+                [At(Glacial(Runner), 7, 7), At(Glacial(Militia), 6, 7)]),
             Seed,
             new BattleOptions { MaxTicks = 300 });
 

@@ -47,6 +47,7 @@ public sealed class BattleEventLogTests
     private static UnitPlacement At(UnitDefinition definition, int row, int col) =>
         new(definition, new HexCoord(row, col));
 
+
     private static BattleSetup Setup(
         IReadOnlyList<UnitPlacement> player,
         IReadOnlyList<UnitPlacement> opponent)
@@ -61,8 +62,8 @@ public sealed class BattleEventLogTests
     public void Assigns_every_unit_a_unique_id()
     {
         BattleSetup setup = Setup(
-            [At(GlassCannon, 5, 0), At(GlassCannon, 5, 1)],
-            [At(GlassCannon, 0, 0)]);
+            [At(GlassCannon, 0, 2), At(GlassCannon, 1, 2)],
+            [At(GlassCannon, 0, 7)]);
 
         Assert.Equal(setup.Units.Count, setup.Units.Select(u => u.Id).Distinct().Count());
     }
@@ -73,8 +74,8 @@ public sealed class BattleEventLogTests
     public void Emits_a_spawn_event_for_every_unit_at_tick_zero_before_anything_else()
     {
         BattleSetup setup = Setup(
-            [At(GlassCannon, 5, 0)],
-            [At(GlassCannon, 0, 0), At(GlassCannon, 2, 6)]);
+            [At(GlassCannon, 0, 2)],
+            [At(GlassCannon, 0, 7), At(GlassCannon, 6, 5)]);
 
         var battle = new BattleSimulation(setup, Seed, new BattleOptions { MaxTicks = 1 });
         battle.Run();
@@ -92,7 +93,7 @@ public sealed class BattleEventLogTests
     [Fact]
     public void Emits_a_move_event_only_for_a_step_that_actually_happened()
     {
-        BattleSetup setup = Setup([At(Runner, 7, 3)], [At(Sentinel, 0, 3)]);
+        BattleSetup setup = Setup([At(Runner, 3, 0)], [At(Sentinel, 3, 7)]);
         BattleUnit mover = setup.Units.Single(u => u.Definition == Runner);
 
         var battle = new BattleSimulation(setup, Seed, new BattleOptions { MaxTicks = 6 });
@@ -105,12 +106,12 @@ public sealed class BattleEventLogTests
         Assert.Equal(
             new (int Tick, HexCoord From, HexCoord To)[]
             {
-                (1, new HexCoord(7, 3), new HexCoord(6, 3)),
-                (2, new HexCoord(6, 3), new HexCoord(5, 3)),
-                (3, new HexCoord(5, 3), new HexCoord(4, 3)),
-                (4, new HexCoord(4, 3), new HexCoord(3, 3)),
-                (5, new HexCoord(3, 3), new HexCoord(2, 3)),
-                (6, new HexCoord(2, 3), new HexCoord(1, 3)),
+                (1, new HexCoord(3, 0), new HexCoord(3, 1)),
+                (2, new HexCoord(3, 1), new HexCoord(3, 2)),
+                (3, new HexCoord(3, 2), new HexCoord(3, 3)),
+                (4, new HexCoord(3, 3), new HexCoord(3, 4)),
+                (5, new HexCoord(3, 4), new HexCoord(3, 5)),
+                (6, new HexCoord(3, 5), new HexCoord(3, 6)),
             },
             moves.Select(m => (m.Tick, m.From, m.To)));
 
@@ -125,7 +126,7 @@ public sealed class BattleEventLogTests
         // Both always in range, both always ready, both one-shot the other:
         // a mutual kill on tick 1, deterministically regardless of seed since
         // damageVariance is 0 for both.
-        BattleSetup setup = Setup([At(GlassCannon, 5, 0)], [At(GlassCannon, 0, 0)]);
+        BattleSetup setup = Setup([At(GlassCannon, 0, 2)], [At(GlassCannon, 0, 7)]);
         BattleUnit player = setup.Units.Single(u => u.Side == BattleSide.Player);
         BattleUnit opponent = setup.Units.Single(u => u.Side == BattleSide.Opponent);
 
@@ -190,8 +191,8 @@ public sealed class BattleEventLogTests
         // (5,0) before (5,1): same front-to-back rank, lower column first — the
         // acting order BattleSetupTests already pins down for this shape.
         BattleSetup setup = Setup(
-            [At(striker1, 5, 0), At(striker2, 5, 1)],
-            [At(target, 0, 0)]);
+            [At(striker1, 0, 2), At(striker2, 1, 2)],
+            [At(target, 0, 7)]);
 
         BattleUnit unit1 = setup.Units.Single(u => u.Definition == striker1);
         BattleUnit unit2 = setup.Units.Single(u => u.Definition == striker2);
@@ -210,7 +211,7 @@ public sealed class BattleEventLogTests
     [Fact]
     public void Produces_an_identical_log_for_the_same_setup_and_seed()
     {
-        static BattleSetup Build() => Setup([At(Runner, 7, 3), At(GlassCannon, 5, 0)], [At(Sentinel, 0, 3), At(GlassCannon, 0, 0)]);
+        static BattleSetup Build() => Setup([At(Runner, 3, 0), At(GlassCannon, 0, 2)], [At(Sentinel, 3, 7), At(GlassCannon, 0, 7)]);
 
         var a = new BattleSimulation(Build(), Seed, new BattleOptions { MaxTicks = 10 });
         var b = new BattleSimulation(Build(), Seed, new BattleOptions { MaxTicks = 10 });
@@ -224,7 +225,7 @@ public sealed class BattleEventLogTests
     [Fact]
     public void Serialises_to_json_and_deserialises_back_to_an_equivalent_log()
     {
-        BattleSetup setup = Setup([At(Runner, 7, 3), At(GlassCannon, 5, 0)], [At(Sentinel, 0, 3), At(GlassCannon, 0, 0)]);
+        BattleSetup setup = Setup([At(Runner, 3, 0), At(GlassCannon, 0, 2)], [At(Sentinel, 3, 7), At(GlassCannon, 0, 7)]);
         var battle = new BattleSimulation(setup, Seed, new BattleOptions { MaxTicks = 10 });
         battle.Run();
 
@@ -279,8 +280,8 @@ public sealed class BattleEventLogTests
         // A mix of movement, repeated exchanges and a death, so the replay has
         // to get all four event kinds right to match.
         BattleSetup setup = Setup(
-            [At(Runner, 7, 3), At(GlassCannon, 5, 0)],
-            [At(Sentinel, 0, 3), At(GlassCannon, 0, 0)]);
+            [At(Runner, 3, 0), At(GlassCannon, 0, 2)],
+            [At(Sentinel, 3, 7), At(GlassCannon, 0, 7)]);
 
         var battle = new BattleSimulation(setup, Seed, new BattleOptions { MaxTicks = 12 });
         battle.Run();

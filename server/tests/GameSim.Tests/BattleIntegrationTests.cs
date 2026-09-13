@@ -26,8 +26,9 @@ public sealed class BattleIntegrationTests
     private static UnitPlacement At(UnitDefinition definition, int row, int col) =>
         new(definition, new HexCoord(row, col));
 
+
     /// <summary>
-    /// A fresh 6v6, legally deployed: player in rows 5-7, opponent in rows 0-2.
+    /// A fresh 6v6, legally deployed: player in columns 0-2, opponent in columns 5-7.
     /// Built anew per call, since a battle consumes the setup it runs on.
     /// </summary>
     private static BattleSetup Setup()
@@ -41,13 +42,13 @@ public sealed class BattleIntegrationTests
 
         Assert.True(BattleSetup.TryCreate(
             [
-                At(knight, 5, 1), At(knight, 5, 3),
-                At(archer, 6, 1), At(archer, 6, 3),
-                At(mage, 6, 5), At(berserker, 5, 5),
+                At(knight, 1, 2), At(knight, 3, 2),
+                At(archer, 1, 1), At(archer, 3, 1),
+                At(mage, 5, 1), At(berserker, 5, 2),
             ],
             [
-                At(militia, 2, 1), At(militia, 2, 3), At(militia, 2, 5),
-                At(militia, 1, 1), At(militia, 1, 3), At(militia, 1, 5),
+                At(militia, 1, 5), At(militia, 3, 5), At(militia, 5, 5),
+                At(militia, 1, 6), At(militia, 3, 6), At(militia, 5, 6),
             ],
             out BattleSetup? setup,
             out IReadOnlyList<PlacementError> errors));
@@ -132,8 +133,8 @@ public sealed class BattleIntegrationTests
         UnitDefinition knight = new StaticUnitCatalog().Get("knight");
 
         Assert.True(BattleSetup.TryCreate(
-            [At(knight, 5, 2), At(knight, 5, 3), At(knight, 5, 4)],
-            [At(knight, 2, 2), At(knight, 2, 3), At(knight, 2, 4)],
+            [At(knight, 2, 2), At(knight, 3, 2), At(knight, 4, 2)],
+            [At(knight, 2, 5), At(knight, 3, 5), At(knight, 4, 5)],
             out BattleSetup? setup,
             out _));
 

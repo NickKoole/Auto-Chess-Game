@@ -40,6 +40,7 @@ public sealed class BattleSimulationTests
 
     private static UnitPlacement SnailAt(int row, int col) => new(Snail, new HexCoord(row, col));
 
+
     /// <summary>
     /// A fresh two-a-side setup. Built on every call rather than shared, because
     /// a battle mutates the units its setup holds — two runs from one setup
@@ -48,8 +49,8 @@ public sealed class BattleSimulationTests
     private static BattleSetup Setup()
     {
         Assert.True(BattleSetup.TryCreate(
-            [At(7, 1), At(5, 3)],
-            [At(0, 2), At(2, 6)],
+            [At(1, 0), At(3, 2)],
+            [At(2, 7), At(6, 5)],
             out BattleSetup? setup,
             out _));
 
@@ -219,8 +220,8 @@ public sealed class BattleSimulationTests
         // probabilistic: too slow to close within this run, so no attack is ever
         // possible, however long combat's own draws would otherwise run.
         Assert.True(BattleSetup.TryCreate(
-            [SnailAt(7, 1), SnailAt(5, 3)],
-            [SnailAt(0, 2), SnailAt(2, 6)],
+            [SnailAt(1, 0), SnailAt(3, 2)],
+            [SnailAt(2, 7), SnailAt(6, 5)],
             out BattleSetup? setup,
             out _));
 
@@ -239,8 +240,8 @@ public sealed class BattleSimulationTests
         // Listed deliberately out of order, so a pass-through of the caller's
         // list would not produce this expectation.
         Assert.True(BattleSetup.TryCreate(
-            [At(7, 4), At(5, 0), At(7, 1)],
-            [At(2, 3), At(0, 5)],
+            [At(4, 0), At(0, 2), At(1, 0)],
+            [At(3, 5), At(5, 7)],
             out BattleSetup? setup,
             out _));
 
@@ -248,13 +249,13 @@ public sealed class BattleSimulationTests
 
         Assert.Equal(
             [
-                (BattleSide.Player, new HexCoord(5, 0)),
-                (BattleSide.Player, new HexCoord(7, 1)),
-                (BattleSide.Player, new HexCoord(7, 4)),
+                (BattleSide.Player, new HexCoord(0, 2)),
+                (BattleSide.Player, new HexCoord(1, 0)),
+                (BattleSide.Player, new HexCoord(4, 0)),
                 // Front-to-back for the opponent too, which is descending row:
                 // row 2 is its front line, row 0 its back line.
-                (BattleSide.Opponent, new HexCoord(2, 3)),
-                (BattleSide.Opponent, new HexCoord(0, 5)),
+                (BattleSide.Opponent, new HexCoord(3, 5)),
+                (BattleSide.Opponent, new HexCoord(5, 7)),
             ],
             battle.LivingUnits().Select(u => (u.Side, u.Position)));
 
@@ -268,8 +269,8 @@ public sealed class BattleSimulationTests
         // RunTick could iterate Setup.Units directly — acting on the dead — or
         // iterate backwards, and every other test would still pass.
         Assert.True(BattleSetup.TryCreate(
-            [At(7, 4), At(5, 0), At(7, 1)],
-            [At(2, 3), At(0, 5)],
+            [At(4, 0), At(0, 2), At(1, 0)],
+            [At(3, 5), At(5, 7)],
             out BattleSetup? setup,
             out _));
 
