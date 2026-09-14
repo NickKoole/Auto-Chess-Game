@@ -11,6 +11,7 @@ node automation/dev.mjs 42
 node automation/dev.mjs 42 --fresh
 node automation/dev.mjs 42 --no-review
 node automation/review.mjs 42
+node automation/review.mjs 42 --reviewer claude
 node automation/approve.mjs 42 --dry-run
 node automation/approve.mjs 42
 node automation/ship.mjs 42 --dry-run
@@ -21,12 +22,12 @@ Omit the number from `dev.mjs` to choose from the ready pool interactively. `--f
 
 The attached dev session claims a worktree, opens Codex, and waits for you to exit. A successful exit invokes `finish.mjs`, which commits remaining edits, pushes, creates or updates the draft PR, and starts a fresh reviewer. A failed session leaves work local and skips publishing. To publish later, run `finish.mjs` explicitly.
 
-## Working in an existing Codex conversation
+## Working in an existing Codex or Claude conversation
 
-Ask for `ready`, `build 42`, `approve 42`, or `ship 42` in plain language. These are workflow requests, not installed slash commands. The old `.claude/commands` files are compatibility pointers.
+In Codex, ask for `ready`, `build 42`, `approve 42`, or `ship 42` in plain language; these are workflow requests, not installed slash commands. In Claude Code, the same workflows are the `/ready`, `/build`, `/approve` and `/ship` commands in `.claude/commands/`, and `CLAUDE.md` imports `AGENTS.md`. The commands run their work in Sonnet-pinned agents from `.claude/agents/`: `pipeline-runner` for ready/approve/ship, and `ticket-builder` for build, which the main session coordinates — it relays the agent's plan and questions to you (agents cannot ask directly), resumes it with your answers, and publishes with `finish.mjs --reviewer claude`.
 
 - **Ready:** list open `state:ready` issues with `gh issue list`; exclude epics. If empty, summarize in-flight work and backlog. Change no labels.
-- **Build:** use the named ticket; if missing, list the ready pool and ask which one. Run `node automation/claim.mjs 42`, read its printed worktree path, then read `automation/prompts/dev-system.md` and the worktree's `.agent/task.md`. Perform all edits and tests in that worktree. State the approach, meet the acceptance criteria, commit locally, and write `.agent/report.md`. Use `finish.mjs 42` to publish and review once publication is authorized by the user's request; do not request the same authorization again. If publication was not requested, prepare the completed report and commits before asking. Summarize the actual reviewer findings and link the draft PR. Do not start `dev.mjs` inside an already-running agent session.
+- **Build:** use the named ticket; if missing, list the ready pool and ask which one. Run `node automation/claim.mjs 42`, read its printed worktree path, then read `automation/prompts/dev-system.md` and the worktree's `.agent/task.md`. Perform all edits and tests in that worktree. State the approach, meet the acceptance criteria, commit locally, and write `.agent/report.md`. Use `finish.mjs 42 --reviewer codex` to publish and review (always pass the flag: a ticket last built with Claude's `/build` has `claude` recorded as its reviewer) once publication is authorized by the user's request; do not request the same authorization again. If publication was not requested, prepare the completed report and commits before asking. Summarize the actual reviewer findings and link the draft PR. Do not start `dev.mjs` inside an already-running agent session.
 - **Approve:** only on the human's explicit request naming a ticket. First run `approve.mjs 42 --dry-run` and show its findings; then run the real command unless the user requested dry-run only. Never infer approval from a clean automated review. This records the human's decision, not the agent's.
 - **Ship:** require an explicit ticket number and an existing `state:approved` label. Run the dry-run first; on success, execute `ship.mjs` unless the request was dry-run only. Preserve requested `--keep` and `--timeout` options. Report CI failures or cleanup problems accurately; never force-remove unexpected work. Do not add an approval label to get past a refusal.
 
@@ -36,7 +37,7 @@ The split command path is also available:
 node automation/claim.mjs 42
 # Run the absolute automation/session.mjs command printed by claim.
 # Or build in an existing Codex conversation using the task and standing rules.
-node automation/finish.mjs 42
+node automation/finish.mjs 42 --reviewer codex
 ```
 
 `session.mjs` saves the Codex thread ID before opening the interactive UI, so this path supports resume too. An externally managed conversation has its own memory; the ticket's files, commits, feedback, and report remain the handover between sessions.
@@ -75,6 +76,8 @@ Before starting the reviewer, `review.mjs` requires a clean worktree whose HEAD 
 The Node runner builds/tests the server, installs locked client dependencies and runs client typecheck/tests/build, and runs automation tests where present. Commands stop at the first failure; full output is stored under `.agent/validation/`. Validation has a 15-minute timeout per command. It does not run the client lint script because that script applies fixes. CI remains the required merge gate for lint and generated-contract drift.
 
 Codex then audits in a fresh ephemeral read-only session with approval requests disabled. It reads the diff, ticket, PR report, and independent validation logs. It does not run builds or tests itself. `--timeout 40` controls the model review timeout in minutes, separately from validation. A failed validation forces a `changes` verdict; a failed model run or malformed verdict is reported as an incomplete review, never as evidence that code is correct.
+
+`--reviewer claude` (accepted by `finish.mjs` and `review.mjs`) swaps the model for a headless `claude -p` run: same prompt, validation and schema (`--json-schema`), no session persistence, `--permission-mode dontAsk` under `automation/settings/claude-review.json`, which allows reading and read-only git and denies writes, `gh` and web access. The choice is recorded as `reviewer` in `.agent-state/issue-42.json`, so a later bare `review.mjs 42` keeps it; `dev.mjs` always records `codex`. The launcher strips the parent Claude Code session's environment so it works from inside `/build`; set `AUTO_CHESS_CLAUDE_BIN` to use a non-PATH executable. The PR comment names which reviewer wrote it.
 
 The final response must satisfy `automation/settings/review.schema.json`; the runner also validates severity and verdict consistency before posting findings. Automated `approve` means no blocking findings, not a GitHub approval. Subsequent passes may focus on commits since `reviewedSha`, while validation still covers the whole branch.
 

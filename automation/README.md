@@ -19,8 +19,10 @@ node --test automation/tests/*.test.mjs
 | `review.mjs` | Validate the published worktree and run the read-only reviewer. |
 | `approve.mjs`, `ship.mjs` | Separate human approval and shipping actions. |
 | `lib/codex.mjs` | Shell-free Codex launching and JSONL event parsing. |
+| `lib/claude.mjs` | Headless Claude reviewer for `--reviewer claude`. |
 | `lib/validation.mjs`, `lib/verdict.mjs` | Independent checks and strict verdict validation. |
 | `settings/codex.json` | Shared model and reasoning effort. |
+| `settings/claude-review.json` | Claude reviewer model and read-only permissions. |
 | `settings/review.schema.json` | Structured reviewer output contract. |
 | `prompts/` | Standing rules and per-ticket task templates. |
 

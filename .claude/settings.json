@@ -1,1 +1,72 @@
-{}
+{
+  "$comment": "The ticket worktrees /build builds in live at ../Auto-Chess-Game-work/issue-<n>/, outside this checkout. Without additionalDirectories, every read and edit in a claimed worktree prompts for directory access. It grants nothing the agent could not already reach through Bash — worktrees of this repo only — and the pre-push hook claim.mjs installs still means nothing publishes from there except through finish.mjs.",
+
+  "$comment_model": "Pinned to Sonnet on cost: issue #5 built on Opus cost ~56% of a 5-hour window. The ticket-builder and pipeline-runner agents and the Claude reviewer (automation/settings/claude-review.json) pin the same model in their own files, so /build stays on Sonnet even in a session switched to /model opus.",
+  "model": "claude-sonnet-5",
+
+  "$comment_permissions": "allow is the unprompted dev loop the ticket-builder agent runs inside a worktree; a background agent's permission prompts land in your session, so without it every test run and commit would interrupt you. The rtk forms exist because the RTK hook rewrites commands before the permission check. deny mirrors .codex/rules/pipeline.rules so Claude and Codex share one boundary: publishing, merging and ticket-state changes go through automation/*.mjs, which run git and gh themselves and are unaffected. ask mirrors the one Codex 'prompt' rule.",
+  "permissions": {
+    "additionalDirectories": ["../Auto-Chess-Game-work"],
+    "allow": [
+      "Bash(dotnet build:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet format:*)",
+      "Bash(dotnet ef migrations:*)",
+      "Bash(dotnet tool restore:*)",
+      "Bash(npm run:*)",
+      "Bash(npm ci)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git rev-parse:*)",
+
+      "Bash(rtk dotnet build:*)",
+      "Bash(rtk dotnet restore:*)",
+      "Bash(rtk dotnet test:*)",
+      "Bash(rtk dotnet format:*)",
+      "Bash(rtk npm run:*)",
+      "Bash(rtk git status:*)",
+      "Bash(rtk git diff:*)",
+      "Bash(rtk git log:*)",
+      "Bash(rtk git show:*)",
+      "Bash(rtk git add:*)",
+      "Bash(rtk git commit:*)",
+      "Bash(rtk git rev-parse:*)"
+    ],
+    "ask": [
+      "Bash(gh issue edit:*)",
+      "Bash(rtk gh issue edit:*)"
+    ],
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(git remote:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean:*)",
+      "Bash(gh pr review --approve:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr edit:*)",
+      "Bash(gh pr close:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh run rerun:*)",
+      "Bash(gh workflow run:*)",
+      "Bash(gh api:*)",
+
+      "Bash(rtk git push:*)",
+      "Bash(rtk git remote:*)",
+      "Bash(rtk git reset --hard:*)",
+      "Bash(rtk git clean:*)",
+      "Bash(rtk gh pr review --approve:*)",
+      "Bash(rtk gh pr create:*)",
+      "Bash(rtk gh pr edit:*)",
+      "Bash(rtk gh pr close:*)",
+      "Bash(rtk gh pr merge:*)",
+      "Bash(rtk gh run rerun:*)",
+      "Bash(rtk gh workflow run:*)",
+      "Bash(rtk gh api:*)"
+    ]
+  }
+}

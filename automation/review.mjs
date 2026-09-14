@@ -3,6 +3,7 @@
 //
 //   node automation/review.mjs 42            review ticket 42's PR
 //   node automation/review.mjs 42 --timeout 40
+//   node automation/review.mjs 42 --reviewer claude   (default: the ticket's recorded reviewer, else codex)
 //
 // Normally you don't run this yourself: dev.mjs spawns it as it exits. That
 // direct hand-off is the whole "automatic review" feature — no watcher, no
@@ -12,15 +13,16 @@
 // rather than a matter of prompting:
 //   * it runs in a FRESH session, so it has no memory of writing the code and
 //     no investment in defending it;
-//   * it runs with the read-only Codex sandbox, so it cannot
-//     quietly fix what it finds, and cannot approve its own subject.
+//   * it runs read-only (the Codex sandbox, or settings/claude-review.json), so
+//     it cannot quietly fix what it finds, and cannot approve its own subject.
 
+import { runClaude } from "./lib/claude.mjs";
 import { runCodex } from "./lib/codex.mjs";
 import { parseVerdict } from "./lib/verdict.mjs";
 import { validate, validationSummary } from "./lib/validation.mjs";
 import { join } from "node:path";
 import {
-  MARK_REVIEW, ROOT, args, assertGh, comment, ensureWorktree, fmtDuration,
+  MARK_REVIEW, REVIEWERS, ROOT, args, assertGh, comment, ensureWorktree, fmtDuration,
   getIssue, ghJson, loadSession, must, prComment, run, saveSession,
   setState, template, isDirty, isEntrypoint,
 } from "./lib/core.mjs";
@@ -58,6 +60,13 @@ async function main() {
 
   const issue = getIssue(n);
   const session = loadSession(n);
+
+  const reviewer = a.get("--reviewer", session?.reviewer ?? "codex");
+  if (!REVIEWERS.includes(reviewer)) {
+    console.error(`Unknown reviewer "${reviewer}". Use ${REVIEWERS.join(" or ")}.`);
+    return 2;
+  }
+  const reviewerName = reviewer === "claude" ? "Claude" : "Codex";
 
   if (!session?.pr) {
     console.error(`No PR recorded for #${n} in .agent-state/. Run dev.mjs first.`);
@@ -152,19 +161,20 @@ async function main() {
           "changes against `" + wt.base + "`.",
     });
 
-    console.log("running codex (fresh session, read-only)…\n");
-    const result = runCodex({
+    console.log(`running ${reviewer} (fresh session, read-only)…\n`);
+    const runReviewer = reviewer === "claude" ? runClaude : runCodex;
+    const result = runReviewer({
       cwd: wt.dir,
       prompt,
       schema: join(ROOT, "automation/settings/review.schema.json"),
       timeoutMs: Number(a.get("--timeout", 30)) * 60_000,
     });
 
-    console.log(`codex finished in ${fmtDuration(result.seconds)} (ok=${result.ok})`);
+    console.log(`${reviewer} finished in ${fmtDuration(result.seconds)} (ok=${result.ok})`);
 
     if (!result.ok) {
       setState(n, "state:needs-you");
-      prComment(session.pr, `${MARK_REVIEW}\n### ⚠️ Reviewer agent failed\n\n\`\`\`\n${result.text.slice(0, 6000)}\n\`\`\`\n\nThe code is fine — only the review didn't run. Re-run \`node automation/review.mjs ${n}\`.`);
+      prComment(session.pr, `${MARK_REVIEW}\n### ⚠️ Reviewer agent (${reviewerName}) failed\n\n\`\`\`\n${result.text.slice(0, 6000)}\n\`\`\`\n\nThe code is fine — only the review didn't run. Re-run \`node automation/review.mjs ${n}\`.`);
       return 1;
     }
 
@@ -197,6 +207,8 @@ async function main() {
       "",
       verdict.summary ?? "",
       "",
+      `_Reviewed by ${reviewerName}._`,
+      "",
       "### Findings",
       "",
       renderFindings(verdict.findings),
@@ -215,6 +227,8 @@ async function main() {
       "```",
       `node automation/dev.mjs ${n}`,
       "```",
+      "",
+      `or run \`/build ${n}\` in Claude Code.`,
     ].join("\n"));
 
     setState(n, "state:needs-you");

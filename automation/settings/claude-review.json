@@ -1,0 +1,41 @@
+{
+  "$comment": "Claude reviewer permissions, used by review.mjs --reviewer claude. Read-only, and launched with --permission-mode dontAsk, so anything not allowed here is refused rather than prompted: nobody is watching this run. The runner has already built and tested the branch, so no dotnet or npm. The rtk-prefixed git rules exist because the RTK PreToolUse hook rewrites `git x` to `rtk git x` before the permission check. Same model as the /build agent: a reviewer weaker than the author it audits cannot catch the mistakes the author was capable of making.",
+  "model": "claude-sonnet-5",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git status:*)",
+
+      "Bash(rtk git diff:*)",
+      "Bash(rtk git log:*)",
+      "Bash(rtk git show:*)",
+      "Bash(rtk git status:*)"
+    ],
+    "deny": [
+      "Write",
+      "Edit",
+      "NotebookEdit",
+      "Agent",
+      "WebFetch",
+      "WebSearch",
+
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git reset:*)",
+      "Bash(git clean:*)",
+      "Bash(gh:*)",
+      "Bash(rm:*)",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ]
+  }
+}

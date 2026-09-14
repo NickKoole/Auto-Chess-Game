@@ -3,6 +3,7 @@
 //
 //   node automation/finish.mjs 42              publish and review
 //   node automation/finish.mjs 42 --no-review  stop after the PR
+//   node automation/finish.mjs 42 --reviewer claude   review with Claude instead of Codex
 //
 // The other half of `claim.mjs`. It does not care what ran the session — an
 // attached `dev.mjs` run, an Orca terminal, or you — only what is committed on
@@ -13,7 +14,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  AGENT_DIR, MARK_DEV, PUSH_ENV, ROOT, args, assertGh, comment, commitsAhead,
+  AGENT_DIR, MARK_DEV, PUSH_ENV, REVIEWERS, ROOT, args, assertGh, comment, commitsAhead,
   fmtDuration, getIssue, gh, ghJson, isDirty, isEntrypoint, loadSession, must,
   saveSession, setState,
 } from "./lib/core.mjs";
@@ -101,11 +102,11 @@ function ensurePr(issue, wt, report) {
   return findPr(wt.branch);
 }
 
-function handOffToReview(issueNumber) {
+function handOffToReview(issueNumber, reviewer) {
   console.log("\n─── handing off to the reviewer ───\n");
   const res = spawnSync(
     process.execPath,
-    [join(ROOT, "automation", "review.mjs"), String(issueNumber)],
+    [join(ROOT, "automation", "review.mjs"), String(issueNumber), ...(reviewer ? ["--reviewer", reviewer] : [])],
     { cwd: ROOT, stdio: "inherit" }
   );
   return res.status ?? 1;
@@ -116,7 +117,10 @@ function handOffToReview(issueNumber) {
  * itself: how long it took and which Codex session id it was. Both are absent
  * when something other than dev.mjs ran the agent, and nothing here needs them.
  */
-export function finish(n, { review = true, session: sessionResult = null } = {}) {
+export function finish(n, { review = true, reviewer = null, session: sessionResult = null } = {}) {
+  if (reviewer && !REVIEWERS.includes(reviewer)) {
+    throw new Error(`Unknown reviewer "${reviewer}". Use ${REVIEWERS.join(" or ")}.`);
+  }
   assertGh();
 
   const issue = getIssue(n);
@@ -173,6 +177,7 @@ export function finish(n, { review = true, session: sessionResult = null } = {})
     runs: (stored.runs ?? 0) + 1,
     pr: pr?.number ?? stored.pr ?? null,
     lastSyncAt: new Date().toISOString(),
+    ...(reviewer ? { reviewer } : {}),
   });
 
   if (pr) {
@@ -191,18 +196,23 @@ export function finish(n, { review = true, session: sessionResult = null } = {})
     return 0;
   }
 
-  return handOffToReview(n);
+  return handOffToReview(n, reviewer);
 }
 
 if (isEntrypoint(import.meta.url)) {
   const a = args();
   const n = a.number();
   if (!n) {
-    console.error("Which ticket? Usage: node automation/finish.mjs <issue>");
+    console.error("Which ticket? Usage: node automation/finish.mjs <issue> [--no-review] [--reviewer codex|claude]");
+    process.exit(1);
+  }
+  const reviewer = a.get("--reviewer");
+  if (reviewer && !REVIEWERS.includes(reviewer)) {
+    console.error(`Unknown reviewer "${reviewer}". Use ${REVIEWERS.join(" or ")}.`);
     process.exit(1);
   }
   try {
-    process.exit(finish(n, { review: !a.has("--no-review") }));
+    process.exit(finish(n, { review: !a.has("--no-review"), reviewer }));
   } catch (err) {
     setState(n, "state:blocked");
     comment(n, [MARK_DEV, "### 💥 Publishing failed", "", "```", String(err?.message ?? err).slice(0, 4000), "```"].join("\n"));

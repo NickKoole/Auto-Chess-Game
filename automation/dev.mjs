@@ -40,7 +40,8 @@ async function main() {
 
   return finish(issue.number, {
     review: !a.has("--no-review"),
-    session: { codexSessionId: result.sessionId, seconds: result.seconds },
+    reviewer: "codex",
+    session:{ codexSessionId: result.sessionId, seconds: result.seconds },
   });
 }
 

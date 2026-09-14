@@ -38,6 +38,9 @@ export const STATES = [
 export const MARK_DEV = "<!-- agent:dev -->";
 export const MARK_REVIEW = "<!-- agent:review -->";
 
+// Who audits a PR. Recorded per ticket so a later bare `review.mjs <n>` keeps the builder's choice.
+export const REVIEWERS = ["codex", "claude"];
+
 // --- process -----------------------------------------------------------------
 
 // With shell:true (needed on Windows for .cmd shims) Node does NOT escape argv,
