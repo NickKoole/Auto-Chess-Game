@@ -11,7 +11,8 @@ public sealed class BattlefieldTests
         attackDamage: 12,
         attackIntervalTicks: 12,
         movementTicksPerHex: 6,
-        attackRangeHexes: 1);
+        attackRangeHexes: 1,
+        playerSelectable: true);
 
     private static BattleUnit Unit(BattleSide side, int row, int col) =>
         new(Militia, side, new HexCoord(row, col));

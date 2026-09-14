@@ -6,9 +6,9 @@ public sealed class StaticUnitCatalogTests
 {
     private static readonly StaticUnitCatalog Catalog = new();
 
-    private static UnitDefinition Unit(string id, int range = 1) =>
+    private static UnitDefinition Unit(string id, int range = 1, bool playerSelectable = true) =>
         new(id, id, maxHp: 100, attackDamage: 10, attackIntervalTicks: 10,
-            movementTicksPerHex: 5, attackRangeHexes: range);
+            movementTicksPerHex: 5, attackRangeHexes: range, playerSelectable: playerSelectable);
 
     [Fact]
     public void Looks_a_definition_up_by_id()
@@ -99,6 +99,14 @@ public sealed class StaticUnitCatalogTests
     }
 
     [Fact]
+    public void Every_built_in_unit_is_player_selectable()
+    {
+        // Today's whole roster is player-facing; a unit landing here with
+        // PlayerSelectable false would silently vanish from the picker.
+        Assert.All(Catalog.All, d => Assert.True(d.PlayerSelectable));
+    }
+
+    [Fact]
     public void Includes_both_melee_and_ranged_units()
     {
         Assert.Contains(Catalog.All, d => d.AttackRangeHexes == 1);
@@ -142,6 +150,19 @@ public sealed class StaticUnitCatalogTests
 
         Assert.Equal(3, catalog.All.Count);
         Assert.Equal(["a", "b", "c"], catalog.All.Select(d => d.Id));
+    }
+
+    [Fact]
+    public void A_non_selectable_unit_is_still_reachable_through_the_catalog()
+    {
+        // PlayerSelectable gates the player-facing roster endpoint only - the
+        // catalog itself must keep resolving every unit for server-authored
+        // placements like enemy setups.
+        UnitDefinition hidden = Unit("griffon", playerSelectable: false);
+        var catalog = new StaticUnitCatalog([Unit("a"), hidden]);
+
+        Assert.Same(hidden, catalog.Get("griffon"));
+        Assert.Contains(hidden, catalog.All);
     }
 
     [Fact]

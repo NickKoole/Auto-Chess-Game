@@ -28,7 +28,8 @@ public sealed class BattleTargetingAndMovementTests
         attackDamage: 12,
         attackIntervalTicks: 12,
         movementTicksPerHex: 1,
-        attackRangeHexes: 1);
+        attackRangeHexes: 1,
+        playerSelectable: true);
 
     /// <summary>Crosses a hex every 6 ticks — the roster's ordinary infantry pace. See <see cref="Runner"/> for why HP is unrealistically high.</summary>
     private static readonly UnitDefinition Militia = new(
@@ -38,7 +39,8 @@ public sealed class BattleTargetingAndMovementTests
         attackDamage: 12,
         attackIntervalTicks: 12,
         movementTicksPerHex: 6,
-        attackRangeHexes: 1);
+        attackRangeHexes: 1,
+        playerSelectable: true);
 
     /// <summary>Crosses a hex every 3 ticks: the cadence the acceptance criteria name.</summary>
     private static readonly UnitDefinition Strider = new(
@@ -48,7 +50,8 @@ public sealed class BattleTargetingAndMovementTests
         attackDamage: 12,
         attackIntervalTicks: 12,
         movementTicksPerHex: 3,
-        attackRangeHexes: 1);
+        attackRangeHexes: 1,
+        playerSelectable: true);
 
     /// <summary>Reaches 3 hexes, so it has somewhere to stop short of contact. See <see cref="Runner"/> for why HP is unrealistically high.</summary>
     private static readonly UnitDefinition Archer = new(
@@ -58,7 +61,8 @@ public sealed class BattleTargetingAndMovementTests
         attackDamage: 14,
         attackIntervalTicks: 14,
         movementTicksPerHex: 1,
-        attackRangeHexes: 3);
+        attackRangeHexes: 3,
+        playerSelectable: true);
 
     /// <summary>
     /// Reaches across the whole board — the longest distance between two tiles
@@ -80,7 +84,8 @@ public sealed class BattleTargetingAndMovementTests
         attackDamage: 12,
         attackIntervalTicks: 12,
         movementTicksPerHex: 1,
-        attackRangeHexes: 13);
+        attackRangeHexes: 13,
+        playerSelectable: true);
 
     private static UnitPlacement At(UnitDefinition definition, int row, int col) =>
         new(definition, new HexCoord(row, col));
@@ -816,5 +821,6 @@ public sealed class BattleTargetingAndMovementTests
         attackDamage: definition.AttackDamage,
         attackIntervalTicks: definition.AttackIntervalTicks,
         movementTicksPerHex: 10_000,
-        attackRangeHexes: definition.AttackRangeHexes);
+        attackRangeHexes: definition.AttackRangeHexes,
+        playerSelectable: definition.PlayerSelectable);
 }

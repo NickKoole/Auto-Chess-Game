@@ -18,7 +18,8 @@ public sealed class BattleSimulationTests
         attackDamage: 12,
         attackIntervalTicks: 12,
         movementTicksPerHex: 6,
-        attackRangeHexes: 1);
+        attackRangeHexes: 1,
+        playerSelectable: true);
 
     /// <summary>
     /// Never closes the distance within any run this class makes: one hex per
@@ -34,7 +35,8 @@ public sealed class BattleSimulationTests
         attackDamage: 12,
         attackIntervalTicks: 12,
         movementTicksPerHex: 10_000,
-        attackRangeHexes: 1);
+        attackRangeHexes: 1,
+        playerSelectable: true);
 
     private static UnitPlacement At(int row, int col) => new(Militia, new HexCoord(row, col));
 

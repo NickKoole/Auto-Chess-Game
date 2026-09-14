@@ -17,7 +17,7 @@ public static class BattleEndpoints
 
         app.MapGet("/battles/units", Ok<IReadOnlyList<UnitDefinitionDto>> (IUnitCatalog units) =>
             TypedResults.Ok<IReadOnlyList<UnitDefinitionDto>>(
-                [.. units.All.Select(BattleResponseFactory.MapUnitDefinition)]))
+                [.. units.All.Where(d => d.PlayerSelectable).Select(BattleResponseFactory.MapUnitDefinition)]))
         .WithName("ListUnits");
 
         app.MapGet("/battles/enemy-setups", Ok<IReadOnlyList<EnemySetupDto>> (EnemySetupCatalog enemySetups) =>
@@ -126,6 +126,16 @@ public static class BattleEndpoints
             {
                 placements = null;
                 error = $"Unknown unit id '{placement.UnitId}'.";
+                return false;
+            }
+
+            // Hidden from the roster endpoint is not enough on its own: a
+            // crafted request must not be able to field a unit the picker
+            // never offered.
+            if (!definition.PlayerSelectable)
+            {
+                placements = null;
+                error = $"Unit id '{placement.UnitId}' is not available to players.";
                 return false;
             }
 
