@@ -88,15 +88,17 @@ public sealed class PlayerCompositionEndpointTests(ApiFactory factory) : IClassF
         Assert.Contains("off the board", body.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
-    public async Task Rejects_a_placement_in_the_neutral_band()
+    [Theory]
+    [InlineData(5)]
+    [InlineData(6)]
+    public async Task Rejects_a_placement_in_the_neutral_band(int col)
     {
         HttpClient client = factory.CreateClient();
 
         HttpResponseMessage response = await client.PostAsJsonAsync("/battles/simulate", new SimulateBattleRequest
         {
             EnemySetupId = "swarm",
-            PlayerPlacements = [new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 2, Col = 3 } }],
+            PlayerPlacements = [new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 2, Col = col } }],
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -114,7 +116,7 @@ public sealed class PlayerCompositionEndpointTests(ApiFactory factory) : IClassF
         HttpResponseMessage response = await client.PostAsJsonAsync("/battles/simulate", new SimulateBattleRequest
         {
             EnemySetupId = "swarm",
-            PlayerPlacements = [new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 2, Col = 5 } }],
+            PlayerPlacements = [new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 2, Col = 7 } }],
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -122,6 +124,20 @@ public sealed class PlayerCompositionEndpointTests(ApiFactory factory) : IClassF
         ErrorResponse? body = await response.Content.ReadFromJsonAsync<ErrorResponse>();
         Assert.NotNull(body);
         Assert.Contains("opposing deployment band", body.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Accepts_a_placement_on_the_last_legal_column_before_the_neutral_band()
+    {
+        HttpClient client = factory.CreateClient();
+
+        HttpResponseMessage response = await client.PostAsJsonAsync("/battles/simulate", new SimulateBattleRequest
+        {
+            EnemySetupId = "swarm",
+            PlayerPlacements = [new PlayerPlacementDto { UnitId = "knight", Position = new HexCoordDto { Row = 2, Col = 4 } }],
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
