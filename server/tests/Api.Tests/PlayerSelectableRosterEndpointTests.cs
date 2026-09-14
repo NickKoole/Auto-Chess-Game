@@ -60,6 +60,27 @@ public sealed class PlayerSelectableRosterEndpointTests(ApiFactory factory) : IC
     }
 
     [Fact]
+    public async Task Simulate_rejects_a_player_placement_referencing_a_non_selectable_unit()
+    {
+        HttpClient client = CreateClientWithHiddenUnit();
+
+        HttpResponseMessage response = await client.PostAsJsonAsync("/battles/simulate", new SimulateBattleRequest
+        {
+            EnemySetupId = "swarm",
+            PlayerPlacements =
+            [
+                new PlayerPlacementDto { UnitId = HiddenUnitId, Position = new HexCoordDto { Row = 2, Col = 2 } },
+            ],
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        ErrorResponse? body = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.NotNull(body);
+        Assert.Contains(HiddenUnitId, body.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_non_selectable_unit_still_simulates_as_an_enemy_setup_placement()
     {
         IUnitCatalog catalog = BuildCatalogWithHiddenUnit();
