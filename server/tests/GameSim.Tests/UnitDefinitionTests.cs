@@ -18,9 +18,10 @@ public sealed class UnitDefinitionTests
         int attackIntervalTicks = 14,
         int movementTicksPerHex = 6,
         int attackRangeHexes = 3,
+        bool playerSelectable = true,
         double damageVariance = 0.15) =>
         new(id, displayName, maxHp, attackDamage, attackIntervalTicks,
-            movementTicksPerHex, attackRangeHexes, damageVariance);
+            movementTicksPerHex, attackRangeHexes, playerSelectable, damageVariance);
 
     [Fact]
     public void Keeps_every_stat_it_was_given()
@@ -33,6 +34,7 @@ public sealed class UnitDefinitionTests
             attackIntervalTicks: 17,
             movementTicksPerHex: 8,
             attackRangeHexes: 1,
+            playerSelectable: false,
             damageVariance: 0.2);
 
         Assert.Equal("knight", unit.Id);
@@ -42,6 +44,7 @@ public sealed class UnitDefinitionTests
         Assert.Equal(17, unit.AttackIntervalTicks);
         Assert.Equal(8, unit.MovementTicksPerHex);
         Assert.Equal(1, unit.AttackRangeHexes);
+        Assert.False(unit.PlayerSelectable);
         Assert.Equal(0.2, unit.DamageVariance);
     }
 
@@ -55,7 +58,8 @@ public sealed class UnitDefinitionTests
             attackDamage: 12,
             attackIntervalTicks: 12,
             movementTicksPerHex: 6,
-            attackRangeHexes: 1);
+            attackRangeHexes: 1,
+            playerSelectable: true);
 
         Assert.Equal(UnitDefinition.DefaultDamageVariance, unit.DamageVariance);
         Assert.Equal(0.15, unit.DamageVariance);

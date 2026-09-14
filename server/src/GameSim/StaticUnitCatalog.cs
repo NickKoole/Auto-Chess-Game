@@ -61,7 +61,8 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             attackDamage: 12,
             attackIntervalTicks: 12,
             movementTicksPerHex: 6,
-            attackRangeHexes: 1),
+            attackRangeHexes: 1,
+            playerSelectable: true),
 
         new(
             id: "knight",
@@ -70,7 +71,8 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             attackDamage: 16,
             attackIntervalTicks: 16,
             movementTicksPerHex: 8,
-            attackRangeHexes: 1),
+            attackRangeHexes: 1,
+            playerSelectable: true),
 
         new(
             id: "berserker",
@@ -79,7 +81,8 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             attackDamage: 10,
             attackIntervalTicks: 7,
             movementTicksPerHex: 5,
-            attackRangeHexes: 1),
+            attackRangeHexes: 1,
+            playerSelectable: true),
 
         new(
             id: "archer",
@@ -88,7 +91,8 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             attackDamage: 14,
             attackIntervalTicks: 14,
             movementTicksPerHex: 6,
-            attackRangeHexes: 3),
+            attackRangeHexes: 3,
+            playerSelectable: true),
 
         // Deliberately swingy: a heavy, slow shot that sometimes falls short of
         // killing what it should.
@@ -100,6 +104,7 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             attackIntervalTicks: 24,
             movementTicksPerHex: 7,
             attackRangeHexes: 4,
+            playerSelectable: true,
             damageVariance: 0.25),
 
         // Deliberately reliable: fragile, but you can count on the number.
@@ -111,6 +116,7 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             attackIntervalTicks: 20,
             movementTicksPerHex: 7,
             attackRangeHexes: 3,
+            playerSelectable: true,
             damageVariance: 0.05),
     ];
 }

@@ -14,6 +14,7 @@ public sealed record UnitDefinition
         int attackIntervalTicks,
         int movementTicksPerHex,
         int attackRangeHexes,
+        bool playerSelectable,
         double damageVariance = DefaultDamageVariance)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
@@ -34,6 +35,7 @@ public sealed record UnitDefinition
         AttackIntervalTicks = RequirePositive(attackIntervalTicks, id, nameof(attackIntervalTicks));
         MovementTicksPerHex = RequirePositive(movementTicksPerHex, id, nameof(movementTicksPerHex));
         AttackRangeHexes = RequirePositive(attackRangeHexes, id, nameof(attackRangeHexes));
+        PlayerSelectable = playerSelectable;
 
         // Written as a positive assertion rather than `< 0 || > 1` so that NaN
         // is rejected too: every comparison against NaN is false, so the
@@ -72,6 +74,9 @@ public sealed record UnitDefinition
     /// a category.
     /// </summary>
     public int AttackRangeHexes { get; }
+
+    /// <summary>Whether a player can draft this unit into their own roster. False keeps it in the shared catalog for server-authored placements (enemy setups, matchups) without exposing it to a player's picker.</summary>
+    public bool PlayerSelectable { get; }
 
     /// <summary>
     /// Fraction of <see cref="AttackDamage"/> - 0.15 means +/-15%. A

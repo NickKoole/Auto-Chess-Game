@@ -30,6 +30,7 @@ public sealed class BattleCombatTests
         attackIntervalTicks: 5,
         movementTicksPerHex: 1,
         attackRangeHexes: 13,
+        playerSelectable: true,
         damageVariance: 0.20);
 
     /// <summary>
@@ -46,6 +47,7 @@ public sealed class BattleCombatTests
         attackIntervalTicks: 5,
         movementTicksPerHex: 1,
         attackRangeHexes: 13,
+        playerSelectable: true,
         damageVariance: 0.0);
 
     private static UnitPlacement At(UnitDefinition definition, int row, int col) =>
@@ -127,6 +129,7 @@ public sealed class BattleCombatTests
             attackIntervalTicks: 1,
             movementTicksPerHex: 10_000, // one free step, then stuck for the whole run
             attackRangeHexes: 1,
+            playerSelectable: true,
             damageVariance: 0.0);
 
         BattleSetup setup = Setup([At(melee, 0, 4)], [At(melee, 0, 9)]);
@@ -248,6 +251,7 @@ public sealed class BattleCombatTests
             attackIntervalTicks: 1000,
             movementTicksPerHex: 1,
             attackRangeHexes: 13,
+            playerSelectable: true,
             damageVariance: 0.0);
 
         BattleSetup setup = Setup([At(Brawler, 0, 4)], [At(weakling, 0, 9)]);
@@ -272,6 +276,7 @@ public sealed class BattleCombatTests
             attackIntervalTicks: 1000,
             movementTicksPerHex: 1,
             attackRangeHexes: 13,
+            playerSelectable: true,
             damageVariance: 0.0);
 
         BattleSetup setup = Setup([At(tank, 0, 4)], [At(tank, 0, 9), At(tank, 1, 9)]);

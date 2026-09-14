@@ -12,7 +12,8 @@ public sealed class BattleUnitTests
             attackDamage: 16,
             attackIntervalTicks: 16,
             movementTicksPerHex: 8,
-            attackRangeHexes: 1);
+            attackRangeHexes: 1,
+            playerSelectable: true);
 
     [Fact]
     public void Starts_at_the_definitions_max_hp()

@@ -20,6 +20,7 @@ public sealed class BattleEventLogTests
         attackIntervalTicks: 1,
         movementTicksPerHex: 1,
         attackRangeHexes: 13,
+        playerSelectable: true,
         damageVariance: 0.0);
 
     /// <summary>Crosses a hex every tick, melee range, and tough enough to survive being hit while it closes.</summary>
@@ -31,6 +32,7 @@ public sealed class BattleEventLogTests
         attackIntervalTicks: 12,
         movementTicksPerHex: 1,
         attackRangeHexes: 1,
+        playerSelectable: true,
         damageVariance: 0.0);
 
     /// <summary>Never moves (already in range everywhere) and never dies to anything this file does.</summary>
@@ -42,6 +44,7 @@ public sealed class BattleEventLogTests
         attackIntervalTicks: 1000,
         movementTicksPerHex: 1,
         attackRangeHexes: 13,
+        playerSelectable: true,
         damageVariance: 0.0);
 
     private static UnitPlacement At(UnitDefinition definition, int row, int col) =>
@@ -180,13 +183,16 @@ public sealed class BattleEventLogTests
     {
         var striker1 = new UnitDefinition(
             id: "striker1", displayName: "Striker 1", maxHp: 50, attackDamage: 5,
-            attackIntervalTicks: 1, movementTicksPerHex: 1, attackRangeHexes: 11, damageVariance: 0.0);
+            attackIntervalTicks: 1, movementTicksPerHex: 1, attackRangeHexes: 11,
+            playerSelectable: true, damageVariance: 0.0);
         var striker2 = new UnitDefinition(
             id: "striker2", displayName: "Striker 2", maxHp: 50, attackDamage: 7,
-            attackIntervalTicks: 1, movementTicksPerHex: 1, attackRangeHexes: 11, damageVariance: 0.0);
+            attackIntervalTicks: 1, movementTicksPerHex: 1, attackRangeHexes: 11,
+            playerSelectable: true, damageVariance: 0.0);
         var target = new UnitDefinition(
             id: "target", displayName: "Target", maxHp: 500, attackDamage: 1,
-            attackIntervalTicks: 1000, movementTicksPerHex: 1, attackRangeHexes: 11, damageVariance: 0.0);
+            attackIntervalTicks: 1000, movementTicksPerHex: 1, attackRangeHexes: 11,
+            playerSelectable: true, damageVariance: 0.0);
 
         // (5,0) before (5,1): same front-to-back rank, lower column first — the
         // acting order BattleSetupTests already pins down for this shape.
