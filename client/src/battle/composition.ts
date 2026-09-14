@@ -4,12 +4,12 @@ import { SIDE_OPPONENT, SIDE_PLAYER, type BattleState, type BattleUnitState, typ
 
 type UnitDefinitionDto = components['schemas']['UnitDefinitionDto']
 
-/** Mirrors Battlefield.DeploymentBand(Player) - rows 5-7 of the 8x8 board. */
-export const PLAYER_BAND_FIRST_ROW = 5
-export const PLAYER_BAND_LAST_ROW = 7
+/** Mirrors Battlefield.DeploymentBand(Player) - columns 0-2 of the 8x8 board. */
+export const PLAYER_BAND_FIRST_COLUMN = 0
+export const PLAYER_BAND_LAST_COLUMN = 2
 
-export function isInPlayerBand(row: number): boolean {
-  return row >= PLAYER_BAND_FIRST_ROW && row <= PLAYER_BAND_LAST_ROW
+export function isInPlayerBand(col: number): boolean {
+  return col >= PLAYER_BAND_FIRST_COLUMN && col <= PLAYER_BAND_LAST_COLUMN
 }
 
 export interface CompositionPlacement {
@@ -27,10 +27,10 @@ export function placeUnit(
   unitId: string,
   position: HexPosition,
 ): PlaceUnitResult {
-  if (!isInPlayerBand(position.row)) {
+  if (!isInPlayerBand(position.col)) {
     return {
       ok: false,
-      reason: `Row ${position.row} is outside your deployment band (rows ${PLAYER_BAND_FIRST_ROW}-${PLAYER_BAND_LAST_ROW}).`,
+      reason: `Column ${position.col} is outside your deployment band (columns ${PLAYER_BAND_FIRST_COLUMN}-${PLAYER_BAND_LAST_COLUMN}).`,
     }
   }
 

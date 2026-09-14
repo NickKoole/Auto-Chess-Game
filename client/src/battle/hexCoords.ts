@@ -14,32 +14,33 @@ export interface GridDimensions {
   originY: number
 }
 
-/** Distance between adjacent hex centers in the same row - not one hex's own corner-to-corner width. */
+/** Distance between adjacent flat-top hex centers in the same row. */
 export function hexWidth(hexSize: number): number {
+  return hexSize * 2
+}
+
+/** Distance between adjacent flat-top hex centers in the same column. */
+export function hexRowSpacing(hexSize: number): number {
   return Math.sqrt(3) * hexSize
 }
 
-export function hexRowSpacing(hexSize: number): number {
-  return hexSize * 1.5
-}
-
-/** Odd rows are shifted right by half a hex width, so a row stays a clean horizontal band instead of a staircase - matches GameSim's HexCoord odd-r layout. */
+/** Mirrors GameSim's flat-top odd-column coordinates: odd columns shift south by half a row spacing. */
 export function hexToPixel(row: number, col: number, hexSize: number): PixelPosition {
-  const width = hexWidth(hexSize)
-  const rowShift = row % 2 !== 0 ? width / 2 : 0
+  const height = hexRowSpacing(hexSize)
+  const columnShift = col % 2 !== 0 ? height / 2 : 0
   return {
-    x: col * width + rowShift,
-    y: row * hexRowSpacing(hexSize),
+    x: col * hexSize * 1.5,
+    y: row * height + columnShift,
   }
 }
 
 export function gridDimensions(rows: number, cols: number, hexSize: number): GridDimensions {
-  const width = hexWidth(hexSize)
-  const originX = width / 2
-  const originY = hexSize
+  const height = hexRowSpacing(hexSize)
+  const originX = hexSize
+  const originY = height / 2
   return {
-    width: width * cols + originX,
-    height: hexRowSpacing(hexSize) * (rows - 1) + hexSize * 2,
+    width: hexSize * 1.5 * (cols - 1) + hexWidth(hexSize),
+    height: height * (rows - 1) + (cols > 1 ? height / 2 : 0) + height,
     originX,
     originY,
   }
@@ -48,7 +49,7 @@ export function gridDimensions(rows: number, cols: number, hexSize: number): Gri
 export function hexPolygonPoints(cx: number, cy: number, hexSize: number): string {
   const points: string[] = []
   for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 180) * (60 * i - 30)
+    const angle = (Math.PI / 180) * (60 * i)
     const x = cx + hexSize * Math.cos(angle)
     const y = cy + hexSize * Math.sin(angle)
     points.push(`${x},${y}`)

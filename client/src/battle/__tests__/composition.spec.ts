@@ -7,8 +7,8 @@ import {
   isDeploymentEditable,
   isInPlayerBand,
   placeUnit,
-  PLAYER_BAND_FIRST_ROW,
-  PLAYER_BAND_LAST_ROW,
+  PLAYER_BAND_FIRST_COLUMN,
+  PLAYER_BAND_LAST_COLUMN,
   removePlacementAt,
   toggleRosterSelection,
   type CompositionPlacement,
@@ -31,17 +31,17 @@ function knightDefinition(): UnitDefinitionDto {
 }
 
 describe('isInPlayerBand', () => {
-  it('is true for every row in the player deployment band', () => {
-    for (let row = PLAYER_BAND_FIRST_ROW; row <= PLAYER_BAND_LAST_ROW; row++) {
-      expect(isInPlayerBand(row)).toBe(true)
+  it('is true for every column in the player deployment band', () => {
+    for (let col = PLAYER_BAND_FIRST_COLUMN; col <= PLAYER_BAND_LAST_COLUMN; col++) {
+      expect(isInPlayerBand(col)).toBe(true)
     }
   })
 
   it('is false for the neutral band, the opponent band, and off the board', () => {
     expect(isInPlayerBand(3)).toBe(false)
     expect(isInPlayerBand(4)).toBe(false)
-    expect(isInPlayerBand(0)).toBe(false)
-    expect(isInPlayerBand(2)).toBe(false)
+    expect(isInPlayerBand(5)).toBe(false)
+    expect(isInPlayerBand(7)).toBe(false)
     expect(isInPlayerBand(-1)).toBe(false)
     expect(isInPlayerBand(99)).toBe(false)
   })
@@ -53,8 +53,8 @@ describe('placeUnit', () => {
     expect(result).toEqual({ ok: true, placements: [{ unitId: 'knight', position: { row: 5, col: 2 } }] })
   })
 
-  it('rejects a tile outside the player band, naming the row', () => {
-    const result = placeUnit([], 'knight', { row: 3, col: 2 })
+  it('rejects a tile outside the player band, naming the column', () => {
+    const result = placeUnit([], 'knight', { row: 3, col: 3 })
     expect(result).toMatchObject({
       ok: false,
       reason: expect.stringContaining('outside your deployment band'),
@@ -62,7 +62,7 @@ describe('placeUnit', () => {
   })
 
   it('rejects a tile in the opponent band', () => {
-    const result = placeUnit([], 'knight', { row: 0, col: 2 })
+    const result = placeUnit([], 'knight', { row: 0, col: 5 })
     expect(result.ok).toBe(false)
   })
 
@@ -74,19 +74,19 @@ describe('placeUnit', () => {
 
   it('leaves other placements untouched when placing on a different tile', () => {
     const existing: CompositionPlacement[] = [{ unitId: 'knight', position: { row: 5, col: 2 } }]
-    const result = placeUnit(existing, 'archer', { row: 6, col: 3 })
+    const result = placeUnit(existing, 'archer', { row: 6, col: 1 })
     expect(result).toEqual({
       ok: true,
       placements: [
         { unitId: 'knight', position: { row: 5, col: 2 } },
-        { unitId: 'archer', position: { row: 6, col: 3 } },
+        { unitId: 'archer', position: { row: 6, col: 1 } },
       ],
     })
   })
 
   it('does not mutate the array passed in', () => {
     const existing: CompositionPlacement[] = [{ unitId: 'knight', position: { row: 5, col: 2 } }]
-    placeUnit(existing, 'archer', { row: 6, col: 3 })
+    placeUnit(existing, 'archer', { row: 6, col: 1 })
     expect(existing).toEqual([{ unitId: 'knight', position: { row: 5, col: 2 } }])
   })
 })
@@ -95,15 +95,15 @@ describe('removePlacementAt', () => {
   it('removes the placement at the given position, leaving every other placement untouched', () => {
     const existing: CompositionPlacement[] = [
       { unitId: 'knight', position: { row: 5, col: 2 } },
-      { unitId: 'archer', position: { row: 6, col: 3 } },
+      { unitId: 'archer', position: { row: 6, col: 1 } },
     ]
     const result = removePlacementAt(existing, { row: 5, col: 2 })
-    expect(result).toEqual([{ unitId: 'archer', position: { row: 6, col: 3 } }])
+    expect(result).toEqual([{ unitId: 'archer', position: { row: 6, col: 1 } }])
   })
 
   it('is a no-op when nothing occupies the given position', () => {
     const existing: CompositionPlacement[] = [{ unitId: 'knight', position: { row: 5, col: 2 } }]
-    const result = removePlacementAt(existing, { row: 6, col: 3 })
+    const result = removePlacementAt(existing, { row: 6, col: 1 })
     expect(result).toEqual(existing)
   })
 
@@ -170,7 +170,7 @@ describe('compositionToBattleState', () => {
   it('builds one full-hp player unit per placement, with no current target', () => {
     const placements: CompositionPlacement[] = [
       { unitId: 'knight', position: { row: 5, col: 2 } },
-      { unitId: 'knight', position: { row: 6, col: 3 } },
+      { unitId: 'knight', position: { row: 6, col: 1 } },
     ]
     const definitions = { knight: knightDefinition() }
 
@@ -178,7 +178,7 @@ describe('compositionToBattleState', () => {
 
     expect(state.units).toEqual([
       { id: 0, side: SIDE_PLAYER, definitionId: 'knight', position: { row: 5, col: 2 }, hp: 180, maxHp: 180, currentTargetId: null },
-      { id: 1, side: SIDE_PLAYER, definitionId: 'knight', position: { row: 6, col: 3 }, hp: 180, maxHp: 180, currentTargetId: null },
+      { id: 1, side: SIDE_PLAYER, definitionId: 'knight', position: { row: 6, col: 1 }, hp: 180, maxHp: 180, currentTargetId: null },
     ])
     expect(state.unitDefinitions).toBe(definitions)
   })

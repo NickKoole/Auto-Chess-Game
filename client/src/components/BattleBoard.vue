@@ -26,13 +26,12 @@ const emit = defineEmits<{
   'unit-delete': [payload: { row: number; col: number }]
 }>()
 
-// Mirrors GameSim's Battlefield: an 8x8 board, rows 3-4 neutral, rows 0-2 the
-// opponent's deployment band (the far side), rows 5-7 the player's (the near
-// side). Row 0 renders at the top because y grows with row - no flip needed.
+// Mirrors GameSim's Battlefield: columns 0-2 are the player's deployment band,
+// columns 3-4 are neutral, and columns 5-7 belong to the opponent.
 const ROWS = 8
 const COLS = 8
-const NEUTRAL_FIRST_ROW = 3
-const NEUTRAL_LAST_ROW = 4
+const NEUTRAL_FIRST_COLUMN = 3
+const NEUTRAL_LAST_COLUMN = 4
 const HEX_SIZE = 40
 const tileEdgePoints = hexPolygonPoints(0, 1, 39)
 const tileFacePoints = hexPolygonPoints(0, -2, 37.5)
@@ -66,14 +65,14 @@ const hexes = computed<HexTile[]>(() => {
   return tiles
 })
 
-function bandClass(row: number): string {
+function bandClass(col: number): string {
   const band =
-    row >= NEUTRAL_FIRST_ROW && row <= NEUTRAL_LAST_ROW
+    col >= NEUTRAL_FIRST_COLUMN && col <= NEUTRAL_LAST_COLUMN
       ? 'neutral-band'
-      : row < NEUTRAL_FIRST_ROW
+      : col > NEUTRAL_LAST_COLUMN
         ? 'opponent-band'
         : 'player-band'
-  const droppable = props.interactive && isInPlayerBand(row) ? ' droppable' : ''
+  const droppable = props.interactive && isInPlayerBand(col) ? ' droppable' : ''
   return `hex ${band}${droppable}`
 }
 
@@ -212,7 +211,7 @@ const targetMarkers = computed<TargetMarker[]>(() =>
     <g
       v-for="hex in hexes"
       :key="`${hex.row}-${hex.col}`"
-      :class="bandClass(hex.row)"
+      :class="bandClass(hex.col)"
       @dragover.prevent
       @drop="onDrop($event, hex.row, hex.col)"
       @click="onTileClick(hex.row, hex.col)"
@@ -227,8 +226,8 @@ const targetMarkers = computed<TargetMarker[]>(() =>
         />
         <polyline class="tile-light" :points="tileHighlightPoints" />
         <path v-if="(hex.row * 7 + hex.col * 3) % 5 === 0" class="tile-seam" d="M -22,10 l 7,-4 5,2 m 8,-22 l 5,4" />
-        <path v-if="hex.row === 2" class="deployment-marker enemy-marker" d="M -9,29 h 18" />
-        <path v-if="hex.row === 5" class="deployment-marker player-marker" d="M -9,-31 h 18" />
+        <path v-if="hex.col === 7" class="deployment-marker enemy-marker" d="M 29,-9 v 18" />
+        <path v-if="hex.col === 0" class="deployment-marker player-marker" d="M -29,-9 v 18" />
       </g>
     </g>
 
