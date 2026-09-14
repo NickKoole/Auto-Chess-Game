@@ -271,7 +271,7 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 .battle-board {
   display: block;
   width: 100%;
-  max-width: 640px;
+  max-width: 768px;
   height: auto;
   margin: 0 auto;
   padding: 16px;
