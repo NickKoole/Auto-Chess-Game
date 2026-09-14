@@ -33,8 +33,8 @@ public sealed class Battlefield
         IsInBounds(coord) && coord.Col >= NeutralFirstColumn && coord.Col <= NeutralLastColumn;
 
     /// <summary>
-    /// The columns a side may deploy in, inclusive: the player holds 0-2, the
-    /// opponent holds 5-7.
+    /// The columns a side may deploy in, inclusive: the player holds 0-4, the
+    /// opponent holds 7-11.
     /// </summary>
     public static (int FirstColumn, int LastColumn) DeploymentBand(BattleSide side) => side switch
     {

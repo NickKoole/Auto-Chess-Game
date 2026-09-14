@@ -4,7 +4,7 @@ namespace GameSim.Tests;
 
 public sealed class HexCoordTests
 {
-    /// <summary>Every tile on the 8x8 board, as test data.</summary>
+    /// <summary>Every tile on the 8-row, 12-column board, as test data.</summary>
     public static TheoryData<int, int> EveryTile()
     {
         var data = new TheoryData<int, int>();
