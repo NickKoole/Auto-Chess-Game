@@ -34,21 +34,21 @@ public sealed class BattleIntegrationTests
     private static BattleSetup Setup()
     {
         var catalog = new StaticUnitCatalog();
-        UnitDefinition militia = catalog.Get("militia");
+        UnitDefinition conscript = catalog.Get("conscript");
         UnitDefinition knight = catalog.Get("knight");
         UnitDefinition berserker = catalog.Get("berserker");
         UnitDefinition archer = catalog.Get("archer");
-        UnitDefinition mage = catalog.Get("mage");
+        UnitDefinition hexcaster = catalog.Get("hexcaster");
 
         Assert.True(BattleSetup.TryCreate(
             [
                 At(knight, 1, 4), At(knight, 3, 4),
                 At(archer, 1, 3), At(archer, 3, 3),
-                At(mage, 5, 3), At(berserker, 5, 4),
+                At(hexcaster, 5, 3), At(berserker, 5, 4),
             ],
             [
-                At(militia, 1, 7), At(militia, 3, 7), At(militia, 5, 7),
-                At(militia, 1, 8), At(militia, 3, 8), At(militia, 5, 8),
+                At(conscript, 1, 7), At(conscript, 3, 7), At(conscript, 5, 7),
+                At(conscript, 1, 8), At(conscript, 3, 8), At(conscript, 5, 8),
             ],
             out BattleSetup? setup,
             out IReadOnlyList<PlacementError> errors));

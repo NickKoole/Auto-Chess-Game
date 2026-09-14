@@ -32,9 +32,9 @@ public sealed class BattleTargetingAndMovementTests
         playerSelectable: true);
 
     /// <summary>Crosses a hex every 6 ticks — the roster's ordinary infantry pace. See <see cref="Runner"/> for why HP is unrealistically high.</summary>
-    private static readonly UnitDefinition Militia = new(
-        id: "militia",
-        displayName: "Militia",
+    private static readonly UnitDefinition Conscript = new(
+        id: "conscript",
+        displayName: "Conscript",
         maxHp: 1_000_000,
         attackDamage: 12,
         attackIntervalTicks: 12,
@@ -540,12 +540,12 @@ public sealed class BattleTargetingAndMovementTests
         // all three is what makes this a test about being blocked rather than
         // about pathing: leave one open and the unit simply routes around it.
         //
-        // The unit on (6, 3) walks away this tick, and both are Militia, which
+        // The unit on (6, 3) walks away this tick, and both are Conscript, which
         // cross a hex in 6 ticks: a unit charged for its blocked attempt would
         // sit still until tick 7.
         static BattleSetup Build() => Setup(
             [
-                At(Militia, 3, 2), At(Militia, 3, 3),
+                At(Conscript, 3, 2), At(Conscript, 3, 3),
                 At(Sentinel, 4, 3), At(Sentinel, 2, 2), At(Sentinel, 4, 2),
             ],
             [At(Sentinel, 3, 9)]);
@@ -558,7 +558,7 @@ public sealed class BattleTargetingAndMovementTests
 
         Assert.Equal(new HexCoord(3, 4), blocker.Position);
         Assert.Equal(new HexCoord(2, 3), blocked.Position);
-        Assert.Equal(Militia.MovementTicksPerHex, blocked.MovementCooldownTicks);
+        Assert.Equal(Conscript.MovementTicksPerHex, blocked.MovementCooldownTicks);
 
         BattleSetup afterTwo = Build();
         BattleUnit follower = From(afterTwo, 3, 2);
@@ -607,7 +607,7 @@ public sealed class BattleTargetingAndMovementTests
         // it needs every neighbour held, not merely the closing ones.
         BattleSetup setup = Setup(
             [
-                At(Militia, 3, 0),
+                At(Conscript, 3, 0),
                 At(Sentinel, 2, 0), At(Sentinel, 2, 1), At(Sentinel, 3, 1),
                 At(Sentinel, 4, 0), At(Sentinel, 4, 1),
             ],
@@ -766,8 +766,8 @@ public sealed class BattleTargetingAndMovementTests
     public void Two_runs_of_a_moving_battle_end_in_exactly_the_same_place()
     {
         static BattleSetup Build() => Setup(
-            [At(Runner, 1, 2), At(Militia, 2, 2), At(Archer, 4, 3), At(Strider, 5, 4)],
-            [At(Runner, 1, 9), At(Militia, 5, 8), At(Archer, 2, 7)]);
+            [At(Runner, 1, 2), At(Conscript, 2, 2), At(Archer, 4, 3), At(Strider, 5, 4)],
+            [At(Runner, 1, 9), At(Conscript, 5, 8), At(Archer, 2, 7)]);
 
         BattleSetup a = Build();
         BattleSetup b = Build();
@@ -796,8 +796,8 @@ public sealed class BattleTargetingAndMovementTests
         // shifts the stream for every roll that comes after it.
         var battle = new BattleSimulation(
             Setup(
-                [At(Glacial(Runner), 0, 2), At(Glacial(Militia), 1, 2), At(Glacial(Archer), 0, 3)],
-                [At(Glacial(Runner), 7, 9), At(Glacial(Militia), 6, 9)]),
+                [At(Glacial(Runner), 0, 2), At(Glacial(Conscript), 1, 2), At(Glacial(Archer), 0, 3)],
+                [At(Glacial(Runner), 7, 9), At(Glacial(Conscript), 6, 9)]),
             Seed,
             new BattleOptions { MaxTicks = 300 });
 

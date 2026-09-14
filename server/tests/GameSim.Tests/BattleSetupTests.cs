@@ -4,9 +4,9 @@ namespace GameSim.Tests;
 
 public sealed class BattleSetupTests
 {
-    private static readonly UnitDefinition Militia = new(
-        id: "militia",
-        displayName: "Militia",
+    private static readonly UnitDefinition Conscript = new(
+        id: "conscript",
+        displayName: "Conscript",
         maxHp: 100,
         attackDamage: 12,
         attackIntervalTicks: 12,
@@ -14,7 +14,7 @@ public sealed class BattleSetupTests
         attackRangeHexes: 1,
         playerSelectable: true);
 
-    private static UnitPlacement At(int row, int col) => new(Militia, new HexCoord(row, col));
+    private static UnitPlacement At(int row, int col) => new(Conscript, new HexCoord(row, col));
 
 
     /// <summary>One legal unit per side, for tests about something else.</summary>
@@ -51,8 +51,8 @@ public sealed class BattleSetupTests
 
         foreach (BattleUnit unit in setup.Units)
         {
-            Assert.Same(Militia, unit.Definition);
-            Assert.Equal(Militia.MaxHp, unit.CurrentHp);
+            Assert.Same(Conscript, unit.Definition);
+            Assert.Equal(Conscript.MaxHp, unit.CurrentHp);
             Assert.Equal(0, unit.AttackCooldownTicks);
         }
     }
@@ -106,8 +106,8 @@ public sealed class BattleSetupTests
         HexCoord[] army = [new HexCoord(1, 2), new HexCoord(4, 1), new HexCoord(0, 0), new HexCoord(6, 2)];
 
         Assert.True(BattleSetup.TryCreate(
-            [.. army.Select(c => new UnitPlacement(Militia, c))],
-            [.. army.Select(c => new UnitPlacement(Militia, Mirror(c)))],
+            [.. army.Select(c => new UnitPlacement(Conscript, c))],
+            [.. army.Select(c => new UnitPlacement(Conscript, Mirror(c)))],
             out BattleSetup? setup,
             out _));
 

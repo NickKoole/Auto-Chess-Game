@@ -4,9 +4,9 @@ namespace GameSim.Tests;
 
 public sealed class BattlefieldTests
 {
-    private static readonly UnitDefinition Militia = new(
-        id: "militia",
-        displayName: "Militia",
+    private static readonly UnitDefinition Conscript = new(
+        id: "conscript",
+        displayName: "Conscript",
         maxHp: 100,
         attackDamage: 12,
         attackIntervalTicks: 12,
@@ -15,7 +15,7 @@ public sealed class BattlefieldTests
         playerSelectable: true);
 
     private static BattleUnit Unit(BattleSide side, int row, int col) =>
-        new(Militia, side, new HexCoord(row, col));
+        new(Conscript, side, new HexCoord(row, col));
 
     [Fact]
     public void Is_eight_rows_by_twelve_columns()
