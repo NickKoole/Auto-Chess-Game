@@ -17,7 +17,7 @@ public static class BattleEndpoints
 
         app.MapGet("/battles/units", Ok<IReadOnlyList<UnitDefinitionDto>> (IUnitCatalog units) =>
             TypedResults.Ok<IReadOnlyList<UnitDefinitionDto>>(
-                [.. units.All.Select(BattleResponseFactory.MapUnitDefinition)]))
+                [.. units.All.Where(d => d.PlayerSelectable).Select(BattleResponseFactory.MapUnitDefinition)]))
         .WithName("ListUnits");
 
         app.MapGet("/battles/enemy-setups", Ok<IReadOnlyList<EnemySetupDto>> (EnemySetupCatalog enemySetups) =>
