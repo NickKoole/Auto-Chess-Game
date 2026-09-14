@@ -38,10 +38,10 @@ describe('isInPlayerBand', () => {
   })
 
   it('is false for the neutral band, the opponent band, and off the board', () => {
-    expect(isInPlayerBand(3)).toBe(false)
-    expect(isInPlayerBand(4)).toBe(false)
     expect(isInPlayerBand(5)).toBe(false)
+    expect(isInPlayerBand(6)).toBe(false)
     expect(isInPlayerBand(7)).toBe(false)
+    expect(isInPlayerBand(11)).toBe(false)
     expect(isInPlayerBand(-1)).toBe(false)
     expect(isInPlayerBand(99)).toBe(false)
   })
@@ -54,7 +54,7 @@ describe('placeUnit', () => {
   })
 
   it('rejects a tile outside the player band, naming the column', () => {
-    const result = placeUnit([], 'knight', { row: 3, col: 3 })
+    const result = placeUnit([], 'knight', { row: 3, col: 5 })
     expect(result).toMatchObject({
       ok: false,
       reason: expect.stringContaining('outside your deployment band'),
@@ -62,7 +62,7 @@ describe('placeUnit', () => {
   })
 
   it('rejects a tile in the opponent band', () => {
-    const result = placeUnit([], 'knight', { row: 0, col: 5 })
+    const result = placeUnit([], 'knight', { row: 0, col: 7 })
     expect(result.ok).toBe(false)
   })
 
@@ -88,6 +88,11 @@ describe('placeUnit', () => {
     const existing: CompositionPlacement[] = [{ unitId: 'knight', position: { row: 5, col: 2 } }]
     placeUnit(existing, 'archer', { row: 6, col: 1 })
     expect(existing).toEqual([{ unitId: 'knight', position: { row: 5, col: 2 } }])
+  })
+
+  it('accepts the last column of the widened player band and rejects the first neutral column', () => {
+    expect(placeUnit([], 'knight', { row: 5, col: 4 }).ok).toBe(true)
+    expect(placeUnit([], 'knight', { row: 5, col: 5 }).ok).toBe(false)
   })
 })
 
