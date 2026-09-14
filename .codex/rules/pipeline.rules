@@ -1,3 +1,7 @@
+prefix_rule(pattern = ["git", "status"], decision = "allow")
+prefix_rule(pattern = ["git", "log"], decision = "allow")
+prefix_rule(pattern = ["git", "show"], decision = "allow")
+prefix_rule(pattern = ["git", "diff"], decision = "allow")
 prefix_rule(pattern = ["git", "push"], decision = "forbidden", justification = "Publish through automation/finish.mjs.")
 prefix_rule(pattern = ["git", "remote"], decision = "forbidden")
 prefix_rule(pattern = ["git", "reset", "--hard"], decision = "forbidden")
