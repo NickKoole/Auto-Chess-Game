@@ -5,8 +5,8 @@ namespace Api.Battles;
 
 /// <summary>
 /// The small set of named matchups a battle can be requested for. Each
-/// deploys the player in columns 0-2 and the opponent in columns 5-7 of the 8x8
-/// board - <see cref="Battlefield.DeploymentBand"/> for each side.
+/// deploys the player in columns 0-4 and the opponent in columns 7-11 of the
+/// 12-column board - <see cref="Battlefield.DeploymentBand"/> for each side.
 /// </summary>
 public sealed class MatchupCatalog
 {
@@ -48,13 +48,13 @@ public sealed class MatchupCatalog
             "melee-mirror",
             DisplayName: "Melee Mirror",
             PlayerPlacements: FrontLine(units.Get("knight"), col: 2, rows: [2, 3, 4]),
-            OpponentPlacements: FrontLine(units.Get("knight"), col: 5, rows: [2, 3, 4]));
+            OpponentPlacements: FrontLine(units.Get("knight"), col: 7, rows: [2, 3, 4]));
 
         yield return new Matchup(
             "archers-vs-melee",
             DisplayName: "Archers vs Melee",
             PlayerPlacements: FrontLine(units.Get("archer"), col: 2, rows: [2, 3, 4]),
-            OpponentPlacements: FrontLine(units.Get("militia"), col: 5, rows: [2, 3, 4]));
+            OpponentPlacements: FrontLine(units.Get("militia"), col: 7, rows: [2, 3, 4]));
 
         yield return new Matchup(
             "knights-and-archers",
@@ -66,8 +66,8 @@ public sealed class MatchupCatalog
             ],
             OpponentPlacements:
             [
-                .. FrontLine(units.Get("knight"), col: 5, rows: [2, 3, 4]),
-                .. FrontLine(units.Get("archer"), col: 6, rows: [2, 3, 4]),
+                .. FrontLine(units.Get("knight"), col: 7, rows: [2, 3, 4]),
+                .. FrontLine(units.Get("archer"), col: 8, rows: [2, 3, 4]),
             ]);
 
         yield return new Matchup(
@@ -80,8 +80,8 @@ public sealed class MatchupCatalog
             ],
             OpponentPlacements:
             [
-                .. Column(col: 5, rows: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("berserker")),
-                .. Column(col: 6, rows: [2, 3, 4], units.Get("archer"), units.Get("crossbowman"), units.Get("mage")),
+                .. Column(col: 7, rows: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("berserker")),
+                .. Column(col: 8, rows: [2, 3, 4], units.Get("archer"), units.Get("crossbowman"), units.Get("mage")),
             ]);
     }
 
