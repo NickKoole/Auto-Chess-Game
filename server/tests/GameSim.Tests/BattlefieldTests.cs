@@ -17,16 +17,16 @@ public sealed class BattlefieldTests
         new(Militia, side, new HexCoord(row, col));
 
     [Fact]
-    public void Is_eight_by_eight()
+    public void Is_eight_rows_by_twelve_columns()
     {
         Assert.Equal(8, Battlefield.Rows);
-        Assert.Equal(8, Battlefield.Columns);
+        Assert.Equal(12, Battlefield.Columns);
     }
 
     [Theory]
     [InlineData(0, 0)]
-    [InlineData(7, 7)]
-    [InlineData(3, 4)]
+    [InlineData(7, 11)]
+    [InlineData(3, 5)]
     public void Accepts_coordinates_on_the_board(int row, int col)
     {
         Assert.True(Battlefield.IsInBounds(new HexCoord(row, col)));
@@ -36,8 +36,8 @@ public sealed class BattlefieldTests
     [InlineData(-1, 0)]
     [InlineData(0, -1)]
     [InlineData(8, 0)]
-    [InlineData(0, 8)]
-    [InlineData(8, 8)]
+    [InlineData(0, 12)]
+    [InlineData(8, 12)]
     [InlineData(int.MinValue, int.MinValue)]
     public void Rejects_coordinates_off_the_board(int row, int col)
     {
@@ -45,20 +45,20 @@ public sealed class BattlefieldTests
     }
 
     [Theory]
-    [InlineData(BattleSide.Player, 0, 2)]
-    [InlineData(BattleSide.Opponent, 5, 7)]
-    public void Deployment_bands_leave_columns_three_and_four_neutral(BattleSide side, int firstColumn, int lastColumn)
+    [InlineData(BattleSide.Player, 0, 4)]
+    [InlineData(BattleSide.Opponent, 7, 11)]
+    public void Deployment_bands_leave_columns_five_and_six_neutral(BattleSide side, int firstColumn, int lastColumn)
     {
         Assert.Equal((firstColumn, lastColumn), Battlefield.DeploymentBand(side));
     }
 
     [Theory]
-    [InlineData(BattleSide.Player, 0, 7)]
-    [InlineData(BattleSide.Player, 2, 5)]
-    [InlineData(BattleSide.Player, 7, 0)]
+    [InlineData(BattleSide.Player, 0, 11)]
+    [InlineData(BattleSide.Player, 6, 5)]
+    [InlineData(BattleSide.Player, 11, 0)]
     [InlineData(BattleSide.Opponent, 0, 0)]
     [InlineData(BattleSide.Opponent, 5, 5)]
-    [InlineData(BattleSide.Opponent, 7, 7)]
+    [InlineData(BattleSide.Opponent, 11, 11)]
     public void Counts_the_columns_a_side_still_has_to_cross(BattleSide side, int col, int expected)
     {
         Assert.Equal(expected, Battlefield.ColumnsToEnemyBackLine(side, new HexCoord(3, col)));
@@ -87,17 +87,17 @@ public sealed class BattlefieldTests
     }
 
     [Theory]
-    [InlineData(3)]
-    [InlineData(4)]
-    public void Neutral_band_spans_columns_three_and_four(int col)
+    [InlineData(5)]
+    [InlineData(6)]
+    public void Neutral_band_spans_columns_five_and_six(int col)
     {
         Assert.True(Battlefield.IsNeutralBand(new HexCoord(0, col)));
     }
 
     [Theory]
-    [InlineData(2)]
-    [InlineData(5)]
-    public void Columns_outside_three_and_four_are_not_neutral(int col)
+    [InlineData(4)]
+    [InlineData(7)]
+    public void Columns_outside_five_and_six_are_not_neutral(int col)
     {
         Assert.False(Battlefield.IsNeutralBand(new HexCoord(0, col)));
     }
@@ -106,19 +106,23 @@ public sealed class BattlefieldTests
     [InlineData(BattleSide.Player, 0)]
     [InlineData(BattleSide.Player, 1)]
     [InlineData(BattleSide.Player, 2)]
-    [InlineData(BattleSide.Opponent, 5)]
-    [InlineData(BattleSide.Opponent, 6)]
+    [InlineData(BattleSide.Player, 3)]
+    [InlineData(BattleSide.Player, 4)]
     [InlineData(BattleSide.Opponent, 7)]
+    [InlineData(BattleSide.Opponent, 8)]
+    [InlineData(BattleSide.Opponent, 9)]
+    [InlineData(BattleSide.Opponent, 10)]
+    [InlineData(BattleSide.Opponent, 11)]
     public void A_side_may_deploy_in_its_own_band(BattleSide side, int col)
     {
         Assert.Null(Battlefield.CheckTile(side, new HexCoord(4, col)));
     }
 
     [Theory]
-    [InlineData(BattleSide.Player, 3)]
-    [InlineData(BattleSide.Player, 4)]
-    [InlineData(BattleSide.Opponent, 3)]
-    [InlineData(BattleSide.Opponent, 4)]
+    [InlineData(BattleSide.Player, 5)]
+    [InlineData(BattleSide.Player, 6)]
+    [InlineData(BattleSide.Opponent, 5)]
+    [InlineData(BattleSide.Opponent, 6)]
     public void Nobody_may_deploy_in_the_neutral_band(BattleSide side, int col)
     {
         PlacementError? error = Battlefield.CheckTile(side, new HexCoord(2, col));
@@ -130,10 +134,10 @@ public sealed class BattlefieldTests
     }
 
     [Theory]
-    [InlineData(BattleSide.Player, 5)]
     [InlineData(BattleSide.Player, 7)]
+    [InlineData(BattleSide.Player, 11)]
     [InlineData(BattleSide.Opponent, 0)]
-    [InlineData(BattleSide.Opponent, 2)]
+    [InlineData(BattleSide.Opponent, 4)]
     public void A_side_may_not_deploy_in_the_opposing_band(BattleSide side, int col)
     {
         PlacementError? error = Battlefield.CheckTile(side, new HexCoord(1, col));
@@ -143,9 +147,9 @@ public sealed class BattlefieldTests
     }
 
     [Theory]
-    [InlineData(3, 99)]
-    [InlineData(4, -1)]
-    [InlineData(3, 8)]
+    [InlineData(5, 99)]
+    [InlineData(6, -1)]
+    [InlineData(5, 12)]
     public void No_tile_off_the_board_is_neutral_however_right_the_row_looks(int row, int col)
     {
         // Mirrors the deployment-band guard below. Both are public row rules,
@@ -221,7 +225,7 @@ public sealed class BattlefieldTests
             }
         }
 
-        // Exactly one tile, found by scanning all 64: an index formula that let
+        // Exactly one tile, found by scanning all 96: an index formula that let
         // two coordinates collide would show up as a unit appearing somewhere it
         // was never placed.
         Assert.Equal([new HexCoord(6, 2)], occupied);
@@ -257,7 +261,7 @@ public sealed class BattlefieldTests
     [Theory]
     [InlineData(-1, 0)]
     [InlineData(8, 0)]
-    [InlineData(0, 8)]
+    [InlineData(0, 12)]
     public void Asking_about_a_tile_that_does_not_exist_throws(int row, int col)
     {
         // The other side of the line: a rejected placement is a player's
@@ -297,7 +301,7 @@ public sealed class BattlefieldTests
     [Theory]
     [InlineData(-1, 0)]
     [InlineData(8, 0)]
-    [InlineData(0, 8)]
+    [InlineData(0, 12)]
     public void A_tile_off_the_board_is_not_passable(int row, int col)
     {
         // Answers rather than throwing, unlike UnitAt: a mover asking about all
@@ -330,21 +334,21 @@ public sealed class BattlefieldTests
         // from row 5 into the neutral band, and on into the opposing half, is
         // making legal moves onto tiles it could never have deployed on.
         var field = new Battlefield();
-        BattleUnit unit = Unit(BattleSide.Player, 5, 2);
+        BattleUnit unit = Unit(BattleSide.Player, 5, 4);
         Assert.True(field.TryPlace(unit, out _));
 
-        field.Move(unit, new HexCoord(5, 3));
-        field.Move(unit, new HexCoord(5, 4));
+        field.Move(unit, new HexCoord(5, 5));
         field.Move(unit, new HexCoord(5, 6));
+        field.Move(unit, new HexCoord(5, 8));
 
-        Assert.Equal(new HexCoord(5, 6), unit.Position);
-        Assert.NotNull(Battlefield.CheckTile(BattleSide.Player, new HexCoord(5, 6)));
+        Assert.Equal(new HexCoord(5, 8), unit.Position);
+        Assert.NotNull(Battlefield.CheckTile(BattleSide.Player, new HexCoord(5, 8)));
     }
 
     [Theory]
     [InlineData(-1, 0)]
     [InlineData(8, 0)]
-    [InlineData(0, 8)]
+    [InlineData(0, 12)]
     public void Moving_off_the_board_throws(int row, int col)
     {
         var field = new Battlefield();
