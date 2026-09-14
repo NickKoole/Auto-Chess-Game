@@ -6,7 +6,7 @@ prefix_rule(pattern = ["gh", "pr", "review", "--approve"], decision = "forbidden
 prefix_rule(pattern = ["gh", "issue", "create"], decision = "allow")
 prefix_rule(pattern = ["gh", "issue", "edit"], decision = "allow")
 prefix_rule(pattern = ["gh", "issue", "close"], decision = "allow")
-prefix_rule(pattern = ["gh", "issue", "comment"], decision = "approval")
+prefix_rule(pattern = ["gh", "issue", "comment"], decision = "allow")
 prefix_rule(pattern = ["gh", "pr", "create"], decision = "forbidden")
 prefix_rule(pattern = ["gh", "pr", "edit"], decision = "forbidden")
 prefix_rule(pattern = ["gh", "pr", "close"], decision = "forbidden")
