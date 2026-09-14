@@ -72,7 +72,7 @@ public sealed class StaticUnitCatalogTests
 
     [Theory]
     [InlineData("crossbowman", 0.25)]
-    [InlineData("mage", 0.05)]
+    [InlineData("hexcaster", 0.05)]
     public void Deliberately_tuned_units_keep_their_own_variance(string id, double expected)
     {
         Assert.Equal(expected, Catalog.Get(id).DamageVariance);
@@ -82,10 +82,10 @@ public sealed class StaticUnitCatalogTests
     public void Every_other_unit_uses_the_default_variance()
     {
         // The criterion is "0.15 unless deliberately tuned otherwise", and
-        // nothing was checking it against the roster: a typo giving militia
+        // nothing was checking it against the roster: a typo giving conscript
         // 0.5 passed the whole suite. Naming the two exceptions is what makes
         // this an assertion rather than a restatement of whatever is there.
-        string[] tuned = ["crossbowman", "mage"];
+        string[] tuned = ["crossbowman", "hexcaster"];
 
         string[] offenders =
         [
@@ -129,7 +129,7 @@ public sealed class StaticUnitCatalogTests
         // `definitions`; but no runtime assertion here can tell the two apart
         // today, and pretending otherwise would make this the kind of test that
         // only looks like a guarantee.
-        string[] expected = ["militia", "knight", "berserker", "archer", "crossbowman", "mage"];
+        string[] expected = ["conscript", "knight", "berserker", "archer", "crossbowman", "hexcaster"];
 
         Assert.Equal(expected, Catalog.All.Select(d => d.Id));
     }
@@ -138,9 +138,9 @@ public sealed class StaticUnitCatalogTests
     public void Rejects_duplicate_ids_at_construction()
     {
         var ex = Assert.Throws<ArgumentException>(() =>
-            new StaticUnitCatalog([Unit("militia"), Unit("archer", range: 3), Unit("militia")]));
+            new StaticUnitCatalog([Unit("conscript"), Unit("archer", range: 3), Unit("conscript")]));
 
-        Assert.Contains("militia", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("conscript", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

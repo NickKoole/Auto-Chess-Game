@@ -11,9 +11,9 @@ public sealed class BattleSimulationTests
     // actually finish off mid-test would let combat decide outcomes these tests
     // were not written to expect. Tests that do want a side eliminated use
     // Kill() below instead, which is exact and instant rather than probabilistic.
-    private static readonly UnitDefinition Militia = new(
-        id: "militia",
-        displayName: "Militia",
+    private static readonly UnitDefinition Conscript = new(
+        id: "conscript",
+        displayName: "Conscript",
         maxHp: 1_000_000,
         attackDamage: 12,
         attackIntervalTicks: 12,
@@ -38,7 +38,7 @@ public sealed class BattleSimulationTests
         attackRangeHexes: 1,
         playerSelectable: true);
 
-    private static UnitPlacement At(int row, int col) => new(Militia, new HexCoord(row, col));
+    private static UnitPlacement At(int row, int col) => new(Conscript, new HexCoord(row, col));
 
     private static UnitPlacement SnailAt(int row, int col) => new(Snail, new HexCoord(row, col));
 
@@ -76,7 +76,7 @@ public sealed class BattleSimulationTests
 
         BattleResult result = battle.Run();
 
-        // Militia's HP here is the unrealistically high figure from the fixture
+        // Conscript's HP here is the unrealistically high figure from the fixture
         // above: the armies close and genuinely trade blows for the whole battle,
         // but neither can kill the other, so the cap is the only exit. That is
         // the tick-cap draw as it actually happens now that units can hurt each

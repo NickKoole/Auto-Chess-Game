@@ -52,8 +52,8 @@ public sealed class UnitDefinitionTests
     public void Damage_variance_defaults_to_fifteen_percent()
     {
         var unit = new UnitDefinition(
-            id: "militia",
-            displayName: "Militia",
+            id: "conscript",
+            displayName: "Conscript",
             maxHp: 100,
             attackDamage: 12,
             attackIntervalTicks: 12,
