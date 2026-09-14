@@ -55,8 +55,8 @@ public sealed class StaticUnitCatalog : IUnitCatalog
     private static UnitDefinition[] BuiltIn() =>
     [
         new(
-            id: "militia",
-            displayName: "Militia",
+            id: "conscript",
+            displayName: "Conscript",
             maxHp: 100,
             attackDamage: 12,
             attackIntervalTicks: 12,
@@ -109,8 +109,8 @@ public sealed class StaticUnitCatalog : IUnitCatalog
 
         // Deliberately reliable: fragile, but you can count on the number.
         new(
-            id: "mage",
-            displayName: "Mage",
+            id: "hexcaster",
+            displayName: "Hexcaster",
             maxHp: 60,
             attackDamage: 22,
             attackIntervalTicks: 20,

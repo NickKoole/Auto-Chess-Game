@@ -51,12 +51,12 @@ public sealed class EnemySetupCatalog
         yield return new EnemySetup(
             "mixed-line",
             DisplayName: "Mixed Line",
-            Placements: Column(col: 7, rows: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("archer")));
+            Placements: Column(col: 7, rows: [2, 3, 4], units.Get("conscript"), units.Get("knight"), units.Get("archer")));
 
         yield return new EnemySetup(
             "swarm",
             DisplayName: "Swarm",
-            Placements: FrontLine(units.Get("militia"), col: 7, rows: [1, 2, 3, 4, 5, 6]));
+            Placements: FrontLine(units.Get("conscript"), col: 7, rows: [1, 2, 3, 4, 5, 6]));
 
         yield return new EnemySetup(
             "guarded-archers",

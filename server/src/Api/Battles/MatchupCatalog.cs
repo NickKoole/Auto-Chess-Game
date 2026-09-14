@@ -54,7 +54,7 @@ public sealed class MatchupCatalog
             "archers-vs-melee",
             DisplayName: "Archers vs Melee",
             PlayerPlacements: FrontLine(units.Get("archer"), col: 2, rows: [2, 3, 4]),
-            OpponentPlacements: FrontLine(units.Get("militia"), col: 7, rows: [2, 3, 4]));
+            OpponentPlacements: FrontLine(units.Get("conscript"), col: 7, rows: [2, 3, 4]));
 
         yield return new Matchup(
             "knights-and-archers",
@@ -75,13 +75,13 @@ public sealed class MatchupCatalog
             DisplayName: "All Varieties",
             PlayerPlacements:
             [
-                .. Column(col: 2, rows: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("berserker")),
-                .. Column(col: 1, rows: [2, 3, 4], units.Get("archer"), units.Get("crossbowman"), units.Get("mage")),
+                .. Column(col: 2, rows: [2, 3, 4], units.Get("conscript"), units.Get("knight"), units.Get("berserker")),
+                .. Column(col: 1, rows: [2, 3, 4], units.Get("archer"), units.Get("crossbowman"), units.Get("hexcaster")),
             ],
             OpponentPlacements:
             [
-                .. Column(col: 7, rows: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("berserker")),
-                .. Column(col: 8, rows: [2, 3, 4], units.Get("archer"), units.Get("crossbowman"), units.Get("mage")),
+                .. Column(col: 7, rows: [2, 3, 4], units.Get("conscript"), units.Get("knight"), units.Get("berserker")),
+                .. Column(col: 8, rows: [2, 3, 4], units.Get("archer"), units.Get("crossbowman"), units.Get("hexcaster")),
             ]);
     }
 
