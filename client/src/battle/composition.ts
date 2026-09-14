@@ -4,9 +4,9 @@ import { SIDE_OPPONENT, SIDE_PLAYER, type BattleState, type BattleUnitState, typ
 
 type UnitDefinitionDto = components['schemas']['UnitDefinitionDto']
 
-/** Mirrors Battlefield.DeploymentBand(Player) - columns 0-2 of the 8x8 board. */
+/** Mirrors Battlefield.DeploymentBand(Player) - columns 0-4 of the 12-column board. */
 export const PLAYER_BAND_FIRST_COLUMN = 0
-export const PLAYER_BAND_LAST_COLUMN = 2
+export const PLAYER_BAND_LAST_COLUMN = 4
 
 export function isInPlayerBand(col: number): boolean {
   return col >= PLAYER_BAND_FIRST_COLUMN && col <= PLAYER_BAND_LAST_COLUMN

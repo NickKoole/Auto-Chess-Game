@@ -26,12 +26,12 @@ const emit = defineEmits<{
   'unit-delete': [payload: { row: number; col: number }]
 }>()
 
-// Mirrors GameSim's Battlefield: columns 0-2 are the player's deployment band,
-// columns 3-4 are neutral, and columns 5-7 belong to the opponent.
+// Mirrors GameSim's Battlefield: columns 0-4 are the player's deployment band,
+// columns 5-6 are neutral, and columns 7-11 belong to the opponent.
 const ROWS = 8
-const COLS = 8
-const NEUTRAL_FIRST_COLUMN = 3
-const NEUTRAL_LAST_COLUMN = 4
+const COLS = 12
+const NEUTRAL_FIRST_COLUMN = 5
+const NEUTRAL_LAST_COLUMN = 6
 const HEX_SIZE = 40
 const tileEdgePoints = hexPolygonPoints(0, 1, 39)
 const tileFacePoints = hexPolygonPoints(0, -2, 37.5)
@@ -226,7 +226,7 @@ const targetMarkers = computed<TargetMarker[]>(() =>
         />
         <polyline class="tile-light" :points="tileHighlightPoints" />
         <path v-if="(hex.row * 7 + hex.col * 3) % 5 === 0" class="tile-seam" d="M -22,10 l 7,-4 5,2 m 8,-22 l 5,4" />
-        <path v-if="hex.col === 7" class="deployment-marker enemy-marker" d="M 29,-9 v 18" />
+        <path v-if="hex.col === COLS - 1" class="deployment-marker enemy-marker" d="M 29,-9 v 18" />
         <path v-if="hex.col === 0" class="deployment-marker player-marker" d="M -29,-9 v 18" />
       </g>
     </g>
@@ -271,7 +271,7 @@ const targetMarkers = computed<TargetMarker[]>(() =>
 .battle-board {
   display: block;
   width: 100%;
-  max-width: 640px;
+  max-width: 768px;
   height: auto;
   margin: 0 auto;
   padding: 16px;

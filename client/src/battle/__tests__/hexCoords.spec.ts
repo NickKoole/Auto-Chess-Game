@@ -41,6 +41,24 @@ describe('gridDimensions', () => {
       }
     }
   })
+
+  it('sizes the widened 8x12 board with no tile clipped', () => {
+    const dims = gridDimensions(8, 12, 10)
+    expect(dims.width).toBeCloseTo(185)
+    expect(dims.height).toBeCloseTo(147.2243)
+
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 12; col++) {
+        const { x, y } = hexToPixel(row, col, 10)
+        expect(x + dims.originX).toBeGreaterThanOrEqual(0)
+        expect(y + dims.originY).toBeGreaterThanOrEqual(0)
+      }
+    }
+
+    // The rightmost hex's far edge must land inside the viewBox width.
+    const rightmost = hexToPixel(0, 11, 10)
+    expect(rightmost.x + dims.originX + 10).toBeCloseTo(dims.width)
+  })
 })
 
 describe('hexPolygonPoints', () => {
