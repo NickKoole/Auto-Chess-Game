@@ -4,7 +4,7 @@ namespace GameSim.Tests;
 
 public sealed class HexCoordTests
 {
-    /// <summary>Every tile on the 8x8 board, as test data.</summary>
+    /// <summary>Every tile on the 8-row, 12-column board, as test data.</summary>
     public static TheoryData<int, int> EveryTile()
     {
         var data = new TheoryData<int, int>();
@@ -110,15 +110,19 @@ public sealed class HexCoordTests
 
     [Theory]
     // Opposite corners of the board.
+    [InlineData(0, 0, 7, 11, 13)]
+    [InlineData(0, 11, 7, 0, 12)]
+    // Two more tiles that were the board's corners before it widened - still
+    // valid known distances, just no longer the extremes.
     [InlineData(0, 0, 7, 7, 11)]
     [InlineData(0, 7, 7, 0, 10)]
     // Straight down a column: one hex per row, the zigzag costs nothing.
     [InlineData(7, 3, 0, 3, 7)]
     [InlineData(5, 0, 0, 0, 5)]
-    // Straight along a row.
-    [InlineData(0, 0, 0, 7, 7)]
+    // Straight along a row, the full new width.
+    [InlineData(0, 0, 0, 11, 11)]
     // Across the neutral band, the shortest a battle line ever has to close.
-    [InlineData(5, 2, 5, 5, 3)]
+    [InlineData(5, 4, 5, 7, 3)]
     public void Distance_matches_known_cases(int aRow, int aCol, int bRow, int bCol, int expected)
     {
         var a = new HexCoord(aRow, aCol);

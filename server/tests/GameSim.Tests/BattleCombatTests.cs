@@ -5,9 +5,10 @@ namespace GameSim.Tests;
 /// <summary>
 /// Damage, death, and how a battle actually concludes — story 1.5.
 ///
-/// Every fixture here uses a long attack range (11, which covers the whole
-/// board per <see cref="HexCoord.DistanceTo"/>'s reach on an 8x8 grid) unless a
-/// test is specifically about closing distance. That keeps combat timing exact
+/// Every fixture here uses a long attack range (13, which covers the whole
+/// board per <see cref="HexCoord.DistanceTo"/>'s reach on the 8-row,
+/// 12-column grid) unless a test is specifically about closing distance. That
+/// keeps combat timing exact
 /// and free of movement noise: units start ready and already in range, so
 /// "tick 1" is a known, reproducible moment to assert against rather than
 /// something that depends on how many ticks a walk happened to take.
@@ -28,7 +29,7 @@ public sealed class BattleCombatTests
         attackDamage: 20,
         attackIntervalTicks: 5,
         movementTicksPerHex: 1,
-        attackRangeHexes: 11,
+        attackRangeHexes: 13,
         damageVariance: 0.20);
 
     /// <summary>
@@ -44,7 +45,7 @@ public sealed class BattleCombatTests
         attackDamage: 100,
         attackIntervalTicks: 5,
         movementTicksPerHex: 1,
-        attackRangeHexes: 11,
+        attackRangeHexes: 13,
         damageVariance: 0.0);
 
     private static UnitPlacement At(UnitDefinition definition, int row, int col) =>
@@ -68,9 +69,9 @@ public sealed class BattleCombatTests
     [Fact]
     public void Attacks_when_ready_and_in_range_then_resets_its_cooldown_to_the_attack_interval()
     {
-        BattleSetup setup = Setup([At(Brawler, 0, 2)], [At(Brawler, 0, 7)]);
-        BattleUnit attacker = From(setup, 0, 2);
-        BattleUnit defender = From(setup, 0, 7);
+        BattleSetup setup = Setup([At(Brawler, 0, 4)], [At(Brawler, 0, 9)]);
+        BattleUnit attacker = From(setup, 0, 4);
+        BattleUnit defender = From(setup, 0, 9);
 
         new BattleSimulation(setup, Seed, new BattleOptions { MaxTicks = 1 }).Run();
 
@@ -84,12 +85,12 @@ public sealed class BattleCombatTests
     [Fact]
     public void Holds_its_swing_until_the_cooldown_has_actually_elapsed()
     {
-        BattleSetup afterOneTick = Setup([At(Brawler, 0, 2)], [At(Brawler, 0, 7)]);
-        BattleUnit hitOnce = From(afterOneTick, 0, 7);
+        BattleSetup afterOneTick = Setup([At(Brawler, 0, 4)], [At(Brawler, 0, 9)]);
+        BattleUnit hitOnce = From(afterOneTick, 0, 9);
         new BattleSimulation(afterOneTick, Seed, new BattleOptions { MaxTicks = 1 }).Run();
 
-        BattleSetup rightBeforeReady = Setup([At(Brawler, 0, 2)], [At(Brawler, 0, 7)]);
-        BattleUnit stillOnce = From(rightBeforeReady, 0, 7);
+        BattleSetup rightBeforeReady = Setup([At(Brawler, 0, 4)], [At(Brawler, 0, 9)]);
+        BattleUnit stillOnce = From(rightBeforeReady, 0, 9);
         new BattleSimulation(
             rightBeforeReady, Seed, new BattleOptions { MaxTicks = Brawler.AttackIntervalTicks - 1 }).Run();
 
@@ -101,11 +102,11 @@ public sealed class BattleCombatTests
     [Fact]
     public void Draws_from_rng_only_on_the_tick_a_hit_actually_lands()
     {
-        BattleSetup afterOneTick = Setup([At(Brawler, 0, 2)], [At(Brawler, 0, 7)]);
+        BattleSetup afterOneTick = Setup([At(Brawler, 0, 4)], [At(Brawler, 0, 9)]);
         var oneTickBattle = new BattleSimulation(afterOneTick, Seed, new BattleOptions { MaxTicks = 1 });
         oneTickBattle.Run();
 
-        BattleSetup rightBeforeReady = Setup([At(Brawler, 0, 2)], [At(Brawler, 0, 7)]);
+        BattleSetup rightBeforeReady = Setup([At(Brawler, 0, 4)], [At(Brawler, 0, 9)]);
         var almostReadyBattle = new BattleSimulation(
             rightBeforeReady, Seed, new BattleOptions { MaxTicks = Brawler.AttackIntervalTicks - 1 });
         almostReadyBattle.Run();
@@ -128,8 +129,8 @@ public sealed class BattleCombatTests
             attackRangeHexes: 1,
             damageVariance: 0.0);
 
-        BattleSetup setup = Setup([At(melee, 0, 2)], [At(melee, 0, 7)]);
-        BattleUnit defender = From(setup, 0, 7);
+        BattleSetup setup = Setup([At(melee, 0, 4)], [At(melee, 0, 9)]);
+        BattleUnit defender = From(setup, 0, 9);
 
         // 5 hexes apart; the one free step each side takes closes at most 2 of
         // them, leaving both still well outside melee range for the rest of the
@@ -149,8 +150,8 @@ public sealed class BattleCombatTests
 
         for (ulong seed = 1; seed <= 60; seed++)
         {
-            BattleSetup setup = Setup([At(Brawler, 0, 2)], [At(Brawler, 0, 7)]);
-            BattleUnit defender = From(setup, 0, 7);
+            BattleSetup setup = Setup([At(Brawler, 0, 4)], [At(Brawler, 0, 9)]);
+            BattleUnit defender = From(setup, 0, 9);
 
             new BattleSimulation(setup, seed, new BattleOptions { MaxTicks = 1 }).Run();
 
@@ -169,11 +170,11 @@ public sealed class BattleCombatTests
     public void Same_seed_produces_identical_damage_rolls_across_two_runs()
     {
         BattleSetup a = Setup(
-            [At(Brawler, 0, 2), At(Brawler, 1, 2)],
-            [At(Brawler, 0, 7), At(Brawler, 1, 7)]);
+            [At(Brawler, 0, 4), At(Brawler, 1, 4)],
+            [At(Brawler, 0, 9), At(Brawler, 1, 9)]);
         BattleSetup b = Setup(
-            [At(Brawler, 0, 2), At(Brawler, 1, 2)],
-            [At(Brawler, 0, 7), At(Brawler, 1, 7)]);
+            [At(Brawler, 0, 4), At(Brawler, 1, 4)],
+            [At(Brawler, 0, 9), At(Brawler, 1, 9)]);
 
         new BattleSimulation(a, Seed, new BattleOptions { MaxTicks = 30 }).Run();
         new BattleSimulation(b, Seed, new BattleOptions { MaxTicks = 30 }).Run();
@@ -186,8 +187,8 @@ public sealed class BattleCombatTests
     [Fact]
     public void A_lethal_hit_kills_the_target_and_frees_its_tile_by_the_end_of_the_tick()
     {
-        BattleSetup setup = Setup([At(GlassCannon, 0, 2)], [At(GlassCannon, 0, 7)]);
-        BattleUnit defender = From(setup, 0, 7);
+        BattleSetup setup = Setup([At(GlassCannon, 0, 4)], [At(GlassCannon, 0, 9)]);
+        BattleUnit defender = From(setup, 0, 9);
         HexCoord defenderTile = defender.Position;
 
         new BattleSimulation(setup, Seed, new BattleOptions { MaxTicks = 1 }).Run();
@@ -200,9 +201,9 @@ public sealed class BattleCombatTests
     [Fact]
     public void Two_units_that_kill_each_other_both_land_their_hit_and_both_die_on_the_same_tick()
     {
-        BattleSetup setup = Setup([At(GlassCannon, 0, 2)], [At(GlassCannon, 0, 7)]);
-        BattleUnit player = From(setup, 0, 2);
-        BattleUnit opponent = From(setup, 0, 7);
+        BattleSetup setup = Setup([At(GlassCannon, 0, 4)], [At(GlassCannon, 0, 9)]);
+        BattleUnit player = From(setup, 0, 4);
+        BattleUnit opponent = From(setup, 0, 9);
 
         BattleResult result = new BattleSimulation(setup, Seed).Run();
 
@@ -221,12 +222,12 @@ public sealed class BattleCombatTests
         // across the board, so the bystander's initial nearest-enemy choice is
         // unambiguously the victim rather than the survivor.
         BattleSetup setup = Setup(
-            [At(GlassCannon, 0, 2), At(Brawler, 1, 2)],
-            [At(GlassCannon, 0, 7), At(Brawler, 7, 7)]);
+            [At(GlassCannon, 0, 4), At(Brawler, 1, 4)],
+            [At(GlassCannon, 0, 9), At(Brawler, 7, 9)]);
 
-        BattleUnit victim = From(setup, 0, 7);
-        BattleUnit bystander = From(setup, 1, 2);
-        BattleUnit survivor = From(setup, 7, 7);
+        BattleUnit victim = From(setup, 0, 9);
+        BattleUnit bystander = From(setup, 1, 4);
+        BattleUnit survivor = From(setup, 7, 9);
 
         new BattleSimulation(setup, Seed, new BattleOptions { MaxTicks = 2 }).Run();
 
@@ -246,10 +247,10 @@ public sealed class BattleCombatTests
             attackDamage: 1,
             attackIntervalTicks: 1000,
             movementTicksPerHex: 1,
-            attackRangeHexes: 11,
+            attackRangeHexes: 13,
             damageVariance: 0.0);
 
-        BattleSetup setup = Setup([At(Brawler, 0, 2)], [At(weakling, 0, 7)]);
+        BattleSetup setup = Setup([At(Brawler, 0, 4)], [At(weakling, 0, 9)]);
 
         BattleResult result = new BattleSimulation(setup, Seed).Run();
 
@@ -270,11 +271,11 @@ public sealed class BattleCombatTests
             attackDamage: 1,
             attackIntervalTicks: 1000,
             movementTicksPerHex: 1,
-            attackRangeHexes: 11,
+            attackRangeHexes: 13,
             damageVariance: 0.0);
 
-        BattleSetup setup = Setup([At(tank, 0, 2)], [At(tank, 0, 7), At(tank, 1, 7)]);
-        BattleUnit lopsided = From(setup, 0, 2);
+        BattleSetup setup = Setup([At(tank, 0, 4)], [At(tank, 0, 9), At(tank, 1, 9)]);
+        BattleUnit lopsided = From(setup, 0, 4);
 
         // Deliberately lopsided survival: one side down to a single unit on low
         // HP, the other untouched. No outcome is ever decided by unit count,

@@ -28,7 +28,7 @@ public sealed class BattleIntegrationTests
 
 
     /// <summary>
-    /// A fresh 6v6, legally deployed: player in columns 0-2, opponent in columns 5-7.
+    /// A fresh 6v6, legally deployed: player in columns 0-4, opponent in columns 7-11.
     /// Built anew per call, since a battle consumes the setup it runs on.
     /// </summary>
     private static BattleSetup Setup()
@@ -42,13 +42,13 @@ public sealed class BattleIntegrationTests
 
         Assert.True(BattleSetup.TryCreate(
             [
-                At(knight, 1, 2), At(knight, 3, 2),
-                At(archer, 1, 1), At(archer, 3, 1),
-                At(mage, 5, 1), At(berserker, 5, 2),
+                At(knight, 1, 4), At(knight, 3, 4),
+                At(archer, 1, 3), At(archer, 3, 3),
+                At(mage, 5, 3), At(berserker, 5, 4),
             ],
             [
-                At(militia, 1, 5), At(militia, 3, 5), At(militia, 5, 5),
-                At(militia, 1, 6), At(militia, 3, 6), At(militia, 5, 6),
+                At(militia, 1, 7), At(militia, 3, 7), At(militia, 5, 7),
+                At(militia, 1, 8), At(militia, 3, 8), At(militia, 5, 8),
             ],
             out BattleSetup? setup,
             out IReadOnlyList<PlacementError> errors));
@@ -124,9 +124,9 @@ public sealed class BattleIntegrationTests
 
     /// <summary>
     /// The API's <c>melee-mirror</c> matchup: three knights a side, player on
-    /// row 5 and opponent on row 2, columns 2-4. Rebuilt from the same roster
-    /// rather than referenced, because <c>GameSim</c> cannot see <c>Api</c> —
-    /// the reference direction only runs the other way.
+    /// column 2 and opponent on column 7, rows 2-4. Rebuilt from the same
+    /// roster rather than referenced, because <c>GameSim</c> cannot see
+    /// <c>Api</c> — the reference direction only runs the other way.
     /// </summary>
     private static BattleSetup MeleeMirror()
     {
@@ -134,7 +134,7 @@ public sealed class BattleIntegrationTests
 
         Assert.True(BattleSetup.TryCreate(
             [At(knight, 2, 2), At(knight, 3, 2), At(knight, 4, 2)],
-            [At(knight, 2, 5), At(knight, 3, 5), At(knight, 4, 5)],
+            [At(knight, 2, 7), At(knight, 3, 7), At(knight, 4, 7)],
             out BattleSetup? setup,
             out _));
 

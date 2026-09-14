@@ -5,8 +5,8 @@ namespace Api.Battles;
 
 /// <summary>
 /// The small set of hand-authored enemy armies a player-built composition
-/// can be run against. Each deploys in the opponent's columns 5-7 of the 8x8
-/// board - <see cref="Battlefield.DeploymentBand"/>.
+/// can be run against. Each deploys in the opponent's columns 7-11 of the
+/// 12-column board - <see cref="Battlefield.DeploymentBand"/>.
 /// </summary>
 public sealed class EnemySetupCatalog
 {
@@ -46,25 +46,25 @@ public sealed class EnemySetupCatalog
         yield return new EnemySetup(
             "elite-line",
             DisplayName: "Elite Line",
-            Placements: FrontLine(units.Get("knight"), col: 5, rows: [3, 4]));
+            Placements: FrontLine(units.Get("knight"), col: 7, rows: [3, 4]));
 
         yield return new EnemySetup(
             "mixed-line",
             DisplayName: "Mixed Line",
-            Placements: Column(col: 5, rows: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("archer")));
+            Placements: Column(col: 7, rows: [2, 3, 4], units.Get("militia"), units.Get("knight"), units.Get("archer")));
 
         yield return new EnemySetup(
             "swarm",
             DisplayName: "Swarm",
-            Placements: FrontLine(units.Get("militia"), col: 5, rows: [1, 2, 3, 4, 5, 6]));
+            Placements: FrontLine(units.Get("militia"), col: 7, rows: [1, 2, 3, 4, 5, 6]));
 
         yield return new EnemySetup(
             "guarded-archers",
             DisplayName: "Guarded Archers",
             Placements:
             [
-                .. FrontLine(units.Get("knight"), col: 5, rows: [3, 4]),
-                .. FrontLine(units.Get("archer"), col: 7, rows: [3, 4]),
+                .. FrontLine(units.Get("knight"), col: 7, rows: [3, 4]),
+                .. FrontLine(units.Get("archer"), col: 9, rows: [3, 4]),
             ]);
     }
 

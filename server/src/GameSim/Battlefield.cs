@@ -3,25 +3,25 @@ using System.Diagnostics.CodeAnalysis;
 namespace GameSim;
 
 /// <summary>
-/// The 8x8 flat-top hex board a battle is fought on. The player deploys
-/// along columns 0-2 and advances east; the opponent deploys along columns 5-7 and
-/// advances west; columns 3-4 are a neutral band nobody may deploy into but
-/// everybody may walk through.
+/// The 8-row, 12-column flat-top hex board a battle is fought on. The player
+/// deploys along columns 0-4 and advances east; the opponent deploys along
+/// columns 7-11 and advances west; columns 5-6 are a neutral band nobody may
+/// deploy into but everybody may walk through.
 /// </summary>
 public sealed class Battlefield
 {
     /// <summary>Indexed 0 (north) to 7 (south).</summary>
     public const int Rows = 8;
 
-    /// <summary>Indexed 0 (west) to 7 (east).</summary>
-    public const int Columns = 8;
+    /// <summary>Indexed 0 (west) to 11 (east).</summary>
+    public const int Columns = 12;
 
-    public const int NeutralFirstColumn = 3;
+    public const int NeutralFirstColumn = 5;
 
-    public const int NeutralLastColumn = 4;
+    public const int NeutralLastColumn = 6;
 
     // One slot per tile, row-major. A flat array rather than a dictionary: the
-    // board is a fixed 64 tiles, and nothing that decides an outcome may depend
+    // board is a fixed 96 tiles, and nothing that decides an outcome may depend
     // on a dictionary's iteration order.
     private readonly BattleUnit?[] _tiles = new BattleUnit?[Rows * Columns];
 
@@ -33,8 +33,8 @@ public sealed class Battlefield
         IsInBounds(coord) && coord.Col >= NeutralFirstColumn && coord.Col <= NeutralLastColumn;
 
     /// <summary>
-    /// The columns a side may deploy in, inclusive: the player holds 0-2, the
-    /// opponent holds 5-7.
+    /// The columns a side may deploy in, inclusive: the player holds 0-4, the
+    /// opponent holds 7-11.
     /// </summary>
     public static (int FirstColumn, int LastColumn) DeploymentBand(BattleSide side) => side switch
     {

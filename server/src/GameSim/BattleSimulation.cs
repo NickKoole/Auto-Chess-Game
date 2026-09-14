@@ -8,7 +8,7 @@ namespace GameSim;
 /// </summary>
 public sealed class BattleSimulation
 {
-    // Real step counts never approach the board's 64 tiles, so this can't
+    // Real step counts never approach the board's 96 tiles, so this can't
     // collide with one.
     private const int Unreachable = int.MaxValue;
 

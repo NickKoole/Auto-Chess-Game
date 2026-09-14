@@ -120,7 +120,7 @@ public sealed class EnemySetupListEndpointTests(ApiFactory factory) : IClassFixt
         Assert.Equal(2, archerCoords.Count);
         Assert.Equal(setup.Placements.Count, knightCoords.Count + archerCoords.Count);
 
-        Assert.All(knightCoords, c => Assert.Equal(5, c.Col));
-        Assert.All(archerCoords, c => Assert.Equal(7, c.Col));
+        Assert.All(knightCoords, c => Assert.Equal(7, c.Col));
+        Assert.All(archerCoords, c => Assert.Equal(9, c.Col));
     }
 }
