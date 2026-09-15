@@ -21,7 +21,7 @@ public sealed class UnitListEndpointTests(ApiFactory factory) : IClassFixture<Ap
 
         Assert.NotNull(body);
 
-        var expectedIds = new StaticUnitCatalog().All.Select(d => d.Id).ToHashSet();
+        var expectedIds = new StaticUnitCatalog().All.Where(d => d.PlayerSelectable).Select(d => d.Id).ToHashSet();
         var actualIds = body.Select(d => d.Id).ToHashSet();
         Assert.Equal(expectedIds, actualIds);
     }

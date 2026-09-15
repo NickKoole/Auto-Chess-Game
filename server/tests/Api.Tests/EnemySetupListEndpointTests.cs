@@ -21,11 +21,12 @@ public sealed class EnemySetupListEndpointTests(ApiFactory factory) : IClassFixt
         List<EnemySetupDto>? body = await response.Content.ReadFromJsonAsync<List<EnemySetupDto>>();
 
         Assert.NotNull(body);
-        Assert.Equal(4, body.Count);
+        Assert.Equal(5, body.Count);
         Assert.Contains(body, s => s.Id == "elite-line");
         Assert.Contains(body, s => s.Id == "mixed-line");
         Assert.Contains(body, s => s.Id == "swarm");
         Assert.Contains(body, s => s.Id == "guarded-archers");
+        Assert.Contains(body, s => s.Id == "ogre-vanguard");
         Assert.All(body, s => Assert.False(string.IsNullOrWhiteSpace(s.DisplayName)));
     }
 
@@ -122,5 +123,54 @@ public sealed class EnemySetupListEndpointTests(ApiFactory factory) : IClassFixt
 
         Assert.All(knightCoords, c => Assert.Equal(7, c.Col));
         Assert.All(archerCoords, c => Assert.Equal(9, c.Col));
+    }
+
+    [Fact]
+    public void Swarm_places_six_goblins_and_no_other_unit()
+    {
+        var catalog = new EnemySetupCatalog(new StaticUnitCatalog());
+        EnemySetup setup = catalog.All.Single(s => s.Id == "swarm");
+
+        Assert.Equal(6, setup.Placements.Count);
+        Assert.All(setup.Placements, p => Assert.Equal("goblin", p.Definition.Id));
+    }
+
+    [Fact]
+    public void Ogre_vanguard_includes_at_least_one_ogre()
+    {
+        var catalog = new EnemySetupCatalog(new StaticUnitCatalog());
+        EnemySetup setup = catalog.All.Single(s => s.Id == "ogre-vanguard");
+
+        Assert.Contains(setup.Placements, p => p.Definition.Id == "ogre");
+    }
+
+    [Fact]
+    public void The_same_seed_produces_an_identical_battle_log_against_the_ogre_vanguard()
+    {
+        var units = new StaticUnitCatalog();
+        var catalog = new EnemySetupCatalog(units);
+        EnemySetup setup = catalog.All.Single(s => s.Id == "ogre-vanguard");
+
+        IReadOnlyList<UnitPlacement> playerPlacements =
+        [
+            new UnitPlacement(units.Get("knight"), new HexCoord(2, 4)),
+            new UnitPlacement(units.Get("archer"), new HexCoord(4, 4)),
+        ];
+
+        Assert.True(BattleSetup.TryCreate(
+            playerPlacements, setup.Placements, out BattleSetup? setupA, out IReadOnlyList<PlacementError> errorsA));
+        Assert.Empty(errorsA);
+        Assert.True(BattleSetup.TryCreate(
+            playerPlacements, setup.Placements, out BattleSetup? setupB, out IReadOnlyList<PlacementError> errorsB));
+        Assert.Empty(errorsB);
+
+        var a = new BattleSimulation(setupA!, seed: 12345);
+        var b = new BattleSimulation(setupB!, seed: 12345);
+
+        BattleResult resultA = a.Run();
+        BattleResult resultB = b.Run();
+
+        Assert.Equal(resultA, resultB);
+        Assert.Equal(a.Events, b.Events);
     }
 }
