@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { knightSpriteData } from '../knight'
 import { attackDuration, poseAtElapsed } from '../spriteAnimation'
 import { spriteForUnit } from '../spriteCatalog'
@@ -39,5 +40,16 @@ describe('knight animation', () => {
       expect(frame.anchorY).toBeGreaterThan(0)
       expect(frame.anchorY).toBeLessThan(frame.height)
     }
+  })
+
+  it('retains the original blue knight as a matching alternate sheet', () => {
+    const metal = readFileSync('src/assets/sprites/knight/knight.png')
+    const blue = readFileSync('src/assets/sprites/knight/knight-blue.png')
+    expect(blue.subarray(0, 8)).toEqual(metal.subarray(0, 8))
+    expect(blue.readUInt32BE(16)).toBe(knightSpriteData.width)
+    expect(blue.readUInt32BE(20)).toBe(knightSpriteData.height)
+    expect(blue[25]).toBe(6)
+    expect(createHash('sha256').update(blue).digest('hex')).toBe('36f60438072aaa2dedbd3ff3fa10dac6eee5366fce4c01a4dfaf9b4bc38ca900')
+    expect(blue.equals(metal)).toBe(false)
   })
 })
