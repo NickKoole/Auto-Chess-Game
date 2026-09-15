@@ -55,7 +55,7 @@ public sealed class PlayerSelectableRosterEndpointTests(ApiFactory factory) : IC
         Assert.NotNull(body);
         Assert.DoesNotContain(body, d => d.Id == HiddenUnitId);
 
-        var expectedSelectableIds = new StaticUnitCatalog().All.Select(d => d.Id).ToHashSet();
+        var expectedSelectableIds = new StaticUnitCatalog().All.Where(d => d.PlayerSelectable).Select(d => d.Id).ToHashSet();
         Assert.Equal(expectedSelectableIds, body.Select(d => d.Id).ToHashSet());
     }
 

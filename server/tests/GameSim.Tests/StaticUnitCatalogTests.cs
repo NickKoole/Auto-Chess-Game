@@ -73,6 +73,7 @@ public sealed class StaticUnitCatalogTests
     [Theory]
     [InlineData("crossbowman", 0.25)]
     [InlineData("hexcaster", 0.05)]
+    [InlineData("dire-wolf", 0.30)]
     public void Deliberately_tuned_units_keep_their_own_variance(string id, double expected)
     {
         Assert.Equal(expected, Catalog.Get(id).DamageVariance);
@@ -83,9 +84,9 @@ public sealed class StaticUnitCatalogTests
     {
         // The criterion is "0.15 unless deliberately tuned otherwise", and
         // nothing was checking it against the roster: a typo giving conscript
-        // 0.5 passed the whole suite. Naming the two exceptions is what makes
+        // 0.5 passed the whole suite. Naming the exceptions is what makes
         // this an assertion rather than a restatement of whatever is there.
-        string[] tuned = ["crossbowman", "hexcaster"];
+        string[] tuned = ["crossbowman", "hexcaster", "dire-wolf"];
 
         string[] offenders =
         [
@@ -99,11 +100,17 @@ public sealed class StaticUnitCatalogTests
     }
 
     [Fact]
-    public void Every_built_in_unit_is_player_selectable()
+    public void Only_the_enemy_only_monsters_are_non_player_selectable()
     {
-        // Today's whole roster is player-facing; a unit landing here with
-        // PlayerSelectable false would silently vanish from the picker.
-        Assert.All(Catalog.All, d => Assert.True(d.PlayerSelectable));
+        // The human roster stays fully player-facing; only the hand-picked
+        // monster trio should ever be filtered out of the picker.
+        string[] enemyOnly = ["goblin", "dire-wolf", "ogre"];
+
+        foreach (UnitDefinition definition in Catalog.All)
+        {
+            bool expectedSelectable = !enemyOnly.Contains(definition.Id, StringComparer.Ordinal);
+            Assert.Equal(expectedSelectable, definition.PlayerSelectable);
+        }
     }
 
     [Fact]
@@ -129,7 +136,11 @@ public sealed class StaticUnitCatalogTests
         // `definitions`; but no runtime assertion here can tell the two apart
         // today, and pretending otherwise would make this the kind of test that
         // only looks like a guarantee.
-        string[] expected = ["conscript", "knight", "berserker", "archer", "crossbowman", "hexcaster"];
+        string[] expected =
+        [
+            "conscript", "knight", "berserker", "archer", "crossbowman", "hexcaster",
+            "goblin", "dire-wolf", "ogre",
+        ];
 
         Assert.Equal(expected, Catalog.All.Select(d => d.Id));
     }
