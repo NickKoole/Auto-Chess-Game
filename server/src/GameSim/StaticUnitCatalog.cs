@@ -118,5 +118,39 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             attackRangeHexes: 3,
             playerSelectable: true,
             damageVariance: 0.05),
+
+        // Enemy-only monsters below - never drafted by a player, only placed
+        // by a hand-authored enemy setup or matchup.
+        new(
+            id: "goblin",
+            displayName: "Goblin",
+            maxHp: 55,
+            attackDamage: 8,
+            attackIntervalTicks: 9,
+            movementTicksPerHex: 4,
+            attackRangeHexes: 1,
+            playerSelectable: false),
+
+        // Deliberately swingy: a feral, unpredictable bite.
+        new(
+            id: "dire-wolf",
+            displayName: "Dire Wolf",
+            maxHp: 70,
+            attackDamage: 13,
+            attackIntervalTicks: 8,
+            movementTicksPerHex: 3,
+            attackRangeHexes: 1,
+            playerSelectable: false,
+            damageVariance: 0.30),
+
+        new(
+            id: "ogre",
+            displayName: "Ogre",
+            maxHp: 240,
+            attackDamage: 24,
+            attackIntervalTicks: 22,
+            movementTicksPerHex: 10,
+            attackRangeHexes: 1,
+            playerSelectable: false),
     ];
 }

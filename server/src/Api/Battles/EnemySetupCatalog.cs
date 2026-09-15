@@ -55,8 +55,8 @@ public sealed class EnemySetupCatalog
 
         yield return new EnemySetup(
             "swarm",
-            DisplayName: "Swarm",
-            Placements: FrontLine(units.Get("conscript"), col: 7, rows: [1, 2, 3, 4, 5, 6]));
+            DisplayName: "Goblin Swarm",
+            Placements: FrontLine(units.Get("goblin"), col: 7, rows: [1, 2, 3, 4, 5, 6]));
 
         yield return new EnemySetup(
             "guarded-archers",
@@ -65,6 +65,15 @@ public sealed class EnemySetupCatalog
             [
                 .. FrontLine(units.Get("knight"), col: 7, rows: [3, 4]),
                 .. FrontLine(units.Get("archer"), col: 9, rows: [3, 4]),
+            ]);
+
+        yield return new EnemySetup(
+            "ogre-vanguard",
+            DisplayName: "Ogre Vanguard",
+            Placements:
+            [
+                new UnitPlacement(units.Get("ogre"), new HexCoord(3, 7)),
+                .. FrontLine(units.Get("conscript"), col: 7, rows: [2, 4]),
             ]);
     }
 
