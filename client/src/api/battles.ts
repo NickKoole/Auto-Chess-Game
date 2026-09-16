@@ -18,6 +18,10 @@ export type ListUnitsResult =
   | { ok: true; data: UnitDefinitionDto[] }
   | { ok: false; error: string }
 
+export type ListUnitDefinitionsResult =
+  | { ok: true; data: UnitDefinitionDto[] }
+  | { ok: false; error: string }
+
 export type ListEnemySetupsResult =
   | { ok: true; data: EnemySetupDto[] }
   | { ok: false; error: string }
@@ -60,6 +64,21 @@ export async function listUnits(): Promise<ListUnitsResult> {
   let response: Response
   try {
     response = await fetch('/api/battles/units')
+  } catch {
+    return { ok: false, error: 'Could not reach the server.' }
+  }
+
+  if (!response.ok) {
+    return { ok: false, error: await describeError(response) }
+  }
+
+  return { ok: true, data: (await response.json()) as UnitDefinitionDto[] }
+}
+
+export async function listUnitDefinitions(): Promise<ListUnitDefinitionsResult> {
+  let response: Response
+  try {
+    response = await fetch('/api/battles/unit-definitions')
   } catch {
     return { ok: false, error: 'Could not reach the server.' }
   }

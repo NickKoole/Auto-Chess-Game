@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   listEnemySetups,
   listMatchups,
+  listUnitDefinitions,
   listUnits,
   simulateBattle,
   type EnemySetupDto,
@@ -148,6 +149,43 @@ describe('listUnits', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const result = await listUnits()
+
+    expect(result).toEqual({ ok: false, error: 'Could not reach the server.' })
+  })
+})
+
+describe('listUnitDefinitions', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('fetches the unfiltered unit definition list and returns it parsed', async () => {
+    const responseBody: UnitDefinitionDto[] = [
+      {
+        id: 'goblin',
+        displayName: 'Goblin',
+        maxHp: 60,
+        attackDamage: 12,
+        attackIntervalTicks: 14,
+        movementTicksPerHex: 6,
+        attackRangeHexes: 1,
+        damageVariance: 0,
+      },
+    ]
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(responseBody))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await listUnitDefinitions()
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/battles/unit-definitions')
+    expect(result).toEqual({ ok: true, data: responseBody })
+  })
+
+  it('returns an error when the network request itself fails', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('Failed to fetch'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await listUnitDefinitions()
 
     expect(result).toEqual({ ok: false, error: 'Could not reach the server.' })
   })
