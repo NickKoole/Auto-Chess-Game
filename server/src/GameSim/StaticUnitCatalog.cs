@@ -137,6 +137,22 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             slashingResist: 0, bluntResist: 0, piercingResist: 0,
             fireResist: 0, frostResist: 0, natureResist: 0, shadowResist: 0),
 
+        // Deliberately swingy: a zealot fighting with a burning weapon, the
+        // roster's first melee unit that is also magical.
+        new(
+            id: "acolyte",
+            displayName: "Acolyte",
+            maxHp: 75,
+            attackDamage: 18,
+            attackIntervalTicks: 14,
+            movementTicksPerHex: 6,
+            attackRangeHexes: 1,
+            playerSelectable: true,
+            damageVariance: 0.20,
+            damageType: DamageType.Fire,
+            slashingResist: 0, bluntResist: 0, piercingResist: 0,
+            fireResist: 0, frostResist: 0, natureResist: 0, shadowResist: 0),
+
         // Enemy-only monsters below - never drafted by a player, only placed
         // by a hand-authored enemy setup or matchup.
         new(
