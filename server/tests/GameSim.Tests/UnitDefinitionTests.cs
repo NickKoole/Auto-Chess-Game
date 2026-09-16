@@ -49,6 +49,89 @@ public sealed class UnitDefinitionTests
     }
 
     [Fact]
+    public void Keeps_the_damage_type_and_every_resist_it_was_given()
+    {
+        var unit = new UnitDefinition(
+            id: "knight",
+            displayName: "Knight",
+            maxHp: 180,
+            attackDamage: 16,
+            attackIntervalTicks: 17,
+            movementTicksPerHex: 8,
+            attackRangeHexes: 1,
+            playerSelectable: false,
+            damageType: DamageType.Fire,
+            slashingResist: 1,
+            bluntResist: 2,
+            piercingResist: 3,
+            fireResist: 4,
+            frostResist: 5,
+            natureResist: 6,
+            shadowResist: 7);
+
+        Assert.Equal(DamageType.Fire, unit.DamageType);
+        Assert.Equal(1, unit.SlashingResist);
+        Assert.Equal(2, unit.BluntResist);
+        Assert.Equal(3, unit.PiercingResist);
+        Assert.Equal(4, unit.FireResist);
+        Assert.Equal(5, unit.FrostResist);
+        Assert.Equal(6, unit.NatureResist);
+        Assert.Equal(7, unit.ShadowResist);
+    }
+
+    [Fact]
+    public void Damage_type_and_every_resist_default_to_slashing_and_zero()
+    {
+        var unit = new UnitDefinition(
+            id: "conscript",
+            displayName: "Conscript",
+            maxHp: 100,
+            attackDamage: 12,
+            attackIntervalTicks: 12,
+            movementTicksPerHex: 6,
+            attackRangeHexes: 1,
+            playerSelectable: true);
+
+        Assert.Equal(DamageType.Slashing, unit.DamageType);
+        Assert.Equal(0, unit.SlashingResist);
+        Assert.Equal(0, unit.BluntResist);
+        Assert.Equal(0, unit.PiercingResist);
+        Assert.Equal(0, unit.FireResist);
+        Assert.Equal(0, unit.FrostResist);
+        Assert.Equal(0, unit.NatureResist);
+        Assert.Equal(0, unit.ShadowResist);
+    }
+
+    [Fact]
+    public void ResistFor_returns_the_field_matching_each_damage_type()
+    {
+        var unit = new UnitDefinition(
+            id: "test",
+            displayName: "Test",
+            maxHp: 100,
+            attackDamage: 10,
+            attackIntervalTicks: 10,
+            movementTicksPerHex: 5,
+            attackRangeHexes: 1,
+            playerSelectable: true,
+            slashingResist: 11,
+            bluntResist: 22,
+            piercingResist: 33,
+            fireResist: 44,
+            frostResist: 55,
+            natureResist: 66,
+            shadowResist: 77);
+
+        Assert.Equal(11, unit.ResistFor(DamageType.Slashing));
+        Assert.Equal(22, unit.ResistFor(DamageType.Blunt));
+        Assert.Equal(33, unit.ResistFor(DamageType.Piercing));
+        Assert.Equal(44, unit.ResistFor(DamageType.Fire));
+        Assert.Equal(55, unit.ResistFor(DamageType.Frost));
+        Assert.Equal(66, unit.ResistFor(DamageType.Nature));
+        Assert.Equal(77, unit.ResistFor(DamageType.Shadow));
+    }
+
+    [Fact]
     public void Damage_variance_defaults_to_fifteen_percent()
     {
         var unit = new UnitDefinition(
