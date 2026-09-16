@@ -337,14 +337,7 @@ public sealed class BattleSimulation
         return events;
     }
 
-    /// <summary>
-    /// Mitigates a raw hit by the defender's resistance matching the
-    /// attacker's <see cref="DamageType"/>: plain integer division, no
-    /// floats, deterministic. A resist stat is capped at 75% here, at
-    /// formula-evaluation time rather than by restricting the stored value -
-    /// a field can hold more than 75 for a future "nearly immune" unit, this
-    /// is just the one place that never lets it block more than 75%.
-    /// </summary>
+    /// <summary>Mitigates a raw hit by the defender's resistance matching the attacker's <see cref="DamageType"/>, capped at 75% here rather than on the stored field.</summary>
     private static int ApplyResistance(int rawDamage, UnitDefinition attacker, UnitDefinition defender)
     {
         const int ResistCap = 75;

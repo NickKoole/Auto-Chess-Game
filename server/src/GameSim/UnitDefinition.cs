@@ -1,13 +1,6 @@
 namespace GameSim;
 
-/// <summary>
-/// A unit's single attack, always exactly one of these - the sim gives each
-/// unit one attack, no per-attack variation, the same reasoning as why
-/// <see cref="UnitDefinition.AttackRangeHexes"/> is one number, not a set.
-/// Three physical (<see cref="Slashing"/>, <see cref="Blunt"/>,
-/// <see cref="Piercing"/>) and four magical (<see cref="Fire"/>,
-/// <see cref="Frost"/>, <see cref="Nature"/>, <see cref="Shadow"/>).
-/// </summary>
+/// <summary>A unit's single attack type - every unit has exactly one, never a set.</summary>
 public enum DamageType
 {
     Slashing,
@@ -138,12 +131,7 @@ public sealed record UnitDefinition
 
     public int ShadowResist { get; }
 
-    /// <summary>
-    /// This unit's resistance against an attack of <paramref name="damageType"/>,
-    /// uncapped - <see cref="BattleSimulation"/> is the one place that applies
-    /// the 75% formula cap, so a stored value above 75 stays visible here for
-    /// a future "nearly immune" unit rather than being clamped at rest.
-    /// </summary>
+    /// <summary>This unit's resistance against <paramref name="damageType"/>, uncapped - <see cref="BattleSimulation"/> applies the 75% cap.</summary>
     public int ResistFor(DamageType damageType) => damageType switch
     {
         GameSim.DamageType.Slashing => SlashingResist,
