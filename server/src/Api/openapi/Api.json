@@ -71,6 +71,29 @@
         }
       }
     },
+    "/battles/unit-definitions": {
+      "get": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "ListUnitDefinitions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UnitDefinitionDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/battles/enemy-setups": {
       "get": {
         "tags": [
