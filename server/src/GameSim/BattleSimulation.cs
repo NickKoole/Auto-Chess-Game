@@ -271,7 +271,10 @@ public sealed class BattleSimulation
     /// movement or attack cooldown resets, so a blocked move or a swing whose
     /// target died first keeps its readiness. Damage is summed with no
     /// ordering or alive check, so two attackers can jointly kill - or trade
-    /// kills with - a shared target on the same tick.
+    /// kills with - a shared target on the same tick. Also the only place the
+    /// defender's resistance mitigates a hit, via <see cref="ApplyResistance"/>
+    /// - <see cref="UnitDecision.Attack"/> still carries the raw, pre-mitigation
+    /// roll.
     /// </summary>
     private static List<BattleEvent> Apply(Battlefield field, IReadOnlyList<UnitDecision> decisions, int tick)
     {
@@ -315,7 +318,9 @@ public sealed class BattleSimulation
                     TargetId = attack.Target.Id,
                 });
 
-                attack.Target.CurrentHp -= attack.Damage;
+                int appliedDamage = ApplyResistance(attack.Damage, decision.Unit.Definition, attack.Target.Definition);
+
+                attack.Target.CurrentHp -= appliedDamage;
                 decision.Unit.AttackCooldownTicks = decision.Unit.Definition.AttackIntervalTicks;
 
                 events.Add(new DamageDealtEvent
@@ -323,13 +328,29 @@ public sealed class BattleSimulation
                     Tick = tick,
                     AttackerId = decision.Unit.Id,
                     TargetId = attack.Target.Id,
-                    Amount = attack.Damage,
+                    Amount = appliedDamage,
                     ResultingHp = attack.Target.CurrentHp,
                 });
             }
         }
 
         return events;
+    }
+
+    /// <summary>
+    /// Mitigates a raw hit by the defender's resistance matching the
+    /// attacker's <see cref="DamageType"/>: plain integer division, no
+    /// floats, deterministic. A resist stat is capped at 75% here, at
+    /// formula-evaluation time rather than by restricting the stored value -
+    /// a field can hold more than 75 for a future "nearly immune" unit, this
+    /// is just the one place that never lets it block more than 75%.
+    /// </summary>
+    private static int ApplyResistance(int rawDamage, UnitDefinition attacker, UnitDefinition defender)
+    {
+        const int ResistCap = 75;
+
+        int resist = Math.Min(defender.ResistFor(attacker.DamageType), ResistCap);
+        return rawDamage * (100 - resist) / 100;
     }
 
     /// <summary>

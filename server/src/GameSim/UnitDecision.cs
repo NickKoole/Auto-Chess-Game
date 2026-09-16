@@ -12,8 +12,10 @@ namespace GameSim;
 internal readonly record struct UnitDecision(BattleUnit Unit, HexCoord? MoveTo, AttackDecision? Attack);
 
 /// <summary>
-/// One landed hit, decided but not yet applied. <see cref="Damage"/> is
-/// already floored to an integer and rolled exactly once - never re-rolled
-/// when this is applied.
+/// One landed hit, decided but not yet applied. <see cref="Damage"/> is the
+/// raw roll, already floored to an integer and rolled exactly once - never
+/// re-rolled when this is applied - but not yet reduced by the target's
+/// resistance, which <see cref="BattleSimulation"/>'s apply phase computes
+/// from both units' definitions at the point it lands.
 /// </summary>
 internal readonly record struct AttackDecision(BattleUnit Target, int Damage);
