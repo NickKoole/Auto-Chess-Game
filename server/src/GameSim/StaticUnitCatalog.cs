@@ -62,7 +62,10 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             attackIntervalTicks: 12,
             movementTicksPerHex: 6,
             attackRangeHexes: 1,
-            playerSelectable: true),
+            playerSelectable: true,
+            damageType: DamageType.Slashing,
+            slashingResist: 0, bluntResist: 0, piercingResist: 0,
+            fireResist: 0, frostResist: 0, natureResist: 0, shadowResist: 0),
 
         new(
             id: "knight",
@@ -72,7 +75,10 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             attackIntervalTicks: 16,
             movementTicksPerHex: 8,
             attackRangeHexes: 1,
-            playerSelectable: true),
+            playerSelectable: true,
+            damageType: DamageType.Slashing,
+            slashingResist: 0, bluntResist: 0, piercingResist: 0,
+            fireResist: 0, frostResist: 0, natureResist: 0, shadowResist: 0),
 
         new(
             id: "berserker",
@@ -82,7 +88,10 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             attackIntervalTicks: 7,
             movementTicksPerHex: 5,
             attackRangeHexes: 1,
-            playerSelectable: true),
+            playerSelectable: true,
+            damageType: DamageType.Slashing,
+            slashingResist: 0, bluntResist: 0, piercingResist: 0,
+            fireResist: 0, frostResist: 0, natureResist: 0, shadowResist: 0),
 
         new(
             id: "archer",
@@ -92,7 +101,10 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             attackIntervalTicks: 14,
             movementTicksPerHex: 6,
             attackRangeHexes: 3,
-            playerSelectable: true),
+            playerSelectable: true,
+            damageType: DamageType.Piercing,
+            slashingResist: 0, bluntResist: 0, piercingResist: 0,
+            fireResist: 0, frostResist: 0, natureResist: 0, shadowResist: 0),
 
         // Deliberately swingy: a heavy, slow shot that sometimes falls short of
         // killing what it should.
@@ -105,7 +117,10 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             movementTicksPerHex: 7,
             attackRangeHexes: 4,
             playerSelectable: true,
-            damageVariance: 0.25),
+            damageVariance: 0.25,
+            damageType: DamageType.Piercing,
+            slashingResist: 0, bluntResist: 0, piercingResist: 0,
+            fireResist: 0, frostResist: 0, natureResist: 0, shadowResist: 0),
 
         // Deliberately reliable: fragile, but you can count on the number.
         new(
@@ -117,7 +132,10 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             movementTicksPerHex: 7,
             attackRangeHexes: 3,
             playerSelectable: true,
-            damageVariance: 0.05),
+            damageVariance: 0.05,
+            damageType: DamageType.Shadow,
+            slashingResist: 0, bluntResist: 0, piercingResist: 0,
+            fireResist: 0, frostResist: 0, natureResist: 0, shadowResist: 0),
 
         // Enemy-only monsters below - never drafted by a player, only placed
         // by a hand-authored enemy setup or matchup.
@@ -129,7 +147,10 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             attackIntervalTicks: 9,
             movementTicksPerHex: 4,
             attackRangeHexes: 1,
-            playerSelectable: false),
+            playerSelectable: false,
+            damageType: DamageType.Blunt,
+            slashingResist: 0, bluntResist: 0, piercingResist: 0,
+            fireResist: 0, frostResist: 0, natureResist: 0, shadowResist: 0),
 
         // Deliberately swingy: a feral, unpredictable bite.
         new(
@@ -141,7 +162,10 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             movementTicksPerHex: 3,
             attackRangeHexes: 1,
             playerSelectable: false,
-            damageVariance: 0.30),
+            damageVariance: 0.30,
+            damageType: DamageType.Piercing,
+            slashingResist: 0, bluntResist: 0, piercingResist: 0,
+            fireResist: 0, frostResist: 0, natureResist: 0, shadowResist: 0),
 
         new(
             id: "ogre",
@@ -151,6 +175,9 @@ public sealed class StaticUnitCatalog : IUnitCatalog
             attackIntervalTicks: 22,
             movementTicksPerHex: 10,
             attackRangeHexes: 1,
-            playerSelectable: false),
+            playerSelectable: false,
+            damageType: DamageType.Blunt,
+            slashingResist: 0, bluntResist: 0, piercingResist: 0,
+            fireResist: 0, frostResist: 0, natureResist: 0, shadowResist: 0),
     ];
 }

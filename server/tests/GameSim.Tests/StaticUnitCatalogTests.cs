@@ -145,6 +145,42 @@ public sealed class StaticUnitCatalogTests
         Assert.Equal(expected, Catalog.All.Select(d => d.Id));
     }
 
+    [Theory]
+    [InlineData("conscript", DamageType.Slashing)]
+    [InlineData("knight", DamageType.Slashing)]
+    [InlineData("berserker", DamageType.Slashing)]
+    [InlineData("archer", DamageType.Piercing)]
+    [InlineData("crossbowman", DamageType.Piercing)]
+    [InlineData("hexcaster", DamageType.Shadow)]
+    [InlineData("goblin", DamageType.Blunt)]
+    [InlineData("dire-wolf", DamageType.Piercing)]
+    [InlineData("ogre", DamageType.Blunt)]
+    public void Every_built_in_unit_has_the_damage_type_the_design_calls_for(string id, DamageType expected)
+    {
+        Assert.Equal(expected, Catalog.Get(id).DamageType);
+    }
+
+    [Fact]
+    public void Every_built_in_unit_has_every_resist_at_zero()
+    {
+        // This ticket is the mechanism only - zero balance impact, so nothing
+        // in the shipped catalog may resist anything yet.
+        string[] offenders =
+        [
+            .. Catalog.All
+                .Where(d => d.SlashingResist != 0
+                    || d.BluntResist != 0
+                    || d.PiercingResist != 0
+                    || d.FireResist != 0
+                    || d.FrostResist != 0
+                    || d.NatureResist != 0
+                    || d.ShadowResist != 0)
+                .Select(d => d.Id)
+        ];
+
+        Assert.Empty(offenders);
+    }
+
     [Fact]
     public void Rejects_duplicate_ids_at_construction()
     {

@@ -1,5 +1,17 @@
 namespace GameSim;
 
+/// <summary>A unit's single attack type - every unit has exactly one, never a set.</summary>
+public enum DamageType
+{
+    Slashing,
+    Blunt,
+    Piercing,
+    Fire,
+    Frost,
+    Nature,
+    Shadow,
+}
+
 /// <summary>What a kind of unit is, never what it is currently doing - the mutable per-battle state lives on <see cref="BattleUnit"/> instead.</summary>
 public sealed record UnitDefinition
 {
@@ -15,7 +27,15 @@ public sealed record UnitDefinition
         int movementTicksPerHex,
         int attackRangeHexes,
         bool playerSelectable,
-        double damageVariance = DefaultDamageVariance)
+        double damageVariance = DefaultDamageVariance,
+        DamageType damageType = DamageType.Slashing,
+        int slashingResist = 0,
+        int bluntResist = 0,
+        int piercingResist = 0,
+        int fireResist = 0,
+        int frostResist = 0,
+        int natureResist = 0,
+        int shadowResist = 0)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
 
@@ -49,6 +69,14 @@ public sealed record UnitDefinition
         }
 
         DamageVariance = damageVariance;
+        DamageType = damageType;
+        SlashingResist = slashingResist;
+        BluntResist = bluntResist;
+        PiercingResist = piercingResist;
+        FireResist = fireResist;
+        FrostResist = frostResist;
+        NatureResist = natureResist;
+        ShadowResist = shadowResist;
     }
 
     /// <summary>Unique within a catalog. Not shown to players.</summary>
@@ -84,6 +112,37 @@ public sealed record UnitDefinition
     /// integer maths.
     /// </summary>
     public double DamageVariance { get; }
+
+    /// <summary>What this unit's single attack deals.</summary>
+    public DamageType DamageType { get; }
+
+    /// <summary>Percentage resisted against an attack whose <see cref="DamageType"/> is <see cref="GameSim.DamageType.Slashing"/> - see <see cref="ResistFor"/> for how the cap applies.</summary>
+    public int SlashingResist { get; }
+
+    public int BluntResist { get; }
+
+    public int PiercingResist { get; }
+
+    public int FireResist { get; }
+
+    public int FrostResist { get; }
+
+    public int NatureResist { get; }
+
+    public int ShadowResist { get; }
+
+    /// <summary>This unit's resistance against <paramref name="damageType"/>, uncapped - <see cref="BattleSimulation"/> applies the 75% cap.</summary>
+    public int ResistFor(DamageType damageType) => damageType switch
+    {
+        GameSim.DamageType.Slashing => SlashingResist,
+        GameSim.DamageType.Blunt => BluntResist,
+        GameSim.DamageType.Piercing => PiercingResist,
+        GameSim.DamageType.Fire => FireResist,
+        GameSim.DamageType.Frost => FrostResist,
+        GameSim.DamageType.Nature => NatureResist,
+        GameSim.DamageType.Shadow => ShadowResist,
+        _ => throw new ArgumentOutOfRangeException(nameof(damageType), damageType, "Unknown damage type."),
+    };
 
     private static int RequirePositive(int value, string id, string field)
     {
