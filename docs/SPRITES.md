@@ -20,6 +20,10 @@ Generated grids and pixel placement are approximate. Inspect the actual output, 
 
 ## Prepare
 
+For new biped walk cycles, start with the [reusable walk template](art/sprites/biped-walk-template.md). The [knight authoring record](art/sprites/walk-cycle-workflow.md) preserves the exact prompts, reference images, corrections, and accepted coloured loop that informed it.
+
+The selected metal walk is stored losslessly as four individual `knight-walk-metal-1.png` through `knight-walk-metal-4.png` files under `client/src/assets/sprites/knight/`. Playback order is near-leg passing, near-leg contact, far-leg passing, far-leg contact, at 160 ms per frame. Each RGBA canvas is 1254 × 1254 with a full-canvas region and a common foot anchor of (627, 1080); display scale is 0.1. The historical metadata calls the near/sword leg `left` and the far/shield leg `right`; these identities do not swap with screen position. `/sprites` uses these metal frames. `/walk-review.html?play=1` retains the large loop and coloured comparisons. The selected individual frames supersede the original two-candidate 2×2 sheet plan; battle movement remains separate.
+
 - Put the chosen original transparent PNG under `client/src/assets/sprites/<unit>/`.
 - Define frame regions, foot anchors, display scale and attack durations in a typed manifest under `client/src/sprites/`. Register the unit id in `spriteCatalog.ts`.
 - Regions are source-image pixels. Anchors are relative to each region, measured at the feet. All frames use the same scale. The renderer places each anchor at the same board point.

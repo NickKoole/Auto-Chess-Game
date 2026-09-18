@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Knight walk preview</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #151c27; color: #edf2fb; font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 1200px; margin: auto; padding: 28px 20px 48px; }
+    h1 { margin-bottom: 8px; font-size: 28px; }
+    p { color: #bdc9dc; }
+    a { color: #b6d3ff; }
+    .sequence { display: grid; grid-template-columns: repeat(4, minmax(190px, 1fr)); gap: 12px; overflow-x: auto; padding: 4px 4px 14px; }
+    button, select { color: inherit; background: #26364b; border: 1px solid #60748e; border-radius: 8px; font: inherit; padding: 10px 14px; cursor: pointer; }
+    button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid #b6d3ff; outline-offset: 3px; }
+    .frame { padding: 0 0 14px; background: #202c3c; }
+    .frame[aria-pressed="true"] { outline: 3px solid #b6d3ff; outline-offset: 0; }
+    .frame img { display: block; width: 100%; aspect-ratio: 1; image-rendering: pixelated; }
+    .player { max-width: 420px; margin: 24px auto 12px; border: 1px solid #60748e; border-radius: 12px; overflow: hidden; background: #202c3c; }
+    .canvas { position: relative; aspect-ratio: 1; }
+    .canvas img { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; visibility: hidden; }
+    .canvas img.active { visibility: visible; }
+    .controls { display: flex; justify-content: center; flex-wrap: wrap; align-items: center; gap: 10px; }
+    label { display: flex; align-items: center; gap: 8px; }
+    #current { text-align: center; }
+    .downloads { text-align: center; }
+  </style>
+</head>
+<body>
+  <main>
+    <a href="/sprites">Back to sprite preview</a>
+    <h1>Knight walk</h1>
+    <p>Read left to right, then loop back to 1. Select a frame or play the loop. Compare the restored metal version with the coloured studies: yellow marks the near leg, purple the far leg.</p>
+    <div class="sequence" aria-label="Four frames in playback order">
+      <button class="frame" type="button" data-frame="0" aria-pressed="true"><img src="/walk-review/frame-1-metal.png" alt="Near leg raised, far foot planted">1 · Near passing</button>
+      <button class="frame" type="button" data-frame="1" aria-pressed="false"><img src="/walk-review/frame-2-metal.png" alt="Near foot forward, far foot back">2 · Near contact</button>
+      <button class="frame" type="button" data-frame="2" aria-pressed="false"><img src="/walk-review/frame-3-metal.png" alt="Far leg raised behind the planted near leg">3 · Far passing</button>
+      <button class="frame" type="button" data-frame="3" aria-pressed="false"><img src="/walk-review/frame-4-metal.png" alt="Far foot forward, near foot back">4 · Far contact</button>
+    </div>
+    <div class="player">
+      <div class="canvas" role="img" aria-label="Frame 1: Near passing">
+        <img class="active" src="/walk-review/frame-1-metal.png" alt="">
+        <img src="/walk-review/frame-2-metal.png" alt="">
+        <img src="/walk-review/frame-3-metal.png" alt="">
+        <img src="/walk-review/frame-4-metal.png" alt="">
+      </div>
+    </div>
+    <p id="current">Frame 1 / 4 — Near passing</p>
+    <div class="controls">
+      <label>Version <select id="variant"><option value="metal" selected>Metal · shorter stride</option><option value="compact">Coloured · shorter stride</option><option value="original">Coloured · original wide stride</option></select></label>
+      <button id="previous" type="button">Previous frame</button>
+      <button id="play" type="button" aria-pressed="false">Play loop</button>
+      <button id="next" type="button">Next frame</button>
+      <label>Speed <select id="speed"><option value="400">Slow · 400 ms/frame</option><option value="160" selected>Normal · 160 ms/frame</option><option value="100">Fast · 100 ms/frame</option></select></label>
+    </div>
+    <p class="downloads">Frame images: <a href="/walk-review/frame-1-metal.png">1</a> · <a href="/walk-review/frame-2-metal.png">2</a> · <a href="/walk-review/frame-3-metal.png">3</a> · <a href="/walk-review/frame-4-metal.png">4</a></p>
+  </main>
+  <script>
+    const labels = ['Near passing', 'Near contact', 'Far passing', 'Far contact'];
+    const frames = [...document.querySelectorAll('.frame')];
+    const images = [...document.querySelectorAll('.canvas img')];
+    const canvas = document.querySelector('.canvas');
+    const current = document.querySelector('#current');
+    const play = document.querySelector('#play');
+    const speed = document.querySelector('#speed');
+    const variant = document.querySelector('#variant');
+    let selected = 0;
+    let timer;
+
+    function show(index) {
+      selected = (index + frames.length) % frames.length;
+      frames.forEach((frame, i) => frame.setAttribute('aria-pressed', String(i === selected)));
+      images.forEach((image, i) => image.classList.toggle('active', i === selected));
+      current.textContent = `Frame ${selected + 1} / 4 — ${labels[selected]}`;
+      canvas.setAttribute('aria-label', `Frame ${selected + 1}: ${labels[selected]}`);
+    }
+
+    function stop() {
+      clearInterval(timer);
+      timer = undefined;
+      play.textContent = 'Play loop';
+      play.setAttribute('aria-pressed', 'false');
+    }
+
+    function start() {
+      stop();
+      timer = setInterval(() => show(selected + 1), Number(speed.value));
+      play.textContent = 'Pause';
+      play.setAttribute('aria-pressed', 'true');
+    }
+
+    function selectVariant() {
+      for (const index of [0, 1, 2, 3]) {
+        const suffix = variant.value === 'metal' ? '-metal' : variant.value === 'compact' && index % 2 === 1 ? '-compact' : '';
+        const source = `/walk-review/frame-${index + 1}${suffix}.png`;
+        images[index].src = source;
+        frames[index].querySelector('img').src = source;
+        document.querySelectorAll('.downloads a')[index].href = source;
+      }
+    }
+
+    variant.addEventListener('change', selectVariant);
+    selectVariant();
+    frames.forEach((frame, i) => frame.addEventListener('click', () => { stop(); show(i); }));
+    play.addEventListener('click', () => timer === undefined ? start() : stop());
+    document.querySelector('#previous').addEventListener('click', () => { stop(); show(selected - 1); });
+    document.querySelector('#next').addEventListener('click', () => { stop(); show(selected + 1); });
+    speed.addEventListener('change', () => { if (timer !== undefined) start(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
+    if (new URLSearchParams(window.location.search).get('play') === '1') {
+      window.addEventListener('load', start, { once: true });
+    }
+  </script>
+</body>
+</html>
