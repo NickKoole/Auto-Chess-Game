@@ -53,8 +53,7 @@ const selectedMatchupId = ref('')
 const units = ref<UnitDefinitionDto[]>([])
 const unitsError = ref<string | null>(null)
 
-// Unfiltered, unlike `units` - the roster picker's source is player-selectable
-// only, but the enemy preview needs every catalog unit's stats too.
+// Unfiltered, unlike `units` — sourced from `/battles/unit-definitions`.
 const unitDefinitions = ref<UnitDefinitionDto[]>([])
 const unitDefinitionsError = ref<string | null>(null)
 

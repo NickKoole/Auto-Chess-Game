@@ -20,9 +20,7 @@ public static class BattleEndpoints
                 [.. units.All.Where(d => d.PlayerSelectable).Select(BattleResponseFactory.MapUnitDefinition)]))
         .WithName("ListUnits");
 
-        // Unfiltered, unlike ListUnits: callers that need every catalog unit
-        // (e.g. rendering an enemy-only unit in the pre-battle preview) can't
-        // use the player-selectable-only roster endpoint.
+        // Unfiltered, unlike ListUnits — the enemy preview needs every catalog unit.
         app.MapGet("/battles/unit-definitions", Ok<IReadOnlyList<UnitDefinitionDto>> (IUnitCatalog units) =>
             TypedResults.Ok<IReadOnlyList<UnitDefinitionDto>>(
                 [.. units.All.Select(BattleResponseFactory.MapUnitDefinition)]))
