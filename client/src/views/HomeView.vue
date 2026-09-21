@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import {
   listEnemySetups,
   listMatchups,
+  listUnitDefinitions,
   listUnits,
   simulateBattle,
   type EnemySetupDto,
@@ -51,6 +52,10 @@ const selectedMatchupId = ref('')
 
 const units = ref<UnitDefinitionDto[]>([])
 const unitsError = ref<string | null>(null)
+
+// Unfiltered, unlike `units` — sourced from `/battles/unit-definitions`.
+const unitDefinitions = ref<UnitDefinitionDto[]>([])
+const unitDefinitionsError = ref<string | null>(null)
 
 const enemySetups = ref<EnemySetupDto[]>([])
 const enemySetupsError = ref<string | null>(null)
@@ -111,7 +116,7 @@ const survivorGroups = computed(() => (finalState.value ? survivorsBySide(finalS
 
 const unitDefinitionsById = computed<Record<string, UnitDefinitionDto>>(() => {
   const map: Record<string, UnitDefinitionDto> = {}
-  for (const unit of units.value) {
+  for (const unit of unitDefinitions.value) {
     map[unit.id] = unit
   }
   return map
@@ -371,6 +376,15 @@ async function loadUnits(): Promise<void> {
   }
 }
 
+async function loadUnitDefinitions(): Promise<void> {
+  const result = await listUnitDefinitions()
+  if (result.ok) {
+    unitDefinitions.value = result.data
+  } else {
+    unitDefinitionsError.value = result.error
+  }
+}
+
 async function loadEnemySetups(): Promise<void> {
   const result = await listEnemySetups()
   if (result.ok) {
@@ -384,6 +398,7 @@ async function loadEnemySetups(): Promise<void> {
 onMounted(() => {
   loadMatchups()
   loadUnits()
+  loadUnitDefinitions()
   loadEnemySetups()
 })
 
@@ -439,6 +454,7 @@ onUnmounted(() => {
 
     <template v-else>
       <p v-if="unitsError" role="alert">Could not load units: {{ unitsError }}</p>
+      <p v-if="unitDefinitionsError" role="alert">Could not load unit definitions: {{ unitDefinitionsError }}</p>
       <p v-if="enemySetupsError" role="alert">Could not load enemy setups: {{ enemySetupsError }}</p>
 
       <section class="roster" aria-label="Roster">
