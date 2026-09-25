@@ -6,7 +6,9 @@ import { isInPlayerBand } from '@/battle/composition'
 import { gridDimensions, hexPolygonPoints, hexToPixel } from '@/battle/hexCoords'
 import { PROJECTILE_VISIBLE_MS, type TimedProjectile } from '@/battle/projectiles'
 import { facingTarget, type SpriteAttack } from '@/battle/spriteAttacks'
-import { attackDuration, poseAtElapsed } from '@/sprites/spriteAnimation'
+import { resolveUnitPresentation } from '@/battle/unitPresentation'
+import type { SpriteWalk } from '@/battle/spriteWalks'
+import { attackDuration } from '@/sprites/spriteAnimation'
 import { spriteForUnit } from '@/sprites/spriteCatalog'
 import UnitSprite from './UnitSprite.vue'
 
@@ -16,9 +18,10 @@ const props = withDefaults(
     interactive?: boolean
     projectiles?: TimedProjectile[]
     attacks?: SpriteAttack[]
+    walks?: SpriteWalk[]
     selectedUnitId?: string | null
   }>(),
-  { projectiles: () => [], attacks: () => [], selectedUnitId: null },
+  { projectiles: () => [], attacks: () => [], walks: () => [], selectedUnitId: null },
 )
 
 const emit = defineEmits<{
@@ -118,20 +121,30 @@ function tick(): void {
   animationFrame = requestAnimationFrame(tick)
 }
 
-const hasAnimatingSprites = computed(() => props.attacks.some((attack) => {
-  const unit = props.state.units.find((candidate) => candidate.id === attack.unitId)
-  const sprite = unit && spriteForUnit(unit.definitionId)
-  return sprite && now.value - attack.startedAt < attackDuration(sprite)
-}))
+const hasAnimatingSprites = computed(
+  () =>
+    props.attacks.some((attack) => {
+      const unit = props.state.units.find((candidate) => candidate.id === attack.unitId)
+      const sprite = unit && spriteForUnit(unit.definitionId)
+      return sprite && now.value - attack.startedAt < attackDuration(sprite)
+    }) ||
+    props.walks.some((walk) => {
+      const unit = props.state.units.find((candidate) => candidate.id === walk.unitId)
+      return unit && spriteForUnit(unit.definitionId) && now.value < walk.activeUntil
+    }),
+)
 
 const unitVisuals = computed(() => props.state.units.map((unit) => {
   const sprite = spriteForUnit(unit.definitionId)
   const attack = props.attacks.find((candidate) => candidate.unitId === unit.id)
+  const walk = props.walks.find((candidate) => candidate.unitId === unit.id)
   const target = currentTargetOf(props.state, unit)
   const fallback = unit.side === SIDE_PLAYER ? 'right' : 'left'
-  const facing = attack?.facing ?? (target ? facingTarget(unit.position, target.position, fallback) : fallback)
-  const pose = sprite ? poseAtElapsed(sprite, attack ? now.value - attack.startedAt : null) : 'idle'
-  return { unit, sprite, pose, facing }
+  const fallbackFacing = target ? facingTarget(unit.position, target.position, fallback) : fallback
+  const { presentation, facing } = sprite
+    ? resolveUnitPresentation(sprite, attack, walk, now.value, fallbackFacing)
+    : { presentation: { kind: 'attack' as const, pose: 'idle' as const }, facing: fallbackFacing }
+  return { unit, sprite, presentation, facing }
 }))
 
 watch(
@@ -240,9 +253,16 @@ const targetMarkers = computed<TargetMarker[]>(() =>
       class="target-marker"
     />
 
-    <g v-for="{ unit, sprite, pose, facing } in unitVisuals" :key="unit.id" :data-unit-id="unit.id" class="unit-group">
+    <g v-for="{ unit, sprite, presentation, facing } in unitVisuals" :key="unit.id" :data-unit-id="unit.id" class="unit-group">
       <circle :cx="unitCenter(unit).x" :cy="unitCenter(unit).y" :r="HEX_SIZE * 0.62" :class="sideClass(unit)" />
-      <UnitSprite v-if="sprite" :sprite="sprite" :pose="pose" :facing="facing" :x="unitCenter(unit).x" :y="unitCenter(unit).y + 8" />
+      <UnitSprite
+        v-if="sprite"
+        :sprite="sprite"
+        :presentation="presentation"
+        :facing="facing"
+        :x="unitCenter(unit).x"
+        :y="unitCenter(unit).y + 8"
+      />
       <text :x="unitCenter(unit).x" :y="unitCenter(unit).y + (sprite ? -52 : -9)" text-anchor="middle" class="unit-label">
         {{ label(unit) }}
       </text>
