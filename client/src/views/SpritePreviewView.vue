@@ -3,6 +3,7 @@ import { computed, onUnmounted, ref } from 'vue'
 import UnitSprite from '@/components/UnitSprite.vue'
 import { spriteForUnit } from '@/sprites/spriteCatalog'
 import { attackDuration, poseAtElapsed, type SpriteFacing, type SpritePose } from '@/sprites/spriteAnimation'
+import { knightWalkCandidates, walkPhaseAtElapsed, type WalkPhase } from '@/sprites/knightWalkPreview'
 
 const sprite = spriteForUnit('knight')!
 const facing = ref<SpriteFacing>('right')
@@ -10,6 +11,11 @@ const pose = ref<SpritePose>('idle')
 const isPlaying = ref(false)
 const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 const loop = ref(!reducedMotion)
+const walkCandidate = ref(0)
+const walkPhase = ref<WalkPhase>('leftPassing')
+const isWalking = ref(false)
+const activeWalkCandidate = computed(() => knightWalkCandidates[walkCandidate.value]!)
+const activeWalkFrame = computed(() => activeWalkCandidate.value.frames[walkPhase.value])
 const phaseLabels: Record<SpritePose, string> = {
   idle: 'Ready',
   windUp: 'Wind-up',
@@ -19,6 +25,8 @@ const phaseLabels: Record<SpritePose, string> = {
 const phaseLabel = computed(() => phaseLabels[pose.value])
 let animationFrame: number | undefined
 let startedAt = 0
+let walkAnimationFrame: number | undefined
+let walkStartedAt = 0
 
 function stop(): void {
   if (animationFrame !== undefined) {
@@ -54,7 +62,38 @@ function showPose(next: SpritePose): void {
   pose.value = next
 }
 
-onUnmounted(stop)
+function stopWalk(): void {
+  if (walkAnimationFrame !== undefined) {
+    cancelAnimationFrame(walkAnimationFrame)
+    walkAnimationFrame = undefined
+  }
+  isWalking.value = false
+}
+
+function walkTick(now: number): void {
+  walkPhase.value = walkPhaseAtElapsed(now - walkStartedAt)
+  walkAnimationFrame = requestAnimationFrame(walkTick)
+}
+
+function startWalk(): void {
+  stopWalk()
+  walkStartedAt = performance.now()
+  isWalking.value = true
+  walkAnimationFrame = requestAnimationFrame(walkTick)
+}
+
+function selectWalkCandidate(index: number): void {
+  walkCandidate.value = index
+  walkPhase.value = 'leftPassing'
+  if (isWalking.value) {
+    startWalk()
+  }
+}
+
+onUnmounted(() => {
+  stop()
+  stopWalk()
+})
 </script>
 
 <template>
@@ -62,7 +101,7 @@ onUnmounted(stop)
     <a class="back" href="/">Back to battle</a>
     <p class="eyebrow">AUTO CHESS · PIXEL ART</p>
     <h1>The knight</h1>
-    <p class="intro">Steel armor, blue tabard, and a short sword. Try the attack in either direction.</p>
+    <p class="intro">Steel armor, a plain metal shield, and a short sword. Try the attack in either direction.</p>
 
     <div class="stage">
       <svg viewBox="-90 -100 180 125" role="img" :aria-label="`Knight facing ${facing}, ${phaseLabel}`">
@@ -91,6 +130,43 @@ onUnmounted(stop)
       <svg width="180" height="125" viewBox="-90 -100 180 125" role="img" aria-label="Knight at board size">
         <UnitSprite :sprite="sprite" :pose="pose" :facing="facing" />
       </svg>
+    </section>
+
+    <section class="walk-review">
+      <h2>Walk-loop review</h2>
+      <p class="intro">The selected metal knight walk loop. Battle movement is integrated separately.</p>
+      <div class="stage">
+        <svg viewBox="-90 -100 180 125" role="img" :aria-label="`${activeWalkCandidate.name}, ${walkPhase}`">
+          <ellipse cx="0" cy="1" rx="28" ry="7" fill="#101823" />
+          <g :transform="`scale(${facing === 'left' ? -1 : 1}, 1)`" aria-hidden="true">
+            <svg
+              :x="-activeWalkFrame.anchorX * activeWalkCandidate.scale"
+              :y="-activeWalkFrame.anchorY * activeWalkCandidate.scale"
+              :width="activeWalkFrame.width * activeWalkCandidate.scale"
+              :height="activeWalkFrame.height * activeWalkCandidate.scale"
+              :viewBox="`${activeWalkFrame.x} ${activeWalkFrame.y} ${activeWalkFrame.width} ${activeWalkFrame.height}`"
+              overflow="hidden"
+            >
+              <image :href="activeWalkCandidate.sheets[walkPhase]" :width="activeWalkCandidate.width" :height="activeWalkCandidate.height" style="image-rendering: pixelated" />
+            </svg>
+          </g>
+        </svg>
+      </div>
+      <div class="controls">
+        <button
+          v-for="(candidate, index) in knightWalkCandidates"
+          :key="candidate.name"
+          type="button"
+          :aria-pressed="walkCandidate === index"
+          @click="selectWalkCandidate(index)"
+        >
+          {{ candidate.name }}
+        </button>
+        <button type="button" class="attack" @click="isWalking ? stopWalk() : startWalk()">
+          {{ isWalking ? 'Stop walk' : 'Play walk' }}
+        </button>
+      </div>
+      <p class="phase">Phase: {{ walkPhase }}</p>
     </section>
   </main>
 </template>
@@ -129,6 +205,8 @@ label { display: inline-flex; gap: 8px; align-items: center; min-height: 44px; }
 input { width: 18px; height: 18px; }
 .phase { color: #b7c4d9; }
 .size-check { margin-top: 32px; border-top: 1px solid #38485f; }
+.walk-review { margin-top: 32px; border-top: 1px solid #38485f; }
 .size-check h2 { font-size: 16px; font-weight: 500; }
+.walk-review h2 { font-size: 16px; font-weight: 500; }
 .size-check svg { display: block; margin: auto; }
 </style>

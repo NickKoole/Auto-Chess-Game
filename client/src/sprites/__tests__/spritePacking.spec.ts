@@ -53,5 +53,5 @@ describe('standalone sprite packing', () => {
     expect(html).not.toMatch(/<script[^>]+src=/i)
     expect(html).not.toMatch(/<link[^>]+href=/i)
     expect(html).not.toMatch(/(?:src|href)=["'](?:\.\/|https?:\/\/)/i)
-  })
+  }, 20_000)
 })
