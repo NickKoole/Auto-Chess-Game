@@ -15,4 +15,14 @@ export const knightSpriteData: SpriteData = {
     { pose: 'strike', durationMs: 80 },
     { pose: 'recovery', durationMs: 140 },
   ],
+  walk: {
+    order: ['leftPassing', 'leftContact', 'rightPassing', 'rightContact'],
+    frameDurationMs: 160,
+    frames: {
+      leftPassing: { x: 0, y: 0, width: 1254, height: 1254, anchorX: 627, anchorY: 1080 },
+      leftContact: { x: 0, y: 0, width: 1254, height: 1254, anchorX: 627, anchorY: 1080 },
+      rightPassing: { x: 0, y: 0, width: 1254, height: 1254, anchorX: 627, anchorY: 1080 },
+      rightContact: { x: 0, y: 0, width: 1254, height: 1254, anchorX: 627, anchorY: 1080 },
+    },
+  },
 }

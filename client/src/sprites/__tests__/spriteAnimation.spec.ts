@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { knightSpriteData } from '../knight'
-import { attackDuration, poseAtElapsed } from '../spriteAnimation'
+import { attackDuration, poseAtElapsed, walkLoopDuration, walkPhaseAtElapsed } from '../spriteAnimation'
 import { spriteForUnit } from '../spriteCatalog'
 
 describe('knight animation', () => {
@@ -16,6 +16,38 @@ describe('knight animation', () => {
 
   it('finishes the attack in 320 ms', () => {
     expect(attackDuration(knightSpriteData)).toBe(320)
+  })
+
+  it.each([
+    [null, 'leftPassing'], [-1, 'leftPassing'], [NaN, 'leftPassing'], [Infinity, 'leftPassing'],
+    [0, 'leftPassing'], [159, 'leftPassing'], [160, 'leftContact'], [319, 'leftContact'],
+    [320, 'rightPassing'], [479, 'rightPassing'], [480, 'rightContact'], [639, 'rightContact'], [640, 'leftPassing'],
+  ] as const)('cycles the walk loop at %s ms as %s', (elapsed, phase) => {
+    expect(walkPhaseAtElapsed(knightSpriteData, elapsed)).toBe(phase)
+  })
+
+  it('completes one walk loop in 640 ms', () => {
+    expect(walkLoopDuration(knightSpriteData)).toBe(640)
+  })
+
+  it('keeps every walk frame region inside the shared knight canvas', () => {
+    for (const frame of Object.values(knightSpriteData.walk.frames)) {
+      expect(frame.x + frame.width).toBeLessThanOrEqual(knightSpriteData.width)
+      expect(frame.y + frame.height).toBeLessThanOrEqual(knightSpriteData.height)
+      expect(frame.anchorX).toBeGreaterThan(0)
+      expect(frame.anchorX).toBeLessThan(frame.width)
+      expect(frame.anchorY).toBeGreaterThan(0)
+      expect(frame.anchorY).toBeLessThan(frame.height)
+    }
+  })
+
+  it('maps every walk phase to a distinct committed sprite sheet', () => {
+    const sprite = spriteForUnit('knight')!
+    const sheets = new Set(Object.values(sprite.walkSheets))
+    expect(sheets.size).toBe(4)
+    for (const sheet of sheets) {
+      expect(sheet).toContain('knight-walk-metal-')
+    }
   })
 
   it('only maps registered unit definitions to artwork', () => {
