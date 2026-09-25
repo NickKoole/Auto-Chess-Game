@@ -74,6 +74,7 @@ public sealed class StaticUnitCatalogTests
     [InlineData("crossbowman", 0.25)]
     [InlineData("hexcaster", 0.05)]
     [InlineData("dire-wolf", 0.30)]
+    [InlineData("acolyte", 0.20)]
     public void Deliberately_tuned_units_keep_their_own_variance(string id, double expected)
     {
         Assert.Equal(expected, Catalog.Get(id).DamageVariance);
@@ -86,7 +87,7 @@ public sealed class StaticUnitCatalogTests
         // nothing was checking it against the roster: a typo giving conscript
         // 0.5 passed the whole suite. Naming the exceptions is what makes
         // this an assertion rather than a restatement of whatever is there.
-        string[] tuned = ["crossbowman", "hexcaster", "dire-wolf"];
+        string[] tuned = ["crossbowman", "hexcaster", "dire-wolf", "acolyte"];
 
         string[] offenders =
         [
@@ -138,7 +139,7 @@ public sealed class StaticUnitCatalogTests
         // only looks like a guarantee.
         string[] expected =
         [
-            "conscript", "knight", "berserker", "archer", "crossbowman", "hexcaster",
+            "conscript", "knight", "berserker", "archer", "crossbowman", "hexcaster", "acolyte",
             "goblin", "dire-wolf", "ogre",
         ];
 
@@ -155,6 +156,7 @@ public sealed class StaticUnitCatalogTests
     [InlineData("goblin", DamageType.Blunt)]
     [InlineData("dire-wolf", DamageType.Piercing)]
     [InlineData("ogre", DamageType.Blunt)]
+    [InlineData("acolyte", DamageType.Fire)]
     public void Every_built_in_unit_has_the_damage_type_the_design_calls_for(string id, DamageType expected)
     {
         Assert.Equal(expected, Catalog.Get(id).DamageType);
