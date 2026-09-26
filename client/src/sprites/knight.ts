@@ -15,4 +15,18 @@ export const knightSpriteData: SpriteData = {
     { pose: 'strike', durationMs: 80 },
     { pose: 'recovery', durationMs: 140 },
   ],
+  walk: {
+    order: ['leftPassing', 'leftContact', 'rightPassing', 'rightContact'],
+    frameDurationMs: 160,
+    // The walk art draws the knight at ~920px tall on its 1254px canvas versus
+    // ~396px tall on the attack sheet's cropped idle frame; this scale matches
+    // that ratio (0.14 * 396 / 920) so both render at the same on-screen size.
+    scale: 0.0603,
+    frames: {
+      leftPassing: { x: 0, y: 0, width: 1254, height: 1254, anchorX: 627, anchorY: 1080 },
+      leftContact: { x: 0, y: 0, width: 1254, height: 1254, anchorX: 627, anchorY: 1080 },
+      rightPassing: { x: 0, y: 0, width: 1254, height: 1254, anchorX: 627, anchorY: 1080 },
+      rightContact: { x: 0, y: 0, width: 1254, height: 1254, anchorX: 627, anchorY: 1080 },
+    },
+  },
 }

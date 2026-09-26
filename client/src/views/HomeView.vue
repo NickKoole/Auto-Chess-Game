@@ -31,7 +31,8 @@ import { seekTo, terminatingTickOf } from '@/battle/playback'
 import { projectilesForTick, PROJECTILE_VISIBLE_MS, type Projectile, type TimedProjectile } from '@/battle/projectiles'
 import BattleBoard from '@/components/BattleBoard.vue'
 import { mergeSpriteAttacks, spriteAttacksAfterSeek, spriteAttacksForTick, type SpriteAttack } from '@/battle/spriteAttacks'
-import { attackDuration } from '@/sprites/spriteAnimation'
+import { mergeSpriteWalks, spriteWalksAfterSeek, spriteWalksForTick, type SpriteWalk } from '@/battle/spriteWalks'
+import { attackDuration, walkLoopDuration } from '@/sprites/spriteAnimation'
 import { knightSpriteData } from '@/sprites/knight'
 
 // A 150-350 tick battle at 30ms/tick is a 5-10 second playback - watchable,
@@ -78,6 +79,7 @@ const isPlaying = ref(false)
 const hasFinished = ref(false)
 const activeProjectiles = ref<TimedProjectile[]>([])
 const activeSpriteAttacks = ref<SpriteAttack[]>([])
+const activeSpriteWalks = ref<SpriteWalk[]>([])
 const projectileTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 let timer: ReturnType<typeof setInterval> | undefined
@@ -179,8 +181,12 @@ function seek(tick: number): void {
   battleState.value = result.state
   currentTick.value = result.tick
   hasFinished.value = result.tick >= terminatingTick.value
+  const seekNow = performance.now()
   activeSpriteAttacks.value = spriteAttacksAfterSeek(
-    preTickState, result.state, previousTick, tick, result.tick, response.events as BattleEvent[], performance.now(),
+    preTickState, result.state, previousTick, tick, result.tick, response.events as BattleEvent[], seekNow,
+  )
+  activeSpriteWalks.value = spriteWalksAfterSeek(
+    preTickState, previousTick, tick, result.tick, response.events as BattleEvent[], seekNow, walkLoopDuration(knightSpriteData),
   )
   clearProjectiles()
   if (isForwardStep && result.tick === tick && preTickState) {
@@ -224,6 +230,7 @@ function play(): void {
     battleState.value = result.state
     currentTick.value = result.tick
     activeSpriteAttacks.value = []
+    activeSpriteWalks.value = []
     clearProjectiles()
   }
   hasFinished.value = false
@@ -246,6 +253,12 @@ function play(): void {
       spriteAttacksForTick(preTickState, battleState.value!, currentTick.value, log, now),
       now,
       attackDuration(knightSpriteData),
+    )
+    activeSpriteWalks.value = mergeSpriteWalks(
+      activeSpriteWalks.value,
+      spriteWalksForTick(preTickState, currentTick.value, log),
+      now,
+      walkLoopDuration(knightSpriteData),
     )
     showProjectiles(projectilesForTick(preTickState, battleState.value!, currentTick.value, log))
     if (currentTick.value >= terminatingTick.value) {
@@ -323,6 +336,7 @@ function clearBattleResult(): void {
   terminatingTick.value = 0
   hasFinished.value = false
   activeSpriteAttacks.value = []
+  activeSpriteWalks.value = []
   clearProjectiles()
 }
 
@@ -484,7 +498,7 @@ onUnmounted(() => {
       <BattleBoard
         :state="compositionBoardState"
         :interactive="canEditDeployment"
-        :projectiles="activeProjectiles" :attacks="activeSpriteAttacks"
+        :projectiles="activeProjectiles" :attacks="activeSpriteAttacks" :walks="activeSpriteWalks"
         :selected-unit-id="selectedUnitId"
         @tile-drop="onTileDrop"
         @unit-delete="onUnitDelete"
@@ -551,7 +565,13 @@ onUnmounted(() => {
         · Tick: {{ currentTick }} / {{ terminatingTick }}
       </p>
 
-      <BattleBoard v-if="mode === 'matchup'" :state="battleState" :projectiles="activeProjectiles" :attacks="activeSpriteAttacks" />
+      <BattleBoard
+        v-if="mode === 'matchup'"
+        :state="battleState"
+        :projectiles="activeProjectiles"
+        :attacks="activeSpriteAttacks"
+        :walks="activeSpriteWalks"
+      />
 
       <section v-if="hasFinished" aria-label="Outcome">
         <p role="status">

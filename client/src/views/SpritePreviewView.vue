@@ -23,6 +23,7 @@ const phaseLabels: Record<SpritePose, string> = {
   recovery: 'Recovery',
 }
 const phaseLabel = computed(() => phaseLabels[pose.value])
+const presentation = computed(() => ({ kind: 'attack' as const, pose: pose.value }))
 let animationFrame: number | undefined
 let startedAt = 0
 let walkAnimationFrame: number | undefined
@@ -106,7 +107,7 @@ onUnmounted(() => {
     <div class="stage">
       <svg viewBox="-90 -100 180 125" role="img" :aria-label="`Knight facing ${facing}, ${phaseLabel}`">
         <ellipse cx="0" cy="1" rx="28" ry="7" fill="#101823" />
-        <UnitSprite :sprite="sprite" :pose="pose" :facing="facing" />
+        <UnitSprite :sprite="sprite" :presentation="presentation" :facing="facing" />
       </svg>
     </div>
 
@@ -128,7 +129,7 @@ onUnmounted(() => {
     <section class="size-check">
       <h2>Board size</h2>
       <svg width="180" height="125" viewBox="-90 -100 180 125" role="img" aria-label="Knight at board size">
-        <UnitSprite :sprite="sprite" :pose="pose" :facing="facing" />
+        <UnitSprite :sprite="sprite" :presentation="presentation" :facing="facing" />
       </svg>
     </section>
 

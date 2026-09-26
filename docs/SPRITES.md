@@ -62,6 +62,8 @@ Server `unitAttacked` events trigger the visual sequence during play or a one-ti
 
 The knight sequence is wind-up 100 ms, strike 80 ms, recovery 140 ms, then idle. These are presentation durations only: damage is applied exactly as supplied by the server log. Like projectiles, a started attack finishes visually during pause; it does not advance the battle. Seeking clears transient animation, except a genuine single forward step can trigger that tick's attacks. Restart/new battle clears old attacks.
 
+Server `unitMoved` events drive the walk loop the same way: leftPassing, leftContact, rightPassing, rightContact at 160 ms per frame, looping for as long as consecutive ticks keep moving that unit, then decaying back to idle. Attack always wins over walking for the same unit. Seeking, pause, restart and reset clear transient walk presentation exactly like attacks - the loop's cadence is a presentation detail, not a simulation timing rule.
+
 ## Verify
 
 ```powershell
