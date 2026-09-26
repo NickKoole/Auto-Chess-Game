@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { SpriteDefinition, SpriteFacing, SpritePresentation } from '@/sprites/spriteAnimation'
+import { scaleFor, type SpriteDefinition, type SpriteFacing, type SpritePresentation } from '@/sprites/spriteAnimation'
 
 const props = withDefaults(
   defineProps<{
@@ -21,6 +21,7 @@ const frame = computed(() =>
 const sheet = computed(() =>
   props.presentation.kind === 'walk' ? props.sprite.walkSheets[props.presentation.phase] : props.sprite.sheet,
 )
+const scale = computed(() => scaleFor(props.sprite, props.presentation))
 const transform = computed(() =>
   `translate(${props.x}, ${props.y}) scale(${props.facing === 'left' ? -1 : 1}, 1)`,
 )
@@ -29,10 +30,10 @@ const transform = computed(() =>
 <template>
   <g :transform="transform" aria-hidden="true" style="pointer-events: none">
     <svg
-      :x="-frame.anchorX * sprite.scale"
-      :y="-frame.anchorY * sprite.scale"
-      :width="frame.width * sprite.scale"
-      :height="frame.height * sprite.scale"
+      :x="-frame.anchorX * scale"
+      :y="-frame.anchorY * scale"
+      :width="frame.width * scale"
+      :height="frame.height * scale"
       :viewBox="`${frame.x} ${frame.y} ${frame.width} ${frame.height}`"
       overflow="hidden"
     >

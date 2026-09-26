@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
+import { alphaBoundingBox, decodeRgbaPng } from '../../../scripts/png-alpha-bbox.mjs'
 import { knightSpriteData } from '../knight'
-import { attackDuration, poseAtElapsed, walkLoopDuration, walkPhaseAtElapsed } from '../spriteAnimation'
+import { attackDuration, poseAtElapsed, scaleFor, walkLoopDuration, walkPhaseAtElapsed } from '../spriteAnimation'
 import { spriteForUnit } from '../spriteCatalog'
+
+const walkPhaseFileNumber: Record<(typeof knightSpriteData.walk.order)[number], number> = {
+  leftPassing: 1,
+  leftContact: 2,
+  rightPassing: 3,
+  rightContact: 4,
+}
 
 describe('knight animation', () => {
   it.each([
@@ -38,6 +46,21 @@ describe('knight animation', () => {
       expect(frame.anchorX).toBeLessThan(frame.width)
       expect(frame.anchorY).toBeGreaterThan(0)
       expect(frame.anchorY).toBeLessThan(frame.height)
+    }
+  })
+
+  it('renders every walk phase at the same on-screen knight height as the idle attack pose', () => {
+    const idlePng = decodeRgbaPng(readFileSync('src/assets/sprites/knight/knight.png'))
+    const idleFrame = knightSpriteData.frames.idle
+    const idleContentHeight = alphaBoundingBox(idlePng, idleFrame).height
+    const idleRenderedHeight = idleContentHeight * scaleFor(knightSpriteData, { kind: 'attack', pose: 'idle' })
+
+    for (const phase of knightSpriteData.walk.order) {
+      const walkPng = decodeRgbaPng(readFileSync(`src/assets/sprites/knight/knight-walk-metal-${walkPhaseFileNumber[phase]}.png`))
+      const walkContentHeight = alphaBoundingBox(walkPng).height
+      const walkRenderedHeight = walkContentHeight * scaleFor(knightSpriteData, { kind: 'walk', phase })
+      expect(walkRenderedHeight).toBeGreaterThan(idleRenderedHeight * 0.95)
+      expect(walkRenderedHeight).toBeLessThan(idleRenderedHeight * 1.05)
     }
   })
 

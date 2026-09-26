@@ -15,6 +15,8 @@ export interface WalkSpriteData {
   order: readonly WalkPhase[]
   frames: Record<WalkPhase, SpriteFrame>
   frameDurationMs: number
+  /** The walk source art is drawn at a different pixel density than the attack sheet, so it needs its own scale to render at the same on-screen size. */
+  scale: number
 }
 
 export interface SpriteData {
@@ -32,6 +34,10 @@ export interface SpriteDefinition extends SpriteData {
 }
 
 export type SpritePresentation = { kind: 'attack'; pose: SpritePose } | { kind: 'walk'; phase: WalkPhase }
+
+export function scaleFor(sprite: SpriteData, presentation: SpritePresentation): number {
+  return presentation.kind === 'walk' ? sprite.walk.scale : sprite.scale
+}
 
 export function attackDuration(sprite: SpriteData): number {
   return sprite.attack.reduce((duration, frame) => duration + frame.durationMs, 0)
